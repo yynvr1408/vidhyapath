@@ -28,7 +28,8 @@ export async function answerCurrentQuestion(
       : (['A', 'B', 'C', 'D'] as const).find((k) => k !== question.answer)!;
 
   // The option letter lives in its own <span>; clicking it bubbles to the option button.
-  await user.click(within(container).getByText(letter, { selector: 'span' }));
+  const spans = within(container).getAllByText(letter, { selector: 'span' });
+  await user.click(spans[0]);
   await screen.findByRole('button', { name: en.nextQuestion });
   await user.click(screen.getByRole('button', { name: en.nextQuestion }));
   return question;

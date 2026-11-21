@@ -44,6 +44,11 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
   const [enteredPin, setEnteredPin] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    setEnteredPin('');
+    setErrorMsg(null);
+  }, [learner?.id, isOpen]);
+
   if (!isOpen) return null;
 
   // Only the learner's own stored PIN unlocks; no hardcoded fallback.
@@ -58,6 +63,7 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
     if (next.length === 4) {
       if (expectedPin !== null && next === expectedPin) {
         setTimeout(() => {
+          setEnteredPin('');
           onSuccess();
         }, 150);
       } else {
@@ -87,7 +93,7 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC] min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="p-2 rounded-lg text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC] min-h-[48px] min-w-[48px] flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>

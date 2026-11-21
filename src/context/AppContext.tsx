@@ -305,6 +305,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const selectLearner = (learner: LearnerProfile) => {
     setActiveLearner(learner);
+    setSkillStates(new Map());
     loadLearnerSkills(learner.id);
     setCurrentScreen('MY_SYLLABUS'); // Default landing page after unlocking profile!
   };
@@ -351,6 +352,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const switchLearner = () => {
     setActiveLearner(null);
+    setSkillStates(new Map());
+    setQueuedDoubtsCount(0);
     setCurrentScreen('S1_PICKER');
   };
 

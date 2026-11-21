@@ -278,12 +278,20 @@ function buildTutorSystemPrompt(
   return lines.join('\n');
 }
 
-async function askTutorModel(systemPrompt: string, question: string): Promise<string> {
+async function askTutorModel(systemPrompt: string, question: string, photoBase64?: string): Promise<string> {
   const config = getTutorConfig();
   if (!config) return '';
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TUTOR_TIMEOUT_MS);
   try {
+    let userMessageContent: any = question;
+    if (photoBase64 && typeof photoBase64 === 'string') {
+      const url = photoBase64.startsWith('data:') ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
+      userMessageContent = [
+        { type: 'text', text: question },
+        { type: 'image_url', image_url: { url } },
+      ];
+    }
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -294,7 +302,7 @@ async function askTutorModel(systemPrompt: string, question: string): Promise<st
         model: config.model,
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: question },
+          { role: 'user', content: userMessageContent },
         ],
         max_tokens: 300,
       }),
@@ -317,7 +325,7 @@ async function askTutorModel(systemPrompt: string, question: string): Promise<st
 
 // 2. AI Tutor Endpoint (/api/tutor/ask)
 app.post('/api/tutor/ask', async (req: Request, res: Response) => {
-  const { packId, learnerId, doubt, topicId, mistakeTag, language } = req.body;
+  const { packId, learnerId, doubt, topicId, mistakeTag, language, photoBase64 } = req.body;
   if (packId && !isSafePackId(packId)) {
     return res.status(400).json({ answer: 'Invalid pack id' });
   }
@@ -355,7 +363,7 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
     if (getTutorConfig()) {
       const topic = Array.isArray(pack.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
       const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag, replyLanguage);
-      const reply = trimToWords(await askTutorModel(systemPrompt, doubtText), TUTOR_MAX_WORDS);
+      const reply = trimToWords(await askTutorModel(systemPrompt, doubtText, photoBase64), TUTOR_MAX_WORDS);
       if (reply) {
         tutorCache.set(cacheKey, reply);
         return res.json({ source: 'model', answer: reply });

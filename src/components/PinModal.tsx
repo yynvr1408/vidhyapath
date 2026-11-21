@@ -49,7 +49,7 @@ export const PinModal: React.FC<PinModalProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="p-1 rounded-full text-[#475569] hover:text-[#0F172A]"
+            className="p-2 rounded-full text-[#475569] hover:text-[#0F172A] min-h-[48px] min-w-[48px] flex items-center justify-center"
           >
             <X className="w-6 h-6" />
           </button>

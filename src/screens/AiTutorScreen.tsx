@@ -87,7 +87,8 @@ export const AiTutorScreen: React.FC = () => {
         undefined,
         isOffline,
         lowDataMode,
-        tutorMode
+        tutorMode,
+        currentPhoto || undefined
       );
 
       setMessages((prev) => [
@@ -331,7 +332,7 @@ export const AiTutorScreen: React.FC = () => {
           <input
             type="file"
             accept="image/*"
-            capture="user"
+            capture="environment"
             onChange={handlePhotoUpload}
             className="hidden"
           />

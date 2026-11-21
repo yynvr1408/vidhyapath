@@ -63,6 +63,8 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
 
   const currentQ = questions[currentIndex];
 
+  const quizStateKey = activeLearner ? `vidyapath_quiz_state_${activeLearner.id}` : null;
+
   const handleSelectAnswer = async (inputStr: string, inputMode: 'tap' | 'voice' = 'tap') => {
     if (!activeLearner || !currentQ || activeFeedback) return;
 
@@ -86,8 +88,25 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
     await PracticeEngine.recordAttemptAndUpdateSkill(attemptEvent);
     await refreshLearnerData();
 
-    setSessionResults((prev) => [...prev, { correct: result.isCorrect, hintsUsed: hintLevel }]);
+    const updatedResults = [...sessionResults, { correct: result.isCorrect, hintsUsed: hintLevel }];
+    setSessionResults(updatedResults);
     setActiveFeedback(result);
+
+    // Auto-save mid-quiz answers to local storage immediately
+    if (quizStateKey) {
+      try {
+        localStorage.setItem(
+          quizStateKey,
+          JSON.stringify({
+            topicId: selectedTopicId,
+            currentIndex,
+            questionId: currentQ.id,
+            savedResults: updatedResults,
+            ts: Date.now(),
+          })
+        );
+      } catch {}
+    }
   };
 
   const handleNextQuestion = () => {
@@ -97,8 +116,26 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
 
     if (currentIndex + 1 < questions.length) {
       setCurrentIndex((prev) => prev + 1);
+      if (quizStateKey) {
+        try {
+          localStorage.setItem(
+            quizStateKey,
+            JSON.stringify({
+              topicId: selectedTopicId,
+              currentIndex: currentIndex + 1,
+              savedResults: sessionResults,
+              ts: Date.now(),
+            })
+          );
+        } catch {}
+      }
     } else {
       setIsSessionFinished(true);
+      if (quizStateKey) {
+        try {
+          localStorage.removeItem(quizStateKey);
+        } catch {}
+      }
       confetti({
         particleCount: 60,
         spread: 60,
@@ -152,6 +189,11 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
           <button
             type="button"
             onClick={() => {
+              if (quizStateKey) {
+                try {
+                  localStorage.removeItem(quizStateKey);
+                } catch {}
+              }
               const selected = PracticeEngine.selectSessionQuestions(pack, skillStates, selectedTopicId || undefined);
               setQuestions(selected);
               setCurrentIndex(0);

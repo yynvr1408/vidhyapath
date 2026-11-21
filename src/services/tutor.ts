@@ -109,7 +109,8 @@ Learner doubt: "${doubtText}"`;
     mistakeTag?: string,
     isOffline: boolean = false,
     lowDataMode: boolean = false,
-    mode: 'auto' | 'manual_offline' = 'auto'
+    mode: 'auto' | 'manual_offline' = 'auto',
+    photoBase64?: string
   ): Promise<TutorResponse> {
     const queryTrimmed = doubtText.trim();
     if (!queryTrimmed) {
@@ -180,6 +181,7 @@ Learner doubt: "${doubtText}"`;
           topicId,
           mistakeTag,
           language: pack.language,
+          photoBase64,
         }),
         signal: controller.signal,
       });

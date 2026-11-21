@@ -9,7 +9,7 @@ interface AddProfileModalProps {
   onClose: () => void;
 }
 
-const HUMAN_AVATARS = ['🐆', '🐘', '🦁', '👦', '👧', '👩‍🎓', '👨‍🎓', '🧑‍🎓'];
+const HUMAN_AVATARS = ['👦', '👧', '🧑‍🎓', '👨‍🎓', '👩‍🎓', '🧒', '🙋‍♂️', '🙋‍♀️'];
 const AVATAR_COLORS = ['#0F766E', '#D97706', '#16A34A', '#2563EB', '#7C3AED'];
 
 export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClose }) => {
@@ -57,7 +57,7 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+            className="p-2 rounded-lg text-[#475569] hover:text-[#0F172A] hover:bg-[#F8FAFC] min-h-[48px] min-w-[48px] flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>

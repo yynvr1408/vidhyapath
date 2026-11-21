@@ -69,7 +69,7 @@ export const Header: React.FC = () => {
             type="button"
             onClick={switchLearner}
             title={pack?.language === 'en' ? 'Switch Student' : pack?.language === 'hi' ? 'शिक्षार्थी बदलें' : 'విద్యార్థిని మార్చు'}
-            className="p-2 rounded-xl bg-[#F4F9F6] hover:bg-[#DCFCE7] text-[#0F172A] transition-all active:scale-95 min-h-[40px] min-w-[40px] flex items-center justify-center border border-[#D1E7DD] hover:border-[#15803D]"
+            className="p-2.5 rounded-xl bg-[#F4F9F6] hover:bg-[#DCFCE7] text-[#0F172A] transition-all active:scale-95 min-h-[48px] min-w-[48px] flex items-center justify-center border border-[#D1E7DD] hover:border-[#15803D]"
           >
             <Users className="w-4 h-4 text-[#15803D]" />
           </button>
@@ -80,7 +80,7 @@ export const Header: React.FC = () => {
           type="button"
           onClick={() => setScreen(currentScreen === 'S11_IMPACT' ? 'S3_HOME' : 'S11_IMPACT')}
           title="Sponsor Impact / స్పాన్సర్ ఇంపాక్ట్"
-          className={`p-2 rounded-xl transition-all active:scale-95 min-h-[40px] min-w-[40px] flex items-center justify-center border ${
+          className={`p-2.5 rounded-xl transition-all active:scale-95 min-h-[48px] min-w-[48px] flex items-center justify-center border ${
             currentScreen === 'S11_IMPACT'
               ? 'bg-[#15803D] text-white border-[#15803D]'
               : 'bg-[#F4F9F6] text-[#0F172A] border-[#D1E7DD] hover:border-[#15803D]'
@@ -94,7 +94,7 @@ export const Header: React.FC = () => {
           type="button"
           onClick={() => setScreen(currentScreen === 'S9_SETTINGS' ? 'S3_HOME' : 'S9_SETTINGS')}
           title="Settings / సెట్టింగులు"
-          className={`p-2 rounded-xl transition-all active:scale-95 min-h-[40px] min-w-[40px] flex items-center justify-center border ${
+          className={`p-2.5 rounded-xl transition-all active:scale-95 min-h-[48px] min-w-[48px] flex items-center justify-center border ${
             currentScreen === 'S9_SETTINGS'
               ? 'bg-[#15803D] text-white border-[#15803D]'
               : 'bg-[#F4F9F6] text-[#0F172A] border-[#D1E7DD] hover:border-[#15803D]'

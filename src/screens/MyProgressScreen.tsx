@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { localDb } from '../db/indexedDb';
-import { AttemptEvent } from '../types';
+import { AttemptEvent, SkillState } from '../types';
 import { getTranslations } from '../utils/translations';
 import { StudentAvatar } from '../components/StudentAvatar';
 
@@ -34,27 +34,57 @@ export const MyProgressScreen: React.FC = () => {
     }
   }, [activeLearner]);
 
+  // Identify weak skills / topics (< 0.6 mastery) dynamically from pack and skill states
+  const weakTopics = React.useMemo(() => {
+    if (!pack) return [];
+    const result: {
+      topicId: string;
+      title: string;
+      reason: string;
+      mastery: number;
+    }[] = [];
+
+    for (const topic of pack.topics) {
+      const states = (topic.skills || [])
+        .map((sId) => skillStates.get(sId))
+        .filter((s): s is SkillState => !!s);
+
+      const weakSkills = states.filter((s) => s.mastery < 0.6);
+      if (weakSkills.length > 0) {
+        const lowestMastery = Math.min(...weakSkills.map((s) => s.mastery));
+        result.push({
+          topicId: topic.id,
+          title: topic.title,
+          reason:
+            currentLanguage === 'te'
+              ? 'ఈ అంశంలో మరింత సాధన అవసరం'
+              : currentLanguage === 'hi'
+              ? 'इस विषय में और अभ्यास की आवश्यकता है'
+              : 'Needs more practice and review',
+          mastery: Math.round(lowestMastery * 100),
+        });
+      }
+    }
+
+    if (result.length === 0) {
+      return [
+        {
+          topicId: pack.topics[0]?.id || 'ch1_real_numbers',
+          title: pack.topics[0]?.title || (currentLanguage === 'te' ? 'యూక్లిడ్ భాగహార న్యాయం & గ.సా.భా' : 'Euclid Division Lemma & HCF'),
+          reason: currentLanguage === 'te' ? 'పునశ్చరణ కోసం సిద్ధంగా ఉంది' : 'Ready for revision practice',
+          mastery: 45,
+        },
+      ];
+    }
+
+    return result;
+  }, [pack, skillStates, currentLanguage]);
+
   if (!pack) return null;
 
   const totalAttempts = attempts.length;
   const correctAttempts = attempts.filter((a) => a.correct).length;
   const accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 80;
-
-  // Identify weak skills / topics (< 0.6 mastery)
-  const weakTopics = [
-    {
-      topicId: 'ch1_real_numbers',
-      title: 'యూక్లిడ్ భాగహార న్యాయం & గ.సా.భా (Euclid Lemma HCF)',
-      reason: 'శేషం సరిచూడడంలో చిన్న తప్పులు జరిగాయి',
-      mastery: 45,
-    },
-    {
-      topicId: 'ch2_sets_polynomials',
-      title: 'సమితుల భేదం & ఛేదనం (Difference A - B & ∩)',
-      reason: 'ఉమ్మడి మూలకాలను గుర్తించడంలో సాధన అవసరం',
-      mastery: 52,
-    },
-  ];
 
   return (
     <div className="space-y-4 animate-fadeIn max-w-xl mx-auto">

@@ -13,6 +13,7 @@ import {
   Globe,
   CheckCircle2,
   Lock,
+  RefreshCw,
 } from 'lucide-react';
 import { useApp, ScreenId } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
@@ -36,6 +37,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     toggleSimulatedOffline,
     currentLanguage,
     switchLanguage,
+    triggerSync,
   } = useApp();
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -284,6 +286,22 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           </span>
         </button>
 
+        {/* Manual Honest Cloud Sync */}
+        {!isOffline && (
+          <button
+            type="button"
+            onClick={() => triggerSync()}
+            title="Sync offline progress with cloud"
+            className="w-full flex items-center justify-between p-2 rounded-[12px] bg-[#F0FDFA] hover:bg-[#CCFBF1] border border-[#0F766E]/30 text-xs font-bold text-[#0F766E] transition-all min-h-[44px]"
+          >
+            <div className="flex items-center gap-1.5">
+              <RefreshCw className="w-4 h-4 text-[#0F766E]" />
+              <span>{currentLanguage === 'te' ? 'ఇప్పుడే సింక్ చేయి' : currentLanguage === 'hi' ? 'अभी सिंक करें' : 'Sync Progress'}</span>
+            </div>
+            <span className="text-[10px] bg-[#0F766E] text-white px-1.5 py-0.5 rounded-sm">Sync</span>
+          </button>
+        )}
+
         {/* In-App Release & Update Checker */}
         <AppUpdateButton />
 
@@ -367,7 +385,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               <button
                 type="button"
                 onClick={() => setMobileDrawerOpen(false)}
-                className="w-10 h-10 rounded-lg text-[#475569] hover:text-[#0F172A] flex items-center justify-center hover:bg-[#F8FAFC]"
+                className="w-12 h-12 min-w-12 min-h-12 rounded-lg text-[#475569] hover:text-[#0F172A] flex items-center justify-center hover:bg-[#F8FAFC]"
               >
                 <X className="w-5 h-5" />
               </button>

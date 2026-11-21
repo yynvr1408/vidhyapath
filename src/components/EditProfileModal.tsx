@@ -134,7 +134,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl bg-[#F4F9F6] text-[#475569] hover:text-[#0F172A] border border-[#D1E7DD]"
+            className="p-2 rounded-xl bg-[#F4F9F6] text-[#475569] hover:text-[#0F172A] border border-[#D1E7DD] min-h-[48px] min-w-[48px] flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>
