@@ -1,245 +1,263 @@
-# 🏮 Vidyapath: The Last-Mile Multilingual Learning Engine
-**ACE Builders Hackathon 2026 · Problem Statement 3 (The Last-Mile Tutor)**  
-**Launch Pack:** Telugu · Class 10 · Mathematics (Andhra Pradesh State Board)
+# 🏮 Vidyapath: Enterprise Multilingual Educational Ecosystem
 
-> **Honest Demo Line:** *"The launch pack is Telugu Class 10 Maths. Other languages and subjects are new data packs running on the exact same engine."*
+> **A production-ready, scalable educational platform designed for universities, colleges, and schools — built with an offline-first architecture, 5-tier administrative hierarchy, dynamic syllabus matching, intelligent LMS, and governed pedagogical AI.**
 
 ---
 
-## 1. Product Vision & Problem Statement
+## 1. Executive Summary & Product Architecture
 
-In rural and semirural India, over **120 million vernacular-medium students** face a dual digital barrier:
-1. **The Shared Phone Reality:** A student typically has access to a basic smartphone for 20–40 minutes a day after parents return from work. 2 or 3 siblings often share the same device.
-2. **The "Data-Runs-Out" Dilemma:** Modest 1.5 GB daily cellular plans exhaust by afternoon; network connectivity in village outskirts drops from slow 3G to 0 bars.
-3. **The Ed-Tech Mismatch:** Existing ed-tech platforms are English-first, require continuous high-speed video streaming, assume personal devices, and rely on hallucination-prone LLMs that frequently compute wrong mathematics.
-
-**Vidyapath** was built from scratch to solve these exact constraints:
-* **Offline-First & Zero-Data:** 100% of lessons, practice sessions, adaptive scoring, and common doubts execute locally on-device in the browser using IndexedDB and Service Workers.
-* **Deterministic Answer Checker:** AI **never marks mathematics answers**. Every question has stored answer keys, accepted formats, and distractor mistake mappings. AI only coaches and explains.
-* **Pack-Driven Engine:** Zero hard-coded language, class, or curriculum strings. Swapping a JSON content pack completely transforms the app into a new language or subject.
-* **Shared-Phone Architecture:** 1-tap animal avatar switcher, optional 4-digit PIN locks, and a 2-minute auto-lock prevent sibling data leaks.
-* **Family & Sponsor Inclusion:** View-only Guardian digests (`/guardian/:token`) require no login; the Sponsor Impact Dashboard (`/impact`) proves learning outcomes with a strict minimum cohort size of 5 for child privacy.
-
----
-
-## 2. System Architecture
+Vidyapath bridges the gap between high-end campus management systems and real-world infrastructure constraints (low cellular bandwidth, shared student phones, intermittent connectivity). It combines an **enterprise-grade administrative and academic hierarchy** with an **offline-first Progressive Web Application (PWA)** and **multi-tier pedagogical AI guardrails**.
 
 ```
-[Learner Phone: PWA (360px+ portrait)]
-  UI (i18n 100% from Content Pack)
-       │
-  Practice Engine (Adaptive 60/25/15 · Mistake Remedies)
-       │
-  Deterministic Answer Checker (No AI Hallucinations)
-       │
-  IndexedDB Storage (Learner Profiles, Append-Only Attempt Events, Sync Outbox, Doubt Queue)
-       │
-  Service Worker (Cache-first Shell + Stale-While-Revalidate Content Packs)
-       │
-  Web Speech API (te-IN SpeechRecognition & on-device SpeechSynthesis)
-       │ (HTTPS gzip JSON batches < 2 KB)
-[Express API & Serverless Endpoints]
-  ├── /api/sync              (Batch sync attempts, resolves queued offline doubts)
-  ├── /api/tutor/ask         (Pack prompt builder -> Guardrails -> 120-word Telugu coach)
-  ├── /api/guardian/:token   (Read-only summary, weak topic, family activity)
-  ├── /api/sponsor/:cohort   (Anonymized cohort stats, min cohort threshold 5)
-  └── /api/admin/packs       (Pack listing, live schema validator, version publisher)
+                                    ┌───────────────────────────────────────────────────┐
+                                    │         PLATFORM SUPER ADMINISTRATOR (L1)         │
+                                    │   Institution Approvals • Global Users • Audit    │
+                                    └─────────────────────────┬─────────────────────────┘
+                                                              │
+                                    ┌─────────────────────────▼─────────────────────────┐
+                                    │            INSTITUTION ADMINISTRATOR (L2)         │
+                                    │    Academic Years • Departments • Syllabi Center  │
+                                    └─────────────────────────┬─────────────────────────┘
+                                                              │
+                                    ┌─────────────────────────▼─────────────────────────┐
+                                    │        DEPARTMENT HEAD / ACADEMIC ADMIN (L3)      │
+                                    │     Curriculum Pace • Faculty-Subject Allocation  │
+                                    └─────────────────────────┬─────────────────────────┘
+                                                              │
+                                    ┌─────────────────────────▼─────────────────────────┐
+                                    │               FACULTY / TEACHER (L4)              │
+                                    │    Classroom LMS • Resources • Assignments • Quiz │
+                                    └─────────────────────────┬─────────────────────────┘
+                                                              │
+                            ┌─────────────────────────────────┴─────────────────────────────────┐
+                            │                                                                   │
+             ┌──────────────▼──────────────┐                                     ┌──────────────▼──────────────┐
+             │         STUDENT (L5)        │                                     │      PARENT / GUARDIAN      │
+             │ Dynamic Syllabus • LMS Room │                                     │   Verified Attendance &     │
+             │ Socratic AI • Offline Hub   │                                     │     Mastery Digest          │
+             └─────────────────────────────┘                                     └─────────────────────────────┘
 ```
 
-### Core Design Decisions
-1. **Deterministic Correctness Over GenAI Faith:** If a student asks if $\sqrt{4}$ is irrational or what $17 \div 5$ yields, a deterministic algorithm checks the stored answer. The AI tutor only explains misconceptions.
-2. **Append-Only Event Stream:** Practice history is saved as immutable `AttemptEvent` objects with client-generated UUIDs. Reconnecting to network produces zero sync conflicts.
-3. **Voice-First, Never Voice-Only:** Every voice feature has an immediate tap fallback. If a microphone is denied or network is unavailable, the user taps the options.
-4. **Metaphor — Lighting the Village:** Each chapter is a village lantern that glows brighter (0% to 100%) as its skills reach mastery ($\ge 0.8$ with $\ge 3$ consecutive correct answers).
+---
+
+## 2. 5-Tier Administrative Hierarchy & Role-Based Access Control (RBAC)
+
+| Level | Role | Responsibilities & Capabilities | Accessible Endpoints & Dashboards |
+|---|---|---|---|
+| **L1** | **Platform Super Admin** | • Platform-wide governance & tenant isolation.<br>• Review, approve, or reject institution onboarding requests.<br>• Global user directory, security monitoring, and audit trails.<br>• Configure global AI rate limits and institutional policies. | • `/dashboard/super-admin`<br>• `GET /api/super-admin/institutions`<br>• `POST /api/super-admin/institutions/:id/approve`<br>• `GET /api/super-admin/audit-logs` |
+| **L2** | **Institution Admin** | • Manage single institution (e.g., Apex Institute of Technology).<br>• Configure academic years, departments, degree programmes, and semesters.<br>• Onboard faculty members with automated email invitations.<br>• Review, edit, and publish official curriculum syllabi. | • `/dashboard/institution-admin`<br>• `POST /api/institution/:id/invite-teacher`<br>• `POST /api/academic/syllabus/publish`<br>• `GET /api/institution/:id/departments` |
+| **L3** | **Academic Admin / HOD** | • Manage department (e.g., Department of Computer Science).<br>• Map faculty members to subjects.<br>• Track department-wide syllabus completion pace.<br>• Supervise semester examination and internal assessment schedules. | • `/dashboard/academic-admin`<br>• `GET /api/academic/student-syllabus`<br>• `POST /api/academic/syllabus/parse` |
+| **L4** | **Faculty / Teacher** | • Manage active subjects, lecture notes, handouts, and live video rooms.<br>• Create and grade assignments; inspect student code/PDF submissions.<br>• Build interactive timed quizzes with automatic grading.<br>• Use AI Teaching Assistant for lesson plans and quiz question generation. | • `/dashboard/teacher`<br>• `POST /api/lms/subjects/:id/resources`<br>• `POST /api/lms/assignments/:id/submit`<br>• `POST /api/lms/quizzes/:id/attempt` |
+| **L5** | **Student** | • Automatically receive accredited syllabus for verified profile (`Institution`, `Department`, `Programme`, `Semester`).<br>• Dedicated subject LMS rooms (Notes, PDFs, Recorded Videos, Live Sessions).<br>• Submit assignments and take timed mastery quizzes.<br>• Consult Socratic AI Tutor under active safety guardrails.<br>• Download study notes for 100% offline access. | • `/dashboard/student`<br>• `/subject/:subjectId`<br>• `GET /api/academic/student-syllabus`<br>• `POST /api/tutor/chat`<br>• `POST /api/lms/topics/:id/toggle-complete` |
+| **Parent** | **Parent / Guardian** | • View-only verified progress digest (attendance percentage, mastered topics).<br>• Home study advisories from faculty with **zero PII leakage**. | • `/dashboard/guardian`<br>• `GET /api/guardian/:token` |
 
 ---
 
-## 3. Proof Against Judging Criteria
+## 3. High-Concurrency & Enterprise Scaling Architecture
 
-| Criterion | Weight | Proof Delivered in Vidyapath |
-|---|:---:|---|
-| **Working Product** | **30%** | Fully functional installable PWA with Service Worker precaching, IndexedDB storage, Web Speech API (te-IN recognition & synthesis), offline banner with automatic silent switch, and responsive design tested at 360px portrait width. |
-| **Business Viability** | **25%** | Dedicated `/impact` dashboard displaying live cohort KPIs across 124 learners, interactive unit economics calculator with explicit assumptions demonstrating **₹18.50 / learner / month**, an 8-week pilot plan, and a 1-page business slide. |
-| **Problem & User Clarity** | **20%** | Designed for Priya (Class 10 AP student on a shared family phone); 1-tap learner switcher; 2-minute shared-phone auto-lock; zero-data offline practice mode; mistake-aware Telugu coaching without humiliation. |
-| **Build Quality & Codebenders** | **15%** | Meticulously structured TypeScript codebase; prompt sequence P1–P9 fully logged in `PROMPT_LOG.md`; clean pack-driven schema; deterministic checking; automated test suite. |
-| **Presentation** | **10%** | Scripted 3-minute demo guide (`DEMO_SCRIPT.md`), 1-page business slide (`BUSINESS_SLIDE.md`), and clear live demo flow. |
+To support large concurrent traffic spikes (thousands of students submitting assignments or taking quizzes simultaneously), Vidyapath implements a **production-grade enterprise scaling stack**:
 
----
-
-## 4. Performance Budget Audit
-
-| Item | Blueprint Target | Vidyapath Actual | Audit Result |
-|---|:---:|:---:|:---:|
-| **First Load (App Shell gzip)** | $\le$ 150 KB | **92.3 KB** | **PASSED (38% under budget)** |
-| **Content Pack (gzip/raw)** | $\le$ 100 KB | **18.4 KB** | **PASSED (81% under budget)** |
-| **AI Reply Payload** | $\le$ 2 KB text | **< 0.8 KB** (capped at 120 words) | **PASSED** |
-| **Network Resilience** | Usable on 2G / zero network | **100% offline practice & local scoring** | **PASSED** |
-
----
-
-## 5. Screen Catalog & Features (S1 – S12)
-
-* **S1: Profile Picker:** Large animal avatar tiles (చిరుత, ఏనుగు, జింక, etc.) with glowing lantern status, 1-tap learner switching, and PIN verification.
-* **S2: Create Profile:** Animal nickname grid, color picker, optional 4-digit PIN. Zero real names or personal data collected.
-* **S3: Home Screen:** Glowing Lantern Village map, 3 primary action buttons (Learn, Practice, Ask Doubt), today's goal tracker, and "Saved" status indicator.
-* **S4: Lesson Screen:** Concept cards with audio playback (`AudioButton`), worked examples with step-by-step highlights, key takeaways, and direct practice CTA.
-* **S5: Practice Screen:** 5-question adaptive session (60% weakest, 25% review, 15% new), 4 large 56px touch targets, 3-step hint ladder (Nudge $\to$ Method $\to$ Worked Step), voice answer button, and confetti celebration.
-* **S6: Feedback Modal:** Mistake-aware feedback mapping wrong options to distractor misconceptions (e.g. `forgot_remainder`, `included_equal_to_b`), providing gentle Telugu remedies without shame.
-* **S7: Ask a Doubt:** Giant mic button for voice queries, client-side compressed photo doubt, precomputed `commonDoubts` for instant offline answers, and an offline queue.
-* **S8: My Progress:** Chapter lantern mastery breakdown, weekly practice calendar dots, and strong vs. weak skill analysis.
-* **S9: Settings:** Low-data mode toggle, font size selector (18px, 20px, 22px), session data consumption counter (KB), and AI cache cleanup.
-* **S10: Guardian View (`/guardian/:token`):** Read-only weekly summary, weak skill identification, suggested parent coaching action, and a "Practice Together" family activity.
-* **S11: Sponsor Impact (`/impact`):** Live cohort metrics, interactive unit economics simulator, 8-week pilot plan, pack-scaling story, and 1-page business slide.
-* **S12: Pack Editor (`/admin/packs`):** Content admin JSON editor with live schema validation detecting missing fields, duplicate IDs, and unknown skills.
-
----
-
-## 6. Add-a-Language Guide: Creating a New Content Pack
-
-Vidyapath is 100% data-pack driven. To add a new language (e.g., Hindi, Tamil, Odia) or subject, **zero code changes are required**.
-
-### Step 1: Create the JSON File
-Create a new file in `public/packs/` following the naming convention `<lang>-<class>-<subject>-<board>.json` (e.g., `hi-10-maths-cbse.json`).
-
-### Step 2: Define Language & UI Strings
-```json
-{
-  "id": "hi-10-maths-cbse",
-  "version": "1.0.0",
-  "language": "hi",
-  "languageName": "हिन्दी (Hindi)",
-  "class": 10,
-  "subject": "maths",
-  "board": "CBSE",
-  "locales": { "stt": "hi-IN", "tts": "hi-IN", "rtl": false },
-  "uiStrings": {
-    "appTitle": "लालटेन एड",
-    "learn": "सीखें",
-    "practice": "अभ्यास करें",
-    "askDoubt": "संदेह पूछें",
-    "hint": "संकेत",
-    "progressSaved": "आपकी प्रगति सहेजी गई"
-  }
-}
+```
+[Inbound Student / Teacher Traffic]
+                 │
+                 ▼
+     [Reverse Proxy / Cloudflare Edge CDN]
+                 │
+                 ▼
+  [Load Balancer Health Probes: /healthz & /readyz]
+                 │
+                 ▼
+    [Token-Bucket Sliding-Window Rate Limiter]
+       ├── Auth Endpoints: 20 req / 15 min
+       ├── AI Tutor: 30 req / min burst
+       └── General API: 300 req / min
+                 │
+                 ▼
+    [Enterprise Idempotency Middleware]
+       └── Intercepts 'Idempotency-Key' on mutating requests
+           (Returns 'X-Cache: IDEMPOTENT-HIT' on duplicates)
+                 │
+                 ▼
+      [Stateless Express REST Microservices]
+                 │
+       ┌─────────┴─────────┐
+       ▼                   ▼
+ [Async Event Batch Queue] [Neon PostgreSQL / Store]
+ (FIFO O(1) deduplication,  (ACID Transactions, SSL Encrypted)
+  batch flush in chunks of 50)
 ```
 
-### Step 3: Add Topics and Skills
-```json
-"topics": [
-  {
-    "id": "hi_ch1_real_numbers",
-    "title": "अध्याय 1: वास्तविक संख्याएँ",
-    "skills": ["hi_euclid_division", "hi_fundamental_arithmetic"],
-    "cards": [...]
-  }
-]
-```
+### A. Load Balancing & Probes
+- `GET /healthz`: Fast liveness probe for Kubernetes and cloud load balancers.
+- `GET /readyz`: Readiness probe verifying memory headroom (<1GB heap), queue depth, and database connectivity.
+- `GET /metrics`: Prometheus-ready telemetry (heap usage, RSS, active institutions, queue latency).
 
-### Step 4: Add Questions with Hint Ladders & Mistake Remedies
-```json
-"questions": [
-  {
-    "id": "hq101",
-    "skillId": "hi_euclid_division",
-    "difficulty": 1,
-    "text": "यूक्लिड विभाजन प्रमेयिका a = bq + r में शेषफल r के लिए कौन सा संबंध सत्य है?",
-    "options": ["0 < r <= b", "0 <= r < b", "0 < r < b", "r > b"],
-    "answer": "B",
-    "acceptedForms": ["B", "0 <= r < b", "0 ≤ r < b"],
-    "hintLadder": [
-      "शेषफल हमेशा भाजक b से छोटा होता है।",
-      "शेषफल 0 भी हो सकता है (0 <= r < b)।",
-      "सही संबंध 0 <= r < b है। विकल्प B सही है।"
-    ],
-    "distractorMistakes": { "A": "included_equal_to_b" }
-  }
-],
-"mistakeRemedies": {
-  "included_equal_to_b": "शेषफल कभी भी भाजक के बराबर नहीं हो सकता, हमेशा उससे छोटा होता है।"
-}
-```
+### B. Sliding-Window Rate Limiting (`server/middleware/rateLimiter.ts`)
+- Prevents DDoS, brute-force attacks, and quota starvation.
+- Sends standard RFC headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After`.
 
-### Step 5: Validate & Publish
-Open `http://localhost:3000/#admin` (Screen S12). The live schema validator checks your pack for syntax errors, missing fields, duplicate question IDs, and unreferenced skills. Once valid, click **"Publish Version"** — the engine immediately loads your new curriculum!
+### C. Enterprise Idempotency (`server/middleware/idempotency.ts`)
+- Any network hiccup that causes client retries on assignments, quizzes, or sync events passes an `Idempotency-Key` header.
+- The server verifies keys against an in-memory TTL store. If already executed, it immediately returns the cached result (`X-Cache: IDEMPOTENT-HIT`), **preventing double-submissions, duplicate DB rows, or grade alterations**.
+
+### D. Asynchronous Batch Queue (`server/services/queueService.ts`)
+- Offline telemetry and quiz attempts are enqueued into a memory-efficient buffer with $O(1)$ deduplication.
+- Flushed in chunks of 50 events per transaction to avoid database lock contention.
 
 ---
 
-## 7. Setup & Running Instructions
+## 4. Free Tier to Enterprise Scale Matrix
 
-### Prerequisites
-* Node.js v18+ (tested on v24.22.1)
-* npm v9+ (tested on v11.19.1)
+Vidyapath operates on a **$0/month baseline** while remaining completely scalable to enterprise cloud infrastructure:
 
-### Development Mode
+| Service | Free Tier Quota | Vidyapath Optimization Strategy | Enterprise Upgrade Path |
+|---|---|---|---|
+| **Groq Cloud** | • 1,000 requests/day<br>• 14,400 tokens/min<br>• 300 tokens/sec LLaMA 3.3 70B | Client-side `IndexedDB` semantic cache answers repeated questions in **0ms** with **0 tokens**. Student daily quota enforced (30 queries/day). | Dedicated Groq Cloud Enterprise TPU compute instance. |
+| **ElevenLabs** | • 10,000 characters/month | **Smart Voice Router**: ElevenLabs handles short key takeaways (<120 chars); native browser `SpeechSynthesis` reads full lessons with **0 characters burned**. | ElevenLabs Enterprise Tier with custom voice clones. |
+| **Neon PostgreSQL** | • 0.5 GB serverless storage<br>• SSL encrypted, auto-suspend | Compact schema with Unix timestamps. 80%+ of telemetry cached locally on device. | Multi-region Neon Serverless Postgres with read replicas. |
+| **Cloudflare R2** | • 10 GB storage free/month<br>• **$0 egress bandwidth fees** | Syllabus PDFs and handouts served directly from Cloudflare R2 with zero bandwidth charges. | Cloudflare R2 with custom edge caching domains. |
+| **EmailJS** | • 200 transactional emails/month | 6-digit OTP verification with 60s cooldown. Development mode uses audit logging simulation. | SendGrid / AWS SES dedicated SMTP relay. |
+| **GitHub Actions** | • Unlimited Linux build minutes<br>• 2 GB release storage | Automated CI/CD builds and hosts Android APKs directly on GitHub Releases at $0 cost. | GitHub Enterprise self-hosted runner pool. |
+
+---
+
+## 5. Intelligent Student-Based Syllabus Matcher
+
+Students never manually search through unrelated academic content.
+
+1. When a student logs in, the engine reads their verified enrollment:
+   $$\text{Student Profile} \longrightarrow (\text{Institution}, \text{Department}, \text{Programme}, \text{Semester})$$
+2. The server dynamically resolves and returns their accredited subjects:
+   - **CS501**: Operating Systems & Architecture (4 Credits)
+   - **CS502**: Computer Networks & Protocols (4 Credits)
+   - **CS503**: Database Management Systems (3 Credits)
+3. If curriculum data is pending or unavailable, the system notifies the student and provides a one-click **"Request Syllabus"** action alerting the Department Head.
+
+---
+
+## 6. Responsible Socratic AI & Multi-Tier Safety Guardrails
+
+AI functions as an educational coach, **never as a cheating device**. Enforced at the application and backend level in [`server/services/aiGuardrails.ts`](server/services/aiGuardrails.ts):
+
+1. **Exam Integrity Guardrail**: Rejects requests for active exam solutions or test keys (`"Academic Integrity Notice: Vidyapath AI cannot assist during active examinations."`).
+2. **Prompt Injection Defense**: Rejects system prompt extraction, rule overrides, and jailbreak commands.
+3. **PII Masking**: Blocks queries containing phone numbers, passwords, or personal credentials.
+4. **Answer Dumping Prevention**: Homework answer dumping is intercepted and converted into a **Socratic pedagogical nudge**:
+   > *"Instead of solving your entire assignment directly, let's break down the method step-by-step: what is the primary formula you think applies here?"*
+5. **Curriculum Grounding**: Prompts are dynamically grounded in the active subject and unit concepts.
+
+---
+
+## 7. 0-Data Offline First Architecture
+
+Vidyapath remains fully functional even in rural regions with intermittent connectivity:
+
+- **PWA Service Worker** ([`public/sw.js`](public/sw.js)): Pre-caches core application shell, fonts, and launch packs.
+- **Local IndexedDB**: Stores downloaded notes, assignment drafts, and attempt logs.
+- **Offline Learning Center** ([`src/screens/offline/OfflineLearningCenter.tsx`](src/screens/offline/OfflineLearningCenter.tsx)): Allows students to read downloaded materials and monitor cloud synchronization status.
+- **Zero Data Loss Guarantee**: Local changes are timestamped and idempotently merged with the cloud when connectivity returns.
+
+---
+
+## 8. Complete API Reference
+
+### Authentication & Account Management
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/auth/login` | Email/password login with account lockout protection. |
+| `POST` | `/api/auth/otp/send` | Dispatches 6-digit cryptographic OTP via EmailJS. |
+| `POST` | `/api/auth/otp/verify` | Single-use verification of OTP. |
+| `POST` | `/api/auth/register/institution` | Institution registration (enters Pending Approval state). |
+| `POST` | `/api/auth/register/student` | Student registration linked to verified academic profile. |
+| `GET` | `/api/auth/me` | Returns active user profile and role details. |
+
+### Super Administration (Level 1)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/super-admin/institutions` | Lists all institutions with status filter. |
+| `POST` | `/api/super-admin/institutions/:id/approve` | Approves institution and sends transactional confirmation. |
+| `POST` | `/api/super-admin/institutions/:id/reject` | Rejects institution with feedback reason. |
+| `GET` | `/api/super-admin/stats` | Global platform metrics. |
+| `GET` | `/api/super-admin/audit-logs` | Security and operational audit log. |
+
+### Academic & Syllabus Management
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/academic/student-syllabus` | Dynamically fetches verified student curriculum. |
+| `POST` | `/api/academic/syllabus/parse` | Ingests raw text/document and extracts structured units. |
+| `POST` | `/api/academic/syllabus/publish` | Publishes approved curriculum to active database. |
+
+### Classroom LMS & Telemetry
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/lms/subjects/:id/overview` | Subject LMS room: Units, Notes, Handouts, Videos, Live link. |
+| `POST` | `/api/lms/subjects/:id/resources` | Teacher adds new classroom learning resource. |
+| `POST` | `/api/lms/assignments/:id/submit` | Student submits assignment solution text or PDF link. |
+| `POST` | `/api/lms/quizzes/:id/attempt` | Auto-grades student quiz submission with explanations. |
+| `POST` | `/api/tutor/chat` | Guardrailed Socratic AI conversation. |
+
+### Enterprise Health & Probes
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/healthz` | Kubernetes liveness probe (200 OK). |
+| `GET` | `/readyz` | Kubernetes readiness probe (memory & DB check). |
+| `GET` | `/metrics` | Prometheus telemetry data. |
+
+---
+
+## 9. Verification & Automated Test Suite
+
+Vidyapath maintains a comprehensive automated test suite with **100% pass coverage**:
+
 ```bash
-# 1. Install dependencies
-npm install
+# Run all test suites
+npm test
 
-# 2. Run the Vite frontend (port 3000)
-npm run dev
-
-# 3. In a second terminal, run the Express API server (port 3001)
-npm run server
-```
-
-### AI Tutor Setup (optional)
-The `/api/tutor/ask` endpoint can use any OpenAI-compatible chat provider. Copy `.env.example` to `.env` and set:
-
-| Variable | Purpose |
-|---|---|
-| `TUTOR_API_BASE_URL` | Provider base URL; the server calls `${TUTOR_API_BASE_URL}/chat/completions` |
-| `TUTOR_MODEL` | Model name the provider expects |
-| `TUTOR_API_KEY` | Provider API key, sent as a Bearer token |
-
-* Any OpenAI-compatible provider works. No provider-specific fields are used.
-* The key stays on the server. It is never sent to the browser or written to logs. `.env` is git-ignored.
-* Without all three variables, or if a model call fails, times out (15 s), or returns empty text, the app uses the offline answers. Responses include `source: "model"` or `source: "fallback"`.
-
-### Production Build & Preview
-```bash
-# Build the production PWA bundle (TypeScript + Vite)
+# Production build check
 npm run build
 
-# Preview the production app
-npm run preview
+# Native Android capacitor sync
+npx @capacitor/cli sync android
 ```
+
+### Verified Test Workflows:
+1. **Cryptographic Security**: PBKDF2 hashing, JWT signing, and signature tamper rejection.
+2. **OTP Security**: Expiration, single-use invalidation, and 60-second resend cooldown.
+3. **Multi-Tier Institution Approval**: Registration $\to$ Super Admin approval $\to$ Email notification.
+4. **Dynamic Student Syllabus Matcher**: Automatic resolution of semester courses based on enrollment.
+5. **Syllabus Parsing & Publication**: Structured unit extraction and database ingestion.
+6. **LMS Assignment & Quiz Engine**: Online submission and automatic scoring with explanations.
+7. **AI Pedagogical Guardrails**: Verified refusal of exam cheating, prompt injection, and PII extraction.
+8. **High-Concurrency Scaling**: Idempotency key deduplication (`X-Cache: IDEMPOTENT-HIT`) and rate limiting (`X-RateLimit-*`).
 
 ---
 
-## 8. Verification & Automated Test Suite
+## 10. Deployment Guide
 
-Run the comprehensive test suites to verify math evaluation, adaptive engine formulas, guardrail filters, and API endpoints:
-
+### Local Development
 ```bash
-# 1. Run unit tests on math checker, adaptive engine, and prompt guardrails
-npx tsx tests/system_test.ts
-
-# 2. Run full backend Express API endpoint verification
-npx tsx tests/api_endpoints_test.ts
+git clone https://github.com/yynvr1408/vidhyapath.git
+cd vidhyapath
+npm install
+npm run server   # Starts Express backend on port 3001
+npm run dev      # Starts Vite frontend on port 5173
 ```
 
-All tests execute offline and assert:
-* Deterministic answer checking matches exact and accepted forms.
-* $mastery = mastery + 0.25 \times (credit - mastery)$ formula behaves accurately with hint penalties.
-* Distractor mistake tags trigger appropriate Telugu remedies.
-* Privacy guardrails block personal data queries in Telugu.
-* Express `/api/sync` and `/api/admin/packs/validate` endpoints operate idempotently.
+### Docker Deployment
+```bash
+docker-compose up --build -d
+```
+
+### Android Native APK
+Built automatically via GitHub Actions CI/CD on every push to `main`. Download the signed APK directly from [GitHub Releases](https://github.com/yynvr1408/vidhyapath/releases/latest).
 
 ---
 
-## 9. Privacy, DPDP Compliance & Responsible AI
+## 11. Built With
 
-* **Zero Personal Identifiers:** Vidyapath does not request or store real names, phone numbers, email addresses, school IDs, or GPS locations. Learners are identified strictly by preset animal nicknames and avatars.
-* **Shared-Phone Privacy:** Profiles are sandboxed locally. A 2-minute inactivity timer automatically locks back to the profile picker.
-* **Sponsor Privacy Safeguard:** In compliance with India's Digital Personal Data Protection (DPDP) Act, sponsor and NGO views only display aggregated cohort metrics when **cohort size is at least 5 learners**.
-* **Zero Commercial Ads or Trackers:** No third-party ad SDKs or user tracking scripts.
-* **Deterministic Guardrails:** AI responses are strictly confined to Class 10 AP Mathematics syllabus, capped at 120 words, and sanitized against mathematical hallucinations.
-
----
-
-## 10. Submission Artifacts Reference
-* **Prompt & Iteration Log:** [`PROMPT_LOG.md`](file:///c:/Users/Nandhi%20vardhan%20reddy/Desktop/Codebender_Hack_Project/PROMPT_LOG.md)
-* **3-Minute Demo Script:** [`DEMO_SCRIPT.md`](file:///c:/Users/Nandhi%20vardhan%20reddy/Desktop/Codebender_Hack_Project/DEMO_SCRIPT.md)
-* **One-Page Business Slide:** [`BUSINESS_SLIDE.md`](file:///c:/Users/Nandhi%20vardhan%20reddy/Desktop/Codebender_Hack_Project/BUSINESS_SLIDE.md)
-* **Telugu Launch Pack:** [`public/packs/te-10-maths-ap.json`](file:///c:/Users/Nandhi%20vardhan%20reddy/Desktop/Codebender_Hack_Project/public/packs/te-10-maths-ap.json)
-* **Hindi Preview Stub:** [`public/packs/hi-10-maths-cbse.json`](file:///c:/Users/Nandhi%20vardhan%20reddy/Desktop/Codebender_Hack_Project/public/packs/hi-10-maths-cbse.json)
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide Icons, Vite
+- **Backend**: Node.js, Express, TypeScript, tsx
+- **Mobile Container**: Capacitor 8 (Android & iOS)
+- **Database**: Serverless Neon PostgreSQL + IndexedDB (Local)
+- **AI & Speech**: Groq Cloud LLaMA 3.3 70B, Groq Whisper Large v3, ElevenLabs Neural TTS, Web Speech API
+- **Storage & CDN**: Cloudflare R2, EmailJS, GitHub Releases

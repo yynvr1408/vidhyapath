@@ -29,6 +29,9 @@ import { isGroqConfigured, askGroqTutor, transcribeGroqWhisper, generateGroqStud
 import { synthesizeElevenLabsVoice, isElevenLabsConfigured } from './services/elevenlabs.js';
 import { uploadToStorage, isR2Configured } from './services/r2.js';
 import { enterpriseApiRouter } from './routes/api.js';
+import { healthRouter } from './routes/health.js';
+import { idempotencyMiddleware } from './middleware/idempotency.js';
+import { generalApiLimiter } from './middleware/rateLimiter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +41,17 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// Health & readiness probes (unlimited for load balancer / K8s ingress)
+app.use(healthRouter);
+
+// Global Sliding-Window Rate Limiter
+app.use(generalApiLimiter);
+
+// Enterprise Idempotency on mutating requests
+app.use(idempotencyMiddleware);
+
+// Enterprise API routes
 app.use('/api', enterpriseApiRouter);
 
 // In-memory data store for server-side events, cohorts, and guardian tokens

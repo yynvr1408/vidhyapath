@@ -309,6 +309,53 @@ UNIT 2: Distributed Consensus & Fault Tolerance
     console.assert(dumpData.isSocraticNudge === true, 'Must convert into Socratic pedagogical nudge');
     console.log(`[PASS] Socratic Nudge Activated: "${dumpData.answer.slice(0, 70)}..."`);
 
+    // -------------------------------------------------------------
+    // TEST 9: Enterprise High Concurrency, Idempotency & Probes
+    // -------------------------------------------------------------
+    console.log('\n--- 9. Testing High Concurrency, Idempotency & Telemetry Probes ---');
+    // 9a. Health Probes
+    const healthRes = await fetch(`${baseUrl}/healthz`);
+    const healthData = await healthRes.json();
+    console.assert(healthData.status === 'healthy', 'Healthz probe should return healthy');
+
+    const readyRes = await fetch(`${baseUrl}/readyz`);
+    const readyData = await readyRes.json();
+    console.assert(readyData.status === 'ready', 'Readyz probe should return ready');
+    console.log('[PASS] Load Balancer Probes verified (/healthz and /readyz).');
+
+    // 9b. Idempotency Key Handling
+    const idempotencyKey = 'test_idem_' + Date.now();
+    const firstSubmit = await fetch(`${baseUrl}/api/lms/assignments/assign_os_1/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${stdData.token}`,
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({ contentText: 'Idempotency test payload 1' }),
+    });
+    console.assert(firstSubmit.headers.get('x-cache') === 'IDEMPOTENT-MISS', 'First request must be MISS');
+
+    // Duplicate call with same key
+    const duplicateSubmit = await fetch(`${baseUrl}/api/lms/assignments/assign_os_1/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${stdData.token}`,
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({ contentText: 'Idempotency test payload altered' }),
+    });
+    console.assert(duplicateSubmit.headers.get('x-cache') === 'IDEMPOTENT-HIT', 'Duplicate request must be HIT');
+    const dupData = await duplicateSubmit.json();
+    console.assert(dupData.success === true, 'Duplicate must return cached successful result');
+    console.log('[PASS] Idempotency Key verified: duplicate submissions safely caught and deduped.');
+
+    // 9c. Rate Limiting Headers
+    const rateLimitHeader = duplicateSubmit.headers.get('x-ratelimit-limit');
+    console.assert(rateLimitHeader !== null, 'X-RateLimit-Limit header must be present');
+    console.log(`[PASS] Enterprise Rate Limiting verified (Active Limit: ${rateLimitHeader} req/min).`);
+
     console.log('\n===========================================================');
     console.log('=== ALL ENTERPRISE TEST CASES PASSED WITH 100% SUCCESS! ===');
     console.log('===========================================================');

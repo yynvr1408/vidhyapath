@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useEnterpriseAuth } from '../../context/EnterpriseAuthContext';
 import { useAcademic } from '../../context/AcademicContext';
+import { TutorLocalCache } from '../../services/tutorCache';
 
 interface Message {
   sender: 'user' | 'tutor';
@@ -51,6 +52,23 @@ export const AiTutorPortal: React.FC<AiTutorPortalProps> = ({ onBack }) => {
     const userMsg: Message = { sender: 'user', text: q, timestamp: Date.now() };
     setMessages((prev) => [...prev, userMsg]);
     setQuery('');
+
+    // Check local semantic cache before network call (0ms, 0 tokens)
+    const cached = TutorLocalCache.get(q, selectedSubjectId);
+    if (cached) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'tutor',
+          text: cached.answer,
+          flagged: cached.flagged,
+          isSocraticNudge: cached.isSocraticNudge,
+          timestamp: Date.now(),
+        },
+      ]);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -75,6 +93,14 @@ export const AiTutorPortal: React.FC<AiTutorPortalProps> = ({ onBack }) => {
         isSocraticNudge: data.isSocraticNudge,
         timestamp: Date.now(),
       };
+
+      // Cache response for future instant lookup
+      TutorLocalCache.set(q, {
+        answer: tutorMsg.text,
+        flagged: tutorMsg.flagged,
+        isSocraticNudge: tutorMsg.isSocraticNudge,
+      }, selectedSubjectId);
+
       setMessages((prev) => [...prev, tutorMsg]);
     } catch (err: any) {
       setMessages((prev) => [
