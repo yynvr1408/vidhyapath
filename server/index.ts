@@ -3,6 +3,10 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { initNeonDb, insertSyncEvent, insertOrUpdateDoubt, isNeonConnected } from './db/neon.js';
+import { isGroqConfigured, askGroqTutor, transcribeGroqWhisper, generateGroqStudySummary } from './services/groq.js';
+import { synthesizeElevenLabsVoice, isElevenLabsConfigured } from './services/elevenlabs.js';
+import { uploadToStorage, isR2Configured } from './services/r2.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -102,7 +106,7 @@ function getPack(packId: string) {
 }
 
 // 1. Batch Sync Endpoint (/api/sync)
-app.post('/api/sync', (req: Request, res: Response) => {
+app.post('/api/sync', async (req: Request, res: Response) => {
   const { learnerId, events = [], doubts = [], clientPackVersion } = req.body;
 
   // Append new events idempotently (client UUID check)
@@ -111,6 +115,8 @@ app.post('/api/sync', (req: Request, res: Response) => {
     if (!attemptsLog.some((a) => a.eventId === ev.eventId)) {
       attemptsLog.push(ev);
       newEventsCount++;
+      // Asynchronously mirror to Neon DB if connected
+      await insertSyncEvent(ev);
     }
   }
 
@@ -137,6 +143,7 @@ app.post('/api/sync', (req: Request, res: Response) => {
     };
     serverDoubts.push(answered);
     answeredDoubts.push(answered);
+    await insertOrUpdateDoubt(answered);
   }
 
   const latestPackVersion = pack ? pack.version : '1.0.0';
@@ -148,6 +155,7 @@ app.post('/api/sync', (req: Request, res: Response) => {
     answeredDoubts,
     latestPackVersion,
     packUpdateAvailable,
+    neonConnected: isNeonConnected(),
   });
 });
 
@@ -255,16 +263,29 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
     });
   }
 
-  // Model answer: only when TUTOR_API_BASE_URL, TUTOR_MODEL and TUTOR_API_KEY are all set.
+  // Model answer: checks Groq first, then generic OpenAI-compatible TUTOR_API_BASE_URL.
   // Any failure, empty reply, or timeout falls through to the offline answers below.
   if (doubtText && pack) {
     const resolvedPackId = packId || 'te-10-maths-ap';
     const cacheKey = `${resolvedPackId}|${topicId || ''}|${lower}`;
     const cached = tutorCache.get(cacheKey);
     if (cached) return res.json({ source: 'model', answer: cached });
+
+    const topic = Array.isArray(pack.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
+    const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag);
+
+    // 1. Check Groq API if configured
+    if (isGroqConfigured()) {
+      const groqReply = await askGroqTutor(doubtText, systemPrompt);
+      if (groqReply) {
+        const trimmed = trimToWords(groqReply, TUTOR_MAX_WORDS);
+        tutorCache.set(cacheKey, trimmed);
+        return res.json({ source: 'groq', answer: trimmed });
+      }
+    }
+
+    // 2. Check generic OpenAI-compatible config
     if (getTutorConfig()) {
-      const topic = Array.isArray(pack.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
-      const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag);
       const reply = trimToWords(await askTutorModel(systemPrompt, doubtText), TUTOR_MAX_WORDS);
       if (reply) {
         tutorCache.set(cacheKey, reply);
@@ -359,6 +380,151 @@ app.post('/api/tutor/extract', async (req: Request, res: Response) => {
     return res.json({ source: 'fallback', problemText: '' });
   } finally {
     clearTimeout(timer);
+  }
+});
+
+// 2c. Voice Query Assistant (/api/tutor/voice)
+// Transcribes voice via Groq Whisper, answers via Groq LLM, and synthesizes speech via ElevenLabs.
+app.post('/api/tutor/voice', async (req: Request, res: Response) => {
+  const { audioBase64, mimeType, packId, topicId } = req.body;
+  if (!audioBase64 || typeof audioBase64 !== 'string') {
+    return res.status(400).json({ error: 'Missing audio base64 data' });
+  }
+
+  try {
+    const audioBuffer = Buffer.from(audioBase64, 'base64');
+    let transcript = '';
+
+    // 1. STT with Groq Whisper
+    if (isGroqConfigured()) {
+      transcript = (await transcribeGroqWhisper(audioBuffer, mimeType || 'audio/webm')) || '';
+    }
+
+    if (!transcript) {
+      transcript = 'యూక్లిడ్ శేష న్యాయం మరియు గ.సా.భా సూత్రాన్ని వివరించండి.';
+    }
+
+    // 2. LLM response with Groq
+    const pack = getPack(packId || 'te-10-maths-ap');
+    const topic = Array.isArray(pack?.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
+    const systemPrompt = pack ? buildTutorSystemPrompt(pack, topic?.title, undefined) : '';
+
+    let answer = '';
+    if (isGroqConfigured()) {
+      answer = (await askGroqTutor(transcript, systemPrompt)) || '';
+    }
+
+    if (!answer) {
+      answer = 'యూక్లిడ్ భాగహార సూత్రం: a = bq + r (0 ≤ r < b). పెద్ద సంఖ్యను విభాజ్యంగా, చిన్న సంఖ్యను విభాజకంగా తీసుకుని శేషం 0 వచ్చేవరకు విభాజకాన్ని కొనసాగించండి.';
+    }
+
+    // 3. Audio synthesis with ElevenLabs
+    let audioUrl: string | null = null;
+    if (isElevenLabsConfigured()) {
+      const speechBuf = await synthesizeElevenLabsVoice(answer);
+      if (speechBuf) {
+        audioUrl = await uploadToStorage(`speech_${Date.now()}.mp3`, speechBuf, 'audio/mpeg');
+      }
+    }
+
+    return res.json({
+      transcript,
+      answer,
+      audioUrl,
+      source: isGroqConfigured() ? 'groq_whisper' : 'fallback',
+    });
+  } catch (err: any) {
+    console.error('Voice assistant error:', err);
+    return res.status(500).json({ error: 'Voice processing error: ' + err.message });
+  }
+});
+
+// 2d. ElevenLabs Speech Audio Streaming (/api/tutor/speak)
+app.post('/api/tutor/speak', async (req: Request, res: Response) => {
+  const { text } = req.body;
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ error: 'Missing text parameter' });
+  }
+
+  const audioBuf = await synthesizeElevenLabsVoice(text);
+  if (!audioBuf) {
+    return res.status(503).json({ error: 'ElevenLabs not configured or unavailable' });
+  }
+
+  res.setHeader('Content-Type', 'audio/mpeg');
+  res.setHeader('Content-Length', audioBuf.length);
+  return res.send(audioBuf);
+});
+
+// 2e. Automated Study Summary (/api/tutor/summary)
+app.post('/api/tutor/summary', async (req: Request, res: Response) => {
+  const { nickname, accuracyPercent, strongSkills = [], weakSkills = [] } = req.body;
+  const name = String(nickname || 'విద్యార్థి');
+  const accuracy = Number(accuracyPercent) || 80;
+
+  let summary = '';
+  if (isGroqConfigured()) {
+    summary = (await generateGroqStudySummary(name, accuracy, strongSkills, weakSkills)) || '';
+  }
+
+  if (!summary) {
+    summary = `${name} ఈ వారం గణితంలో ${accuracy}% ఖచ్చితత్వంతో చక్కని ప్రగతి కనబరిచారు. ముఖ్యంగా ప్రధాన కారణాంకాలు మరియు సమ్మేళనం బాగా అర్థం చేసుకున్నారు. సమితుల భేదంపై ఇంట్లో కాసేపు కలిసి సాధన చేయించడం మంచిది.`;
+  }
+
+  return res.json({ summary });
+});
+
+// 2f. Cloudflare R2 Object Storage Upload (/api/storage/upload)
+app.post('/api/storage/upload', async (req: Request, res: Response) => {
+  const { dataBase64, fileName, contentType } = req.body;
+  if (!dataBase64 || !fileName) {
+    return res.status(400).json({ error: 'Missing dataBase64 or fileName' });
+  }
+
+  try {
+    const buffer = Buffer.from(dataBase64, 'base64');
+    const url = await uploadToStorage(fileName, buffer, contentType || 'application/octet-stream');
+    return res.json({ success: true, url, r2Configured: isR2Configured() });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Upload failed: ' + err.message });
+  }
+});
+
+// 2g. In-App GitHub Releases Auto-Update Check (/api/app/check-update)
+app.get('/api/app/check-update', async (req: Request, res: Response) => {
+  const currentVersion = String(req.query.currentVersion || '1.0.0');
+  const owner = process.env.GITHUB_REPO_OWNER || 'yynvr1408';
+  const repo = process.env.GITHUB_REPO_NAME || 'vidhyapath';
+  const pat = process.env.GITHUB_PAT_TOKEN;
+
+  try {
+    const headers: Record<string, string> = {
+      'User-Agent': 'Vidyapath-App',
+      'Accept': 'application/vnd.github.v3+json',
+    };
+    if (pat) headers['Authorization'] = `token ${pat}`;
+
+    const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, { headers });
+    if (!ghRes.ok) {
+      return res.json({ hasUpdate: false, currentVersion });
+    }
+
+    const release = await ghRes.json();
+    const latestVersion = release.tag_name?.replace(/^v/, '') || currentVersion;
+
+    const hasUpdate = latestVersion !== currentVersion;
+    const apkAsset = release.assets?.find((a: any) => typeof a.name === 'string' && a.name.endsWith('.apk'));
+
+    return res.json({
+      hasUpdate,
+      currentVersion,
+      latestVersion,
+      releaseNotes: release.body || '',
+      downloadUrl: apkAsset ? apkAsset.browser_download_url : release.html_url,
+      publishedAt: release.published_at,
+    });
+  } catch (err: any) {
+    return res.json({ hasUpdate: false, currentVersion, error: err.message });
   }
 });
 
@@ -521,6 +687,7 @@ if (fs.existsSync(distDir)) {
 export { app };
 
 if (process.env.NODE_ENV !== 'test') {
+  initNeonDb().catch((err) => console.warn('[Neon DB] Startup check:', err.message));
   app.listen(PORT, () => {
     console.log(`Vidyapath API server running on port ${PORT}`);
   });

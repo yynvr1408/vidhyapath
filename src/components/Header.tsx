@@ -1,6 +1,7 @@
 import React from 'react';
 import { Users, Settings, Flame, ShieldCheck, HeartHandshake, BookOpen } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { AppUpdateButton } from './AppUpdateButton';
 
 export const Header: React.FC = () => {
   const {
@@ -104,6 +105,9 @@ export const Header: React.FC = () => {
         >
           <Settings className="w-5 h-5" />
         </button>
+
+        {/* GitHub In-App Auto-Update Button */}
+        <AppUpdateButton minimal={true} />
       </div>
     </header>
   );

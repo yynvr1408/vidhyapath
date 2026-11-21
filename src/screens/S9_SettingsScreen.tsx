@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Database, Type, Trash2, Users, Shield, HardDrive, Check, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { AppUpdateButton } from '../components/AppUpdateButton';
 
 export const S9_SettingsScreen: React.FC = () => {
   const {
@@ -147,7 +148,12 @@ export const S9_SettingsScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* 4. Switch Learner Profile */}
+        {/* 4. App Version & GitHub Updates */}
+        <div className="pt-1">
+          <AppUpdateButton />
+        </div>
+
+        {/* 5. Switch Learner Profile */}
         <div className="pt-2">
           <button
             type="button"

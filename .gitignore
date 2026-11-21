@@ -22,6 +22,7 @@ pnpm-debug.log*
 .vscode/
 .idea/
 .codebenders/scratch/
+public/uploads/
 *.suo
 *.ntvs*
 *.njsproj
