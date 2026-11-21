@@ -39,7 +39,32 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+// Permissive Enterprise CORS supporting Netlify frontend, mobile Capacitor, and custom domains
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, Capacitor, same-origin Netlify proxy)
+      if (!origin) return callback(null, true);
+      // Allow localhost, any *.netlify.app deployment, render.com, or custom domain
+      if (
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1') ||
+        origin.endsWith('.netlify.app') ||
+        origin.includes('onrender.com') ||
+        origin.includes('vidyapath') ||
+        process.env.ALLOWED_ORIGINS?.split(',').includes(origin)
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Requested-With', 'X-Forwarded-Host'],
+    exposedHeaders: ['Idempotency-Key', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-Cache'],
+  })
+);
+app.options('*', cors());
 app.use(express.json({ limit: '10mb' }));
 
 // Serve local static uploads (Cloudflare R2 zero-cost fallback)

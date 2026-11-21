@@ -1,0 +1,49 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# 1. Edge Proxy for API requests to the Render Backend
+# Eliminates browser CORS preflights and routes /api directly to the Render Web Service
+[[redirects]]
+  from = "/api/*"
+  to = "https://vidyapath.onrender.com/api/:splat"
+  status = 200
+  force = true
+  headers = { X-Forwarded-Host = "vidyapath-pwa" }
+
+# 2. Edge Proxy for Static File Uploads (Syllabus PDFs, Handouts, Voice clips)
+[[redirects]]
+  from = "/uploads/*"
+  to = "https://vidyapath.onrender.com/uploads/:splat"
+  status = 200
+  force = true
+
+# 3. Single-Page Application (SPA) Deep Link Fallback (handles /dashboard, /subject, etc.)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# 4. Enterprise Security and Long-Term Caching Headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Immutable caching for hashed JS/CSS assets (1 Year Cache)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Never cache Service Worker to ensure instant PWA updates
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
