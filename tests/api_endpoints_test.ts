@@ -146,6 +146,13 @@ async function testApi() {
   console.assert(typeof uploadData.url === 'string' && uploadData.url.length > 0, 'Public URL expected');
   console.log('[PASS] /api/storage/upload returned asset URL:', uploadData.url);
 
+  // 11. Test /api/health (Deployment health check)
+  const healthRes = await fetch(`${baseUrl}/api/health`);
+  const healthData = await healthRes.json();
+  console.assert(healthData.status === 'ok', 'Health status should be ok');
+  console.assert(healthData.services !== undefined, 'Services object should be present');
+  console.log('[PASS] /api/health responded ok with services:', healthData.services);
+
   server.close();
   console.log('\n=== ALL API ENDPOINTS VERIFIED AND WORKING 100%! ===');
   process.exit(0);

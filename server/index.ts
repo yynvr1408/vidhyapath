@@ -105,6 +105,23 @@ function getPack(packId: string) {
   return null;
 }
 
+// 0. Health & Deployment Status Check (/api/health)
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    version: '1.0.0',
+    app: 'Vidyapath PWA & API Server',
+    uptimeSeconds: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+    services: {
+      neon: isNeonConnected(),
+      groq: isGroqConfigured(),
+      elevenlabs: isElevenLabsConfigured(),
+      r2: isR2Configured(),
+    },
+  });
+});
+
 // 1. Batch Sync Endpoint (/api/sync)
 app.post('/api/sync', async (req: Request, res: Response) => {
   const { learnerId, events = [], doubts = [], clientPackVersion } = req.body;

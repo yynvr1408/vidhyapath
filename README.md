@@ -200,13 +200,81 @@ The `/api/tutor/ask` endpoint can use any OpenAI-compatible chat provider. Copy 
 # Build the production PWA bundle (TypeScript + Vite)
 npm run build
 
-# Preview the production app
+# Preview the production app locally
 npm run preview
+
+# Run the unified Express API + static web server
+npm start
 ```
 
 ---
 
-## 8. Verification & Automated Test Suite
+## 8. Deployment Setup & Instructions
+
+Vidyapath is architected as a **unified web and mobile platform**:
+- The web server (`server/index.ts`) serves both the REST API endpoints (`/api/*`) and the static production PWA (`dist/`) with zero CORS complications.
+- The mobile app runs natively via **Capacitor Android** and can be built locally or automatically in the cloud via GitHub Actions.
+
+### Option A: 1-Click Deploy to Render (Recommended)
+1. Fork or push this repository to GitHub: `https://github.com/yynvr1408/vidhyapath.git`
+2. Go to [Render Dashboard](https://dashboard.render.com/) -> **New** -> **Blueprint**.
+3. Connect your repository. Render will automatically read [`render.yaml`](file:///c:/Users/Nandhi%20vardhan%20reddy/Desktop/Codebender_Hack_Project/render.yaml) and configure:
+   - **Build Command:** `npm ci && npm run build`
+   - **Start Command:** `npm start`
+   - **Health Check:** `/api/health`
+4. Add your optional API keys in the Render dashboard:
+   - `DATABASE_URL` (Neon Postgres)
+   - `GROQ_API_KEY` (Groq LLM & Whisper)
+   - `ELEVENLABS_API_KEY` (ElevenLabs Voice)
+   - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` (Cloudflare R2)
+   - `GITHUB_PAT_TOKEN` (optional, for in-app updates)
+5. Click **Apply**. Render will build and deploy your app with a free HTTPS URL (e.g. `https://vidyapath.onrender.com`).
+
+### Option B: Deploy to Railway / Dokku / Heroku
+1. Create a new service on [Railway](https://railway.app/).
+2. Connect the GitHub repository. Railway detects [`railway.json`](file:///c:/Users/Nandhi%20vardhan%20reddy/Desktop/Codebender_Hack_Project/railway.json) and [`Procfile`](file:///c:/Users/Nandhi%20vardhan%20reddy/Desktop/Codebender_Hack_Project/Procfile).
+3. Set your environment variables in the Railway Variables tab.
+4. Deploy! Health checks will automatically monitor `/api/health`.
+
+### Option C: Docker & Docker Compose (VPS / Cloud VM)
+Run the self-contained multi-stage Docker container on any Linux / Windows / Mac server:
+
+```bash
+# Build and run with Docker Compose:
+docker compose up -d --build
+
+# Check logs:
+docker compose logs -f
+
+# Verify health status:
+curl http://localhost:3001/api/health
+```
+
+### Option D: Android APK Build & In-App Auto-Updates
+Vidyapath includes a full GitHub Actions workflow ([`.github/workflows/build-apk.yml`](file:///c:/Users/Nandhi%20vardhan%20reddy/Desktop/Codebender_Hack_Project/.github/workflows/build-apk.yml)) to build the Android APK in the cloud with zero local Android SDK setup:
+
+1. **Automated Cloud Build:**
+   - In GitHub, go to **Actions** -> **Build Android APK & Release** -> Click **Run workflow**.
+   - Or push a git tag: `git tag v1.0.1 && git push origin v1.0.1`.
+   - The workflow runs Java 21, compiles `app-debug.apk`, and uploads it as a downloadable artifact. On tag pushes, it automatically attaches the APK directly to the GitHub Release!
+2. **Local Android Studio Build:**
+   ```bash
+   # Sync web build to Android project:
+   npm run build
+   npx cap sync android
+
+   # Build debug APK via Gradle wrapper:
+   cd android
+   ./gradlew assembleDebug
+   # APK will be at: android/app/build/outputs/apk/debug/app-debug.apk
+   ```
+3. **In-App Auto-Update Button:**
+   - The app features an update checker button in the header and settings screen.
+   - When a new GitHub release is published with an APK asset, learners see an "Update Available" notification and can download and install the new version with 1 tap.
+
+---
+
+## 9. Verification & Automated Test Suite
 
 Run the comprehensive test suites to verify math evaluation, adaptive engine formulas, guardrail filters, and API endpoints:
 
