@@ -3,9 +3,11 @@ import { ArrowLeft, Shield, Share2, Heart, Sparkles, CheckCircle2, AlertCircle, 
 import { useApp } from '../context/AppContext';
 import { AudioButton } from '../components/AudioButton';
 import { localDb } from '../db/indexedDb';
+import { getTranslations } from '../utils/translations';
 
 export const S10_GuardianScreen: React.FC = () => {
-  const { activeLearner, pack, setScreen } = useApp();
+  const { activeLearner, pack, setScreen, currentLanguage } = useApp();
+  const t = getTranslations(currentLanguage);
   const [copied, setCopied] = useState(false);
   const [liveSummary, setLiveSummary] = useState<{
     sessionsCompleted: number;
@@ -118,7 +120,13 @@ export const S10_GuardianScreen: React.FC = () => {
           </div>
           <div className="shrink-0">
             <AudioButton
-              text={`సంరక్షకుని సారాంశం. విద్యార్థి ${nickname}. ఈ వారం 6 సెషన్లు పూర్తి చేశారు. ఖచ్చితత్వం 82 శాతం.`}
+              text={
+                pack?.language === 'hi'
+                  ? `अभिभावक सारांश। विद्यार्थी ${nickname}। इस सप्ताह 6 सत्र पूरे किए। सटीकता 82 प्रतिशत।`
+                  : pack?.language === 'en'
+                  ? `Guardian summary. Student ${nickname}. 6 sessions completed this week. Accuracy 82 percent.`
+                  : `సంరక్షకుని సారాంశం. విద్యార్థి ${nickname}. ఈ వారం 6 సెషన్లు పూర్తి చేశారు. ఖచ్చితత్వం 82 శాతం.`
+              }
               label=""
               size="sm"
             />
@@ -134,7 +142,13 @@ export const S10_GuardianScreen: React.FC = () => {
               {activeLearner?.avatarEmoji || '🐆'}
             </div>
             <div>
-              <div className="text-xs text-slate-500 font-medium">విద్యార్థి ప్రొఫైల్ (చూడటానికి మాత్రమే)</div>
+              <div className="text-xs text-slate-500 font-medium">
+                {currentLanguage === 'hi'
+                  ? 'विद्यार्थी प्रोफ़ाइल (केवल देखने के लिए)'
+                  : currentLanguage === 'en'
+                  ? 'Student Profile (View Only)'
+                  : 'విద్యార్థి ప్రొఫైల్ (చూడటానికి మాత్రమే)'}
+              </div>
               <h2 className="text-lg font-bold text-slate-900">{nickname}</h2>
             </div>
           </div>
@@ -142,11 +156,11 @@ export const S10_GuardianScreen: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 text-center">
             <div>
               <div className="text-2xl font-black text-emerald-800">{summaryData.sessionsCompleted}</div>
-              <div className="text-[11px] font-bold text-emerald-950">పూర్తయిన సెషన్లు</div>
+              <div className="text-[11px] font-bold text-emerald-950">{t.completedSessions}</div>
             </div>
             <div>
               <div className="text-2xl font-black text-emerald-800">{summaryData.accuracyPercent}%</div>
-              <div className="text-[11px] font-bold text-emerald-950">సగటు ఖచ్చితత్వం</div>
+              <div className="text-[11px] font-bold text-emerald-950">{t.averageAccuracy}</div>
             </div>
           </div>
         </div>
@@ -155,7 +169,7 @@ export const S10_GuardianScreen: React.FC = () => {
         <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-xs">
           <h3 className="font-bold text-sm text-indigo-brand mb-2.5 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <span>బాగా వచ్చిన అంశాలు (Strong Topics):</span>
+            <span>{t.strongTopicsLabel}:</span>
           </h3>
           <ul className="space-y-1.5">
             {summaryData.strongSkills.map((sk, idx) => (
@@ -171,7 +185,7 @@ export const S10_GuardianScreen: React.FC = () => {
         <div className="bg-white rounded-3xl p-5 border-2 border-amber-300 shadow-xs">
           <h3 className="font-bold text-sm text-amber-900 mb-2 flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-amber-600" />
-            <span>మరింత శ్రద్ధ అవసరమైన అంశం (Weak Skill):</span>
+            <span>{t.needsHelpTopicsLabel}:</span>
           </h3>
           <div className="text-xs font-bold text-slate-900 mb-3 bg-amber-50 p-2 rounded-xl border border-amber-200">
             {summaryData.weakSkill}

@@ -18,13 +18,20 @@ export class TutorService {
     mistakeTag?: string
   ): string {
     const topic = pack.topics.find((t) => t.id === topicId);
-    const topicName = topic ? topic.title : 'వాస్తవ సంఖ్యలు మరియు సమితులు';
+    const topicName = topic
+      ? topic.title
+      : pack.language === 'hi'
+      ? 'वास्तविक संख्याएँ और बहुपद'
+      : pack.language === 'en'
+      ? 'Real Numbers and Polynomials'
+      : 'వాస్తవ సంఖ్యలు మరియు సమితులు';
+    const langName = pack.language === 'en' ? 'English' : pack.language === 'hi' ? 'Hindi' : 'Telugu';
 
     return `You are a patient Class ${pack.class} ${pack.subject} tutor for a ${pack.languageName}-medium student (${pack.board} syllabus).
-Reply ONLY in simple, spoken-style Telugu (${pack.language}). Short sentences. Keep numbers and symbols as written.
+Reply ONLY in simple, spoken-style ${langName} (${pack.language}). Short sentences. Keep numbers and symbols as written.
 Never give the final answer first: give a hint, then the next step, then the answer only if asked again.
 Use the current topic: ${topicName}. Context: learner's last mistake tag: ${mistakeTag || 'none'}.
-If the question is unrelated to ${pack.subject}, unsafe, or asks for personal data, refuse kindly in ${pack.languageName} and steer back.
+If the question is unrelated to ${pack.subject}, unsafe, or asks for personal data, refuse kindly in ${langName} and steer back.
 Maximum 120 words.
 
 Learner doubt: "${doubtText}"`;

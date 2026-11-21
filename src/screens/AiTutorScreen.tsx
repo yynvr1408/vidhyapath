@@ -115,7 +115,7 @@ export const AiTutorScreen: React.FC = () => {
     const reader = new FileReader();
     reader.onload = () => {
       setPhotoPreview(reader.result as string);
-      setDoubtText('చిత్రంలో ఉన్న సమస్యను దశలవారీగా వివరించండి (Explain step-by-step)');
+      setDoubtText(t.photoDoubtPrompt);
     };
     reader.readAsDataURL(file);
   };
@@ -143,7 +143,7 @@ export const AiTutorScreen: React.FC = () => {
           {/* Chapter Context Selector */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-[#475569] font-medium hidden sm:inline">
-              Chapter:
+              {t.chapterLabel}
             </span>
             <select
               value={activeTopicId}
@@ -173,7 +173,7 @@ export const AiTutorScreen: React.FC = () => {
               title="Automatically uses live AI when online, seamless offline pedagogical hints when disconnected"
             >
               <Sparkles className="w-3 h-3" />
-              <span>⚡ Auto Fallback</span>
+              <span>{t.autoFallbackBtn}</span>
             </button>
 
             <button
@@ -186,13 +186,13 @@ export const AiTutorScreen: React.FC = () => {
               }`}
               title="Forces 100% textbook pedagogical hints with zero internet data consumption"
             >
-              <span>🔒 Manual (0 Data)</span>
+              <span>{t.manualOfflineBtn}</span>
             </button>
           </div>
 
           {/* Chapter Lantern Village Mastery Glow */}
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#FEF3C7] text-[#92400E] text-[11px] font-bold rounded-full border border-[#FDE68A]">
-            <span>🏮 Chapter Lantern Active</span>
+            <span>{t.lanternActiveBadge}</span>
           </div>
         </div>
       </div>
@@ -232,17 +232,17 @@ export const AiTutorScreen: React.FC = () => {
                       <span>{t.tutorReplyHeader}</span>
                       {msg.source === 'common_doubts' && (
                         <span className="text-[10px] bg-[#FEF3C7] text-[#D97706] px-1.5 py-0.5 rounded-md font-bold">
-                          📖 Curated FAQ
+                          {currentLanguage === 'hi' ? '📖 सामान्य प्रश्न' : currentLanguage === 'en' ? '📖 Curated FAQ' : '📖 తరచుగా అడిగే ప్రశ్నలు'}
                         </span>
                       )}
                       {msg.source === 'offline_pedagogy' && (
                         <span className="text-[10px] bg-[#DCFCE7] text-[#166534] px-1.5 py-0.5 rounded-md font-bold">
-                          🛡️ Offline Pedagogical Hint
+                          {currentLanguage === 'hi' ? '🛡️ ऑफ़लाइन संकेत' : currentLanguage === 'en' ? '🛡️ Offline Pedagogical Hint' : '🛡️ ఆఫ్‌లైన్ సూచన'}
                         </span>
                       )}
                       {msg.source === 'ai_model' && (
                         <span className="text-[10px] bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1] px-1.5 py-0.5 rounded-md font-bold">
-                          ⚡ Groq LLaMA 70B
+                          {currentLanguage === 'hi' ? '⚡ AI ट्यूटर' : currentLanguage === 'en' ? '⚡ AI Tutor' : '⚡ AI ట్యూటర్'}
                         </span>
                       )}
                     </div>
@@ -325,7 +325,7 @@ export const AiTutorScreen: React.FC = () => {
 
         {/* Camera / Photo Upload Button */}
         <label
-          title="Notebook / Blackboard Photo"
+          title={t.photoUploadTitle}
           className="w-12 h-12 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] text-[#0F766E] border border-[#E2E8F0] flex items-center justify-center cursor-pointer active:scale-95 shrink-0 transition-all"
         >
           <Camera className="w-5 h-5 stroke-[2.2]" />

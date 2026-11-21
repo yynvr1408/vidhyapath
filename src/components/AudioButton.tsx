@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Volume2 } from 'lucide-react';
-import { SpeechService } from '../services/speech';
+import { SpeechService, getSpeechLocale, getSpeechLangFromLocale, SPEECH_ERROR_MESSAGES } from '../services/speech';
+import { useApp } from '../context/AppContext';
+import { getTranslations } from '../utils/translations';
 
 interface AudioButtonProps {
   text: string;
@@ -12,13 +14,29 @@ interface AudioButtonProps {
 
 export const AudioButton: React.FC<AudioButtonProps> = ({
   text,
-  locale = 'te-IN',
+  locale: propLocale,
   size = 'md',
-  label = 'వినండి',
+  label: propLabel,
   className = '',
 }) => {
+  let appLang = 'te';
+  try {
+    const app = useApp();
+    if (app?.currentLanguage) appLang = app.currentLanguage;
+  } catch (e) {
+    // outside AppContext fallback
+  }
+
+  const effectiveLocale = propLocale || getSpeechLocale(appLang);
+  const langKey = getSpeechLangFromLocale(effectiveLocale);
+  const t = getTranslations(langKey);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [fallbackMsg, setFallbackMsg] = useState<string | null>(null);
+
+  const defaultLabel = propLabel !== undefined ? propLabel : t.listen;
+  const stopLabel = t.audioStop || (langKey === 'hi' ? 'रोकें' : langKey === 'en' ? 'Stop' : 'ఆపు');
+  const errorMsg = SPEECH_ERROR_MESSAGES[langKey].ttsUnsupported;
 
   const handleTogglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -30,7 +48,7 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
     }
 
     if (!SpeechService.isTtsSupported()) {
-      setFallbackMsg('Audio not supported / అందుబాటులో లేదు');
+      setFallbackMsg(errorMsg);
       return;
     }
 
@@ -38,12 +56,12 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
     setFallbackMsg(null);
     SpeechService.speak(
       text,
-      locale,
+      effectiveLocale,
       () => setIsPlaying(true),
       () => setIsPlaying(false),
       () => {
         setIsPlaying(false);
-        setFallbackMsg('Audio unavailable / అందుబాటులో లేదు');
+        setFallbackMsg(errorMsg);
       }
     );
   };
@@ -59,7 +77,7 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
       <button
         type="button"
         onClick={handleTogglePlay}
-        aria-label={`${label}: ${text.substring(0, 30)}`}
+        aria-label={`${defaultLabel}: ${text.substring(0, 30)}`}
         className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-all active:scale-95 ${
           isPlaying
             ? 'bg-[#DCFCE7] text-[#15803D] border-2 border-[#15803D] shadow-xs'
@@ -75,7 +93,7 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
         ) : (
           <Volume2 className="w-4 h-4 text-[#15803D] shrink-0" />
         )}
-        {label && <span>{isPlaying ? 'ఆపు' : label}</span>}
+        {defaultLabel && <span>{isPlaying ? stopLabel : defaultLabel}</span>}
       </button>
       {fallbackMsg && (
         <span className="text-xs text-[#DC2626] font-medium" role="status">

@@ -257,9 +257,10 @@ function buildTutorSystemPrompt(
   mistakeTag: unknown,
   replyLanguage: string
 ): string {
-  const langName = REPLY_LANGUAGE_NAMES[replyLanguage] || replyLanguage;
+  const langKey = replyLanguage === 'hi' ? 'hi' : replyLanguage === 'en' ? 'en' : 'te';
+  const langName = REPLY_LANGUAGE_NAMES[langKey];
   const lines = [
-    `You are a tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, language code ${replyLanguage}.`,
+    `You are a tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, language code ${langKey}.`,
   ];
   if (topicTitle) lines.push(`Current topic: ${topicTitle}.`);
   if (typeof mistakeTag === 'string' && mistakeTag.trim()) {
@@ -267,12 +268,12 @@ function buildTutorSystemPrompt(
   }
   lines.push(
     'Rules:',
-    `- Reply only in simple spoken-style ${langName} (language code ${replyLanguage}).`,
+    `- Reply EXCLUSIVELY in simple spoken-style ${langName} (language code ${langKey}). Never reply in any other language.`,
     '- Use short sentences.',
     '- Give a hint first. Never give the final answer first.',
     '- Give the final answer only if the learner asks again.',
     '- Reply in at most 120 words.',
-    '- If the question is off-topic, unsafe, or asks for personal data, refuse kindly in Telugu and steer back to the lesson.',
+    `- If the question is off-topic, unsafe, or asks for personal data, refuse kindly in ${langName} and steer back to the lesson.`,
     '- Use only content from this pack. Do not invent facts. Do not judge whether a learner answer is correct.'
   );
   return lines.join('\n');
@@ -329,25 +330,52 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   if (packId && !isSafePackId(packId)) {
     return res.status(400).json({ answer: 'Invalid pack id' });
   }
+
+  // Strict language enforcement: strictly and only 'te', 'hi', and 'en'
+  const ALLOWED_LANGUAGES = ['te', 'hi', 'en'] as const;
+  if (language && !ALLOWED_LANGUAGES.includes(language as any)) {
+    return res.status(400).json({
+      error: `Unsupported language code: '${language}'. Vidyapath strictly supports only 'te', 'hi', and 'en'.`
+    });
+  }
+
   const pack = getPack(packId || 'te-10-maths-ap');
+  const targetLanguage = (language && ALLOWED_LANGUAGES.includes(language as any))
+    ? language
+    : (pack && ALLOWED_LANGUAGES.includes(pack.language as any) ? pack.language : 'te');
 
   const doubtText = (doubt || '').trim();
   const lower = doubtText.toLowerCase();
 
   // Guardrail 1: Personal info / unsafe
-  const unsafePatterns = ['phone', 'ఫోన్', 'పాస్‌వర్డ్', 'డబ్బు', 'hack', 'password'];
+  const unsafePatterns = [
+    'phone', 'password', 'money', 'hack', 'contact', 'email',
+    'ఫోన్', 'పాస్‌వర్డ్', 'డబ్బు', 'చిరునామా',
+    'फोन', 'पासवर्ड', 'पैसे', 'नंबर', 'पता'
+  ];
   if (unsafePatterns.some((p) => lower.includes(p))) {
+    const refusal = targetLanguage === 'hi'
+      ? 'क्षमा करें, मैं केवल कक्षा 10 गणित के प्रश्नों में मदद कर सकता हूँ। कृपया अपना गणितीय प्रश्न पूछें।'
+      : targetLanguage === 'en'
+      ? 'I apologize, but I can only assist with Class 10 Mathematics questions. Please ask a mathematics question.'
+      : 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.';
     return res.json({
       source: 'fallback',
-      answer: 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.'
+      answer: refusal
     });
   }
 
   // Guardrail 2: Off-topic general conversation
-  if (lower.includes('సినిమా') || lower.includes('cricket') || lower.includes('రాజకీయాలు')) {
+  const offTopicPatterns = ['సినిమా', 'cricket', 'రాజకీయాలు', 'cinema', 'movie', 'फिल्म', 'राजनीति'];
+  if (offTopicPatterns.some((p) => lower.includes(p))) {
+    const offTopic = targetLanguage === 'hi'
+      ? 'हम अभी कक्षा 10 गणित का अध्ययन कर रहे हैं। वास्तविक संख्याएँ या बहुपद के बारे में अपना प्रश्न पूछें।'
+      : targetLanguage === 'en'
+      ? 'We are currently studying Class 10 Mathematics. Please ask a question about Real Numbers or Polynomials.'
+      : 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.';
     return res.json({
       source: 'fallback',
-      answer: 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.'
+      answer: offTopic
     });
   }
 
@@ -355,8 +383,7 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   // Any failure, empty reply, or timeout falls through to the offline answers below.
   if (doubtText && pack) {
     const resolvedPackId = packId || 'te-10-maths-ap';
-    const replyLanguage =
-      typeof language === 'string' && /^[a-z]{2,3}$/.test(language) ? language : pack.language;
+    const replyLanguage = targetLanguage;
     const cacheKey = `${resolvedPackId}|${replyLanguage}|${topicId || ''}|${lower}`;
     const cached = tutorCache.get(cacheKey);
     if (cached) return res.json({ source: 'model', answer: cached });
@@ -381,20 +408,49 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
     }
   }
 
-  // Pedagogical Hint-First Tutor generation in Telugu
+  // Pedagogical Hint-First Tutor generation in target language
   let tutorAnswer = '';
-  if (lower.includes('hcf') || lower.includes('గసాభా') || lower.includes('యూక్లిడ్') || lower.includes('euclid')) {
-    tutorAnswer = 'యూక్లిడ్ భాగహార సూత్రం: a = bq + r (0 ≤ r < b). మొదటి అడుగు: పెద్ద సంఖ్యను విభాజ్యంగా (a), చిన్న సంఖ్యను విభాజకంగా (b) తీసుకోండి. శేషం 0 వచ్చేవరకు కొనసాగించండి.';
-  } else if (lower.includes('సమ్మేళనం') || lower.includes('union') || lower.includes('∪')) {
-    tutorAnswer = 'సమ్మేళనం (A ∪ B) అనగా రెండు సమితులలోని అన్ని మూలకాలను కలపడం. ముఖ్య గమనిక: ఏ మూలకమూ రెండుసార్లు రాయకూడదు.';
-  } else if (lower.includes('ఛేదనం') || lower.includes('intersection') || lower.includes('∩')) {
-    tutorAnswer = 'ఛేదనం (A ∩ B) అనగా కేవలం రెండు సమితులలోనూ ఉమ్మడిగా (రెంటిలోనూ) ఉన్న మూలకాలను మాత్రమే సమితిగా రాయడం.';
-  } else if (lower.includes('భేదం') || lower.includes('difference') || lower.includes('a - b')) {
-    tutorAnswer = 'A - B అంటే మొదటి సమితి A లో ఉంటూ, రెండవ సమితి B లో లేని మూలకాలు. ఉమ్మడి మూలకాలను A నుండి తొలగించండి.';
-  } else if (lower.includes('దశాంశం') || lower.includes('terminating')) {
-    tutorAnswer = 'హారం q ని 2ⁿ · 5ᵐ రూపంలో రాయండి. 2 లేదా 5 తప్ప మరే ఇతర ప్రధాన సంఖ్య హారంలో లేకపోతే అది అంతమయ్యే దశాంశం.';
+  if (targetLanguage === 'en') {
+    if (lower.includes('hcf') || lower.includes('gcd') || lower.includes('euclid')) {
+      tutorAnswer = "Euclid's division lemma: a = bq + r (0 ≤ r < b). First step: divide the larger number by the smaller, and repeat until the remainder is 0. The last divisor is the HCF.";
+    } else if (lower.includes('union') || lower.includes('∪')) {
+      tutorAnswer = 'Union (A ∪ B) combines all elements from both sets. Important: write each element without duplicates.';
+    } else if (lower.includes('intersection') || lower.includes('∩')) {
+      tutorAnswer = 'Intersection (A ∩ B) contains only the common elements present in both sets.';
+    } else if (lower.includes('difference') || lower.includes('a - b')) {
+      tutorAnswer = 'A - B contains elements in A that are not in B. Remove the common elements from A.';
+    } else if (lower.includes('terminating') || lower.includes('decimal')) {
+      tutorAnswer = 'Factorise the denominator q as 2ⁿ · 5ᵐ. If only prime factors 2 or 5 are present, it is a terminating decimal.';
+    } else {
+      tutorAnswer = 'Hint: Identify the fundamental formula for this problem. Try the first step, and I will guide you to the answer!';
+    }
+  } else if (targetLanguage === 'hi') {
+    if (lower.includes('hcf') || lower.includes('मसा') || lower.includes('यूक्लिड') || lower.includes('euclid')) {
+      tutorAnswer = 'यूक्लिड विभाजन प्रमेयिका: a = bq + r (0 ≤ r < b)। पहला कदम: बड़ी संख्या को छोटी संख्या से भाग दें और शेषफल 0 आने तक दोहराएं। अंतिम भाजक ही HCF होगा।';
+    } else if (lower.includes('union') || lower.includes('संघ') || lower.includes('∪')) {
+      tutorAnswer = 'संघ (A ∪ B) का अर्थ दोनों समुच्चयों के सभी अवयवों को मिलाना है। महत्वपूर्ण: कोई भी अवयव दोहराया नहीं जाना चाहिए।';
+    } else if (lower.includes('intersection') || lower.includes('सर्वनिष्ठ') || lower.includes('∩')) {
+      tutorAnswer = 'सर्वनिष्ठ (A ∩ B) में केवल वे अवयव होते हैं जो दोनों समुच्चयों में उभयनिष्ठ (कॉमन) हों।';
+    } else if (lower.includes('शांत') || lower.includes('दशमलव')) {
+      tutorAnswer = 'हर q को 2ⁿ · 5ᵐ के रूप में गुणनखंडित करें। यदि हर में केवल 2 या 5 हों, तो दशमलव प्रसार शांत होगा।';
+    } else {
+      tutorAnswer = 'संकेत: प्रश्न के मूल सूत्र पर ध्यान दें। पहला चरण हल करने का प्रयास करें, आगे का मार्गदर्शन मिलेगा!';
+    }
   } else {
-    tutorAnswer = 'సూచన: సమస్యలోని ప్రాథమిక సూత్రాన్ని గమనించండి. మొదట ఇచ్చిన సంఖ్యలను సూత్రంలో ప్రతిక్షేపించండి. మొదటి దశను ప్రయత్నించండి, సమాధానం సమీపిస్తుంది!';
+    // Telugu
+    if (lower.includes('hcf') || lower.includes('గసాభా') || lower.includes('యూక్లిడ్') || lower.includes('euclid')) {
+      tutorAnswer = 'యూక్లిడ్ భాగహార సూత్రం: a = bq + r (0 ≤ r < b). మొదటి అడుగు: పెద్ద సంఖ్యను విభాజ్యంగా (a), చిన్న సంఖ్యను విభాజకంగా (b) తీసుకోండి. శేషం 0 వచ్చేవరకు కొనసాగించండి.';
+    } else if (lower.includes('సమ్మేళనం') || lower.includes('union') || lower.includes('∪')) {
+      tutorAnswer = 'సమ్మేళనం (A ∪ B) అనగా రెండు సమితులలోని అన్ని మూలకాలను కలపడం. ముఖ్య గమనిక: ఏ మూలకమూ రెండుసార్లు రాయకూడదు.';
+    } else if (lower.includes('ఛేదనం') || lower.includes('intersection') || lower.includes('∩')) {
+      tutorAnswer = 'ఛేదనం (A ∩ B) అనగా కేవలం రెండు సమితులలోనూ ఉమ్మడిగా (రెంటిలోనూ) ఉన్న మూలకాలను మాత్రమే సమితిగా రాయడం.';
+    } else if (lower.includes('భేదం') || lower.includes('difference') || lower.includes('a - b')) {
+      tutorAnswer = 'A - B అంటే మొదటి సమితి A లో ఉంటూ, రెండవ సమితి B లో లేని మూలకాలు. ఉమ్మడి మూలకాలను A నుండి తొలగించండి.';
+    } else if (lower.includes('దశాంశం') || lower.includes('terminating')) {
+      tutorAnswer = 'హారం q ని 2ⁿ · 5ᵐ రూపంలో రాయండి. 2 లేదా 5 తప్ప మరే ఇతర ప్రధాన సంఖ్య హారంలో లేకపోతే అది అంతమయ్యే దశాంశం.';
+    } else {
+      tutorAnswer = 'సూచన: సమస్యలోని ప్రాథమిక సూత్రాన్ని గమనించండి. మొదట ఇచ్చిన సంఖ్యలను సూత్రంలో ప్రతిక్షేపించండి. మొదటి దశను ప్రయత్నించండి, సమాధానం సమీపిస్తుంది!';
+    }
   }
 
   return res.json({ source: 'fallback', answer: tutorAnswer });

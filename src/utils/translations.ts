@@ -126,6 +126,31 @@ export interface TranslationDictionary {
   reportCopied: string;
   guardianZeroPii: string;
   sessionCompleteSub: string;
+
+  // Extended UI Keys (Strict Trilingual)
+  languageLabel: string;
+  adminPortal: string;
+  chapterLabel: string;
+  autoFallbackBtn: string;
+  manualOfflineBtn: string;
+  lanternActiveBadge: string;
+  photoDoubtPrompt: string;
+  photoUploadTitle: string;
+  voiceNotSupported: string;
+  micDenied: string;
+  networkRequiredVoice: string;
+  voiceListening: string;
+  voiceDisabledLowData: string;
+  audioStop: string;
+  audioUnavailable: string;
+  signOut: string;
+  demoRoleSwitcher: string;
+  stopAudio: string;
+  completedSessions: string;
+  averageAccuracy: string;
+  unlockBtn: string;
+  strongTopicsLabel: string;
+  needsHelpTopicsLabel: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
@@ -247,6 +272,29 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     reportCopied: 'నివేదిక కాపీ అయింది! వాట్సాప్‌లో పంపవచ్చు.',
     guardianZeroPii: 'సురక్షిత విద్యార్థి ప్రొఫైల్ (Zero-PII)',
     sessionCompleteSub: 'మీరు ఈ సెషన్‌లో 5 ప్రశ్నలను సాధన చేశారు',
+    languageLabel: 'భాష:',
+    adminPortal: 'అడ్మిన్ & ఉపాధ్యాయుల పోర్టల్',
+    chapterLabel: 'అధ్యాయం:',
+    autoFallbackBtn: '⚡ ఆటో ఫాల్‌బ్యాక్',
+    manualOfflineBtn: '🔒 ఆఫ్‌లైన్ (0 డేటా)',
+    lanternActiveBadge: '🏮 అధ్యాయ లాంతరు యాక్టివ్',
+    photoDoubtPrompt: 'చిత్రంలో ఉన్న లెక్కను దశలవారీగా వివరించండి',
+    photoUploadTitle: 'నోట్‌బుక్ / బోర్డు ఫోటో',
+    voiceNotSupported: 'వాయిస్ రికగ్నిషన్ సపోర్ట్ లేదు. దయచేసి టైప్ చేయండి లేదా ఆప్షన్ ఎంచుకోండి.',
+    micDenied: 'మైక్రోఫోన్ అనుమతి నిరాకరించబడింది. దయచేసి బటన్ల ద్వారా ఎంచుకోండి.',
+    networkRequiredVoice: 'వాయిస్ రికగ్నిషన్‌కు ఇంటర్నెట్ అవసరం. బటన్ల ద్వారా ఎంచుకోండి.',
+    voiceListening: 'వింటున్నాము... మాట్లాడండి',
+    voiceDisabledLowData: 'తక్కువ డేటా మోడ్‌లో వాయిస్ నిలిపివేయబడింది',
+    audioStop: 'ఆపు',
+    audioUnavailable: 'ఆడియో అందుబాటులో లేదు',
+    signOut: 'లాగ్ అవుట్',
+    demoRoleSwitcher: 'డెమో రోల్ మార్చండి',
+    stopAudio: 'ఆపు',
+    completedSessions: 'పూర్తయిన సెషన్లు',
+    averageAccuracy: 'సగటు ఖచ్చితత్వం',
+    unlockBtn: 'అన్‌లాక్ చేయండి',
+    strongTopicsLabel: 'బాగా వచ్చిన అంశాలు',
+    needsHelpTopicsLabel: 'శ్రద్ధ అవసరమైన అంశాలు',
   },
 
   en: {
@@ -367,6 +415,29 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     reportCopied: 'Progress report copied! Ready to paste into WhatsApp.',
     guardianZeroPii: 'Verified Student Profile (Zero-PII)',
     sessionCompleteSub: 'You solved 5 questions in this session',
+    languageLabel: 'Language:',
+    adminPortal: 'Admin & Teacher Portal',
+    chapterLabel: 'Chapter:',
+    autoFallbackBtn: '⚡ Auto Fallback',
+    manualOfflineBtn: '🔒 Manual (0 Data)',
+    lanternActiveBadge: '🏮 Chapter Lantern Active',
+    photoDoubtPrompt: 'Please explain the math problem in this photo step-by-step',
+    photoUploadTitle: 'Notebook / Blackboard Photo',
+    voiceNotSupported: 'Voice recognition is not supported. Please type or select an option.',
+    micDenied: 'Microphone permission was denied. Please select with buttons.',
+    networkRequiredVoice: 'Voice recognition requires an internet connection. Please select with buttons.',
+    voiceListening: 'Listening... please speak',
+    voiceDisabledLowData: 'Voice is disabled in low data mode',
+    audioStop: 'Stop',
+    audioUnavailable: 'Audio unavailable',
+    signOut: 'Sign Out',
+    demoRoleSwitcher: 'Demo Role Switcher',
+    stopAudio: 'Stop',
+    completedSessions: 'Sessions Completed',
+    averageAccuracy: 'Average Accuracy',
+    unlockBtn: 'Unlock',
+    strongTopicsLabel: 'Strong Topics',
+    needsHelpTopicsLabel: 'Needs Help',
   },
 
   hi: {
@@ -487,6 +558,29 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     reportCopied: 'रिपोर्ट कॉपी हो गई! व्हाट्सएप पर भेज सकते हैं।',
     guardianZeroPii: 'सुरक्षित छात्र प्रोफ़ाइल (Zero-PII)',
     sessionCompleteSub: 'आपने इस सत्र में 5 प्रश्नों का अभ्यास किया',
+    languageLabel: 'भाषा:',
+    adminPortal: 'व्यवस्थापक और शिक्षक पोर्टल',
+    chapterLabel: 'अध्याय:',
+    autoFallbackBtn: '⚡ ऑटो फॉलबैक',
+    manualOfflineBtn: '🔒 ऑफ़लाइन (0 डेटा)',
+    lanternActiveBadge: '🏮 अध्याय लालटेन सक्रिय',
+    photoDoubtPrompt: 'तस्वीर में दी गई समस्या को चरणबद्ध तरीके से समझाएं',
+    photoUploadTitle: 'नोटबुक / बोर्ड की तस्वीर',
+    voiceNotSupported: 'वॉइस पहचान उपलब्ध नहीं है। कृपया टाइप करें या विकल्प चुनें।',
+    micDenied: 'माइक्रोफ़ोन की अनुमति अस्वीकृत है। कृपया बटन से चुनें।',
+    networkRequiredVoice: 'वॉइस पहचान के लिए इंटरनेट आवश्यक है। कृपया बटन से चुनें।',
+    voiceListening: 'सुन रहे हैं... बोलिए',
+    voiceDisabledLowData: 'कम डेटा मोड में वॉइस अक्षम है',
+    audioStop: 'रोकें',
+    audioUnavailable: 'ऑडियो उपलब्ध नहीं है',
+    signOut: 'साइन आउट',
+    demoRoleSwitcher: 'डेमो भूमिका बदलें',
+    stopAudio: 'रोकें',
+    completedSessions: 'पूर्ण सत्र',
+    averageAccuracy: 'औसत सटीकता',
+    unlockBtn: 'अनलॉक करें',
+    strongTopicsLabel: 'मजबूत विषय',
+    needsHelpTopicsLabel: 'अभ्यास की आवश्यकता',
   },
 };
 

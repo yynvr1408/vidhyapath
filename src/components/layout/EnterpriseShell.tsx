@@ -31,7 +31,7 @@ import { UserRole, NotificationItem } from '../../types/enterprise';
 import { VidyapathLogo } from '../VidyapathLogo';
 import { AppUpdateButton } from '../AppUpdateButton';
 import { SCHEDULED_LANGUAGES } from '../../config/languages';
-import { SupportedLang } from '../../utils/translations';
+import { SupportedLang, getTranslations } from '../../utils/translations';
 
 export type EnterpriseScreenId =
   | 'DASHBOARD'
@@ -91,69 +91,103 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Role labels and styling
+  const t = getTranslations(currentLanguage);
+
+  // Role labels and styling (Strict Trilingual)
   const roleBadges: Record<UserRole, { label: string; bg: string; text: string }> = {
-    super_admin: { label: 'Level 1: Platform Super Admin', bg: 'bg-[#EDE9FE]', text: 'text-[#6D28D9]' },
-    institution_admin: { label: 'Level 2: Institution Admin', bg: 'bg-[#E0F2FE]', text: 'text-[#0369A1]' },
-    academic_admin: { label: 'Level 3: Department Head / HOD', bg: 'bg-[#FEF3C7]', text: 'text-[#B45309]' },
-    teacher: { label: 'Level 4: Faculty / Teacher', bg: 'bg-[#DCFCE7]', text: 'text-[#15803D]' },
-    student: { label: 'Level 5: Student', bg: 'bg-[#F0FDFA]', text: 'text-[#0F766E]' },
-    guardian: { label: 'Parent / Guardian', bg: 'bg-[#FDF2F8]', text: 'text-[#BE185D]' },
-    coordinator: { label: 'Academic Coordinator', bg: 'bg-[#F3E8FF]', text: 'text-[#7E22CE]' },
-    exam_admin: { label: 'Examination Admin', bg: 'bg-[#FEE2E2]', text: 'text-[#B91C1C]' },
+    super_admin: {
+      label: currentLanguage === 'hi' ? 'स्तर 1: प्लेटफ़ॉर्म सुपर व्यवस्थापक' : currentLanguage === 'en' ? 'Level 1: Platform Super Admin' : 'లెవల్ 1: ప్లాట్‌ఫామ్ సూపర్ అడ్మిన్',
+      bg: 'bg-[#EDE9FE]',
+      text: 'text-[#6D28D9]',
+    },
+    institution_admin: {
+      label: currentLanguage === 'hi' ? 'स्तर 2: संस्थान व्यवस्थापक' : currentLanguage === 'en' ? 'Level 2: Institution Admin' : 'లెవల్ 2: సంస్థ అడ్మిన్',
+      bg: 'bg-[#E0F2FE]',
+      text: 'text-[#0369A1]',
+    },
+    academic_admin: {
+      label: currentLanguage === 'hi' ? 'स्तर 3: विभागाध्यक्ष / HOD' : currentLanguage === 'en' ? 'Level 3: Department Head / HOD' : 'లెవల్ 3: విభాగాధిపతి / HOD',
+      bg: 'bg-[#FEF3C7]',
+      text: 'text-[#B45309]',
+    },
+    teacher: {
+      label: currentLanguage === 'hi' ? 'स्तर 4: शिक्षक / प्राध्यापक' : currentLanguage === 'en' ? 'Level 4: Faculty / Teacher' : 'లెవల్ 4: అధ్యాపకులు / ఉపాధ్యాయులు',
+      bg: 'bg-[#DCFCE7]',
+      text: 'text-[#15803D]',
+    },
+    student: {
+      label: currentLanguage === 'hi' ? 'स्तर 5: विद्यार्थी' : currentLanguage === 'en' ? 'Level 5: Student' : 'లెవల్ 5: విద్యార్థి',
+      bg: 'bg-[#F0FDFA]',
+      text: 'text-[#0F766E]',
+    },
+    guardian: {
+      label: currentLanguage === 'hi' ? 'अभिभावक' : currentLanguage === 'en' ? 'Parent / Guardian' : 'తల్లిదండ్రులు / సంరక్షకులు',
+      bg: 'bg-[#FDF2F8]',
+      text: 'text-[#BE185D]',
+    },
+    coordinator: {
+      label: currentLanguage === 'hi' ? 'शैक्षणिक समन्वयक' : currentLanguage === 'en' ? 'Academic Coordinator' : 'అకడమిక్ కోఆర్డినేటర్',
+      bg: 'bg-[#F3E8FF]',
+      text: 'text-[#7E22CE]',
+    },
+    exam_admin: {
+      label: currentLanguage === 'hi' ? 'परीक्षा व्यवस्थापक' : currentLanguage === 'en' ? 'Examination Admin' : 'పరీక్షల నిర్వాహకులు',
+      bg: 'bg-[#FEE2E2]',
+      text: 'text-[#B91C1C]',
+    },
   };
 
   const badge = roleBadges[activeRole] || roleBadges.student;
 
-  // Role-tailored navigation items
+  // Role-tailored navigation items (Strict Trilingual)
   const getNavItems = () => {
     switch (activeRole) {
       case 'super_admin':
         return [
-          { id: 'DASHBOARD' as EnterpriseScreenId, label: 'Super Admin Overview', icon: <Building className="w-5 h-5 shrink-0" /> },
-          { id: 'INSTITUTIONS_QUEUE' as EnterpriseScreenId, label: 'Institution Approvals', icon: <CheckCircle2 className="w-5 h-5 shrink-0" /> },
-          { id: 'USERS_DIRECTORY' as EnterpriseScreenId, label: 'Global User Directory', icon: <Users className="w-5 h-5 shrink-0" /> },
-          { id: 'AUDIT_LOGS' as EnterpriseScreenId, label: 'Security & Audit Logs', icon: <Shield className="w-5 h-5 shrink-0" /> },
-          { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: 'Global Announcements', icon: <Send className="w-5 h-5 shrink-0" /> },
+          { id: 'DASHBOARD' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'सुपर व्यवस्थापक अवलोकन' : currentLanguage === 'en' ? 'Super Admin Overview' : 'సూపర్ అడ్మిన్ అవలోకనం', icon: <Building className="w-5 h-5 shrink-0" /> },
+          { id: 'INSTITUTIONS_QUEUE' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'संस्थान अनुमोदन' : currentLanguage === 'en' ? 'Institution Approvals' : 'సంస్థల ఆమోదాలు', icon: <CheckCircle2 className="w-5 h-5 shrink-0" /> },
+          { id: 'USERS_DIRECTORY' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'ग्लोबल उपयोगकर्ता निर्देशिका' : currentLanguage === 'en' ? 'Global User Directory' : 'గ్లోబల్ యూజర్ డైరెక్టరీ', icon: <Users className="w-5 h-5 shrink-0" /> },
+          { id: 'AUDIT_LOGS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'सुरक्षा एवं ऑडिट लॉग' : currentLanguage === 'en' ? 'Security & Audit Logs' : 'సెక్యూరిటీ & ఆడిట్ లాగ్స్', icon: <Shield className="w-5 h-5 shrink-0" /> },
+          { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'ग्लोबल घोषणाएं' : currentLanguage === 'en' ? 'Global Announcements' : 'గ్లోబల్ ప్రకటనలు', icon: <Send className="w-5 h-5 shrink-0" /> },
         ];
       case 'institution_admin':
         return [
-          { id: 'DASHBOARD' as EnterpriseScreenId, label: 'Institution Dashboard', icon: <Building className="w-5 h-5 shrink-0" /> },
-          { id: 'SYLLABUS_MANAGER' as EnterpriseScreenId, label: 'Syllabus Ingestion & Upload', icon: <FileText className="w-5 h-5 shrink-0" /> },
-          { id: 'USERS_DIRECTORY' as EnterpriseScreenId, label: 'Faculty & Students', icon: <Users className="w-5 h-5 shrink-0" /> },
-          { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: 'Announcements', icon: <Send className="w-5 h-5 shrink-0" /> },
+          { id: 'DASHBOARD' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'संस्थान डैशबोर्ड' : currentLanguage === 'en' ? 'Institution Dashboard' : 'సంస్థ డ్యాష్‌బోర్డ్', icon: <Building className="w-5 h-5 shrink-0" /> },
+          { id: 'SYLLABUS_MANAGER' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'पाठ्यक्रम अपलोड' : currentLanguage === 'en' ? 'Syllabus Ingestion & Upload' : 'సిలబస్ నిర్వహణ & అప్‌లోడ్', icon: <FileText className="w-5 h-5 shrink-0" /> },
+          { id: 'USERS_DIRECTORY' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'शिक्षक एवं छात्र' : currentLanguage === 'en' ? 'Faculty & Students' : 'ఉపాధ్యాయులు & విద్యార్థులు', icon: <Users className="w-5 h-5 shrink-0" /> },
+          { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'संस्थान घोषणाएं' : currentLanguage === 'en' ? 'Announcements' : 'ప్రకటనలు', icon: <Send className="w-5 h-5 shrink-0" /> },
         ];
       case 'academic_admin':
         return [
-          { id: 'DASHBOARD' as EnterpriseScreenId, label: 'Department Overview', icon: <Layers className="w-5 h-5 shrink-0" /> },
-          { id: 'SYLLABUS_MANAGER' as EnterpriseScreenId, label: 'Curriculum & Syllabi', icon: <FileText className="w-5 h-5 shrink-0" /> },
-          { id: 'USERS_DIRECTORY' as EnterpriseScreenId, label: 'Department Faculty', icon: <Users className="w-5 h-5 shrink-0" /> },
-          { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: 'Department Notices', icon: <Send className="w-5 h-5 shrink-0" /> },
+          { id: 'DASHBOARD' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'विभाग अवलोकन' : currentLanguage === 'en' ? 'Department Overview' : 'విభాగం అవలోకనం', icon: <Layers className="w-5 h-5 shrink-0" /> },
+          { id: 'SYLLABUS_MANAGER' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'पाठ्यक्रम एवं विषय' : currentLanguage === 'en' ? 'Curriculum & Syllabi' : 'సిలబస్ & అంశాలు', icon: <FileText className="w-5 h-5 shrink-0" /> },
+          { id: 'USERS_DIRECTORY' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'विभाग संकाय' : currentLanguage === 'en' ? 'Department Faculty' : 'విభాగ అధ్యాపకులు', icon: <Users className="w-5 h-5 shrink-0" /> },
+          { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'विभाग सूचनाएं' : currentLanguage === 'en' ? 'Department Notices' : 'విభాగం నోటీసులు', icon: <Send className="w-5 h-5 shrink-0" /> },
         ];
       case 'teacher':
         return [
-          { id: 'DASHBOARD' as EnterpriseScreenId, label: 'Faculty Teaching Hub', icon: <GraduationCap className="w-5 h-5 shrink-0" /> },
-          { id: 'SUBJECT_VIEW' as EnterpriseScreenId, label: 'My Classroom & Materials', icon: <BookOpen className="w-5 h-5 shrink-0" /> },
-          { id: 'ASSIGNMENTS' as EnterpriseScreenId, label: 'Assignments & Quizzes', icon: <Award className="w-5 h-5 shrink-0" /> },
-          { id: 'AI_TUTOR' as EnterpriseScreenId, label: 'AI Teaching Assistant', icon: <HelpCircle className="w-5 h-5 shrink-0" /> },
+          { id: 'DASHBOARD' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'शिक्षण केंद्र' : currentLanguage === 'en' ? 'Faculty Teaching Hub' : 'అధ్యాపకుల బోధన హబ్', icon: <GraduationCap className="w-5 h-5 shrink-0" /> },
+          { id: 'SUBJECT_VIEW' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'मेरी कक्षा एवं सामग्री' : currentLanguage === 'en' ? 'My Classroom & Materials' : 'నా తరగతి & సామగ్రి', icon: <BookOpen className="w-5 h-5 shrink-0" /> },
+          { id: 'ASSIGNMENTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'असाइनमेंट एवं क्विज़' : currentLanguage === 'en' ? 'Assignments & Quizzes' : 'అసైన్‌మెంట్లు & క్విజ్‌లు', icon: <Award className="w-5 h-5 shrink-0" /> },
+          { id: 'AI_TUTOR' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'AI शिक्षण सहायक' : currentLanguage === 'en' ? 'AI Teaching Assistant' : 'AI బోధనా సహాయకుడు', icon: <HelpCircle className="w-5 h-5 shrink-0" /> },
         ];
       case 'guardian':
         return [
-          { id: 'DASHBOARD' as EnterpriseScreenId, label: 'Guardian Portal', icon: <Building className="w-5 h-5 shrink-0" /> },
-          { id: 'GUARDIAN_DIGEST' as EnterpriseScreenId, label: 'Weekly Audio Summary', icon: <FileText className="w-5 h-5 shrink-0" /> },
-          { id: 'FOUNDATION_MASCOTS' as EnterpriseScreenId, label: 'Mascot Learner Profiles', icon: <Users className="w-5 h-5 shrink-0" /> },
+          { id: 'DASHBOARD' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'अभिभावक पोर्टल' : currentLanguage === 'en' ? 'Guardian Portal' : 'తల్లిదండ్రుల పోర్టల్', icon: <Building className="w-5 h-5 shrink-0" /> },
+          { id: 'GUARDIAN_DIGEST' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'साप्ताहिक ऑडियो सारांश' : currentLanguage === 'en' ? 'Weekly Audio Summary' : 'వారపు ఆడియో సారాంశం', icon: <FileText className="w-5 h-5 shrink-0" /> },
+          { id: 'FOUNDATION_MASCOTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'विद्यार्थी प्रोफ़ाइल' : currentLanguage === 'en' ? 'Mascot Learner Profiles' : 'విద్యార్థి ప్రొఫైల్స్', icon: <Users className="w-5 h-5 shrink-0" /> },
         ];
       case 'student':
       default:
         return [
-          { id: 'DASHBOARD' as EnterpriseScreenId, label: 'My Academic Dashboard', icon: <BookOpen className="w-5 h-5 shrink-0" /> },
-          { id: 'SUBJECT_VIEW' as EnterpriseScreenId, label: 'Subject Classroom (LMS)', icon: <Layers className="w-5 h-5 shrink-0" /> },
-          { id: 'AI_TUTOR' as EnterpriseScreenId, label: 'Socratic AI Tutor', icon: <HelpCircle className="w-5 h-5 shrink-0" /> },
-          { id: 'PRACTICE_ENGINE' as EnterpriseScreenId, label: 'Adaptive Practice Engine', icon: <Award className="w-5 h-5 shrink-0" /> },
-          { id: 'MY_PROGRESS' as EnterpriseScreenId, label: 'Learner Progress & Lanterns', icon: <TrendingUp className="w-5 h-5 shrink-0" /> },
-          { id: 'FOUNDATION_MASCOTS' as EnterpriseScreenId, label: 'Class 10 Mascots (Zero-PII)', icon: <Users className="w-5 h-5 shrink-0" /> },
-          { id: 'OFFLINE_CENTER' as EnterpriseScreenId, label: 'Offline Learning Center', icon: <FolderDown className="w-5 h-5 shrink-0" /> },
-          { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: 'Notices & Deadlines', icon: <Calendar className="w-5 h-5 shrink-0" /> },
+          { id: 'DASHBOARD' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'मेरा शैक्षणिक डैशबोर्ड' : currentLanguage === 'en' ? 'My Academic Dashboard' : 'నా విద్యా డ్యాష్‌బోర్డ్', icon: <BookOpen className="w-5 h-5 shrink-0" /> },
+          { id: 'SUBJECT_VIEW' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'विषय कक्षा (LMS)' : currentLanguage === 'en' ? 'Subject Classroom (LMS)' : 'తరగతి గది & సిలబస్', icon: <Layers className="w-5 h-5 shrink-0" /> },
+          { id: 'AI_TUTOR' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'AI गणित ट्यूटर' : currentLanguage === 'en' ? 'Socratic AI Tutor' : 'AI గణిత ట్యూటర్', icon: <HelpCircle className="w-5 h-5 shrink-0" /> },
+          { id: 'PRACTICE_ENGINE' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'अभ्यास एवं कमज़ोर विषय' : currentLanguage === 'en' ? 'Adaptive Practice Engine' : 'సాధన & బలహీన అంశాల పరీక్ష', icon: <Award className="w-5 h-5 shrink-0" /> },
+          { id: 'MY_PROGRESS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'प्रगति एवं लालटेन' : currentLanguage === 'en' ? 'Learner Progress & Lanterns' : 'నా ప్రగతి & లాంతర్లు', icon: <TrendingUp className="w-5 h-5 shrink-0" /> },
+          { id: 'FOUNDATION_MASCOTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'कक्षा 10 प्रोफ़ाइल (Zero-PII)' : currentLanguage === 'en' ? 'Class 10 Mascots (Zero-PII)' : '10వ తరగతి ప్రొఫైల్స్ (Zero-PII)', icon: <Users className="w-5 h-5 shrink-0" /> },
+          { id: 'OFFLINE_CENTER' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'ऑफलाइन अध्ययन केंद्र' : currentLanguage === 'en' ? 'Offline Learning Center' : 'ఆఫ్‌లైన్ లెర్నింగ్ సెంటర్', icon: <FolderDown className="w-5 h-5 shrink-0" /> },
+          { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'सूचनाएं एवं समय-सीमा' : currentLanguage === 'en' ? 'Notices & Deadlines' : 'నోటీసులు & గడువులు', icon: <Calendar className="w-5 h-5 shrink-0" /> },
         ];
     }
   };
@@ -258,7 +292,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         {/* Rapid Role Testing Switcher */}
         <div className="bg-[#F8FAFC] p-2.5 rounded-[10px] border border-[#E2E8F0]">
           <div className="text-[10px] font-extrabold uppercase text-[#64748B] tracking-wider mb-1.5 flex items-center justify-between">
-            <span>Demo Role Switcher</span>
+            <span>{t.demoRoleSwitcher}</span>
             <span className="text-[9px] text-[#0F766E] font-bold">5 Tiers</span>
           </div>
           <select
@@ -266,12 +300,12 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
             onChange={(e) => switchRoleDemo(e.target.value as UserRole)}
             className="w-full text-xs font-bold bg-white text-[#0F172A] border border-[#CBD5E1] rounded-[6px] p-1.5 cursor-pointer focus:outline-hidden min-h-[36px]"
           >
-            <option value="super_admin">Level 1: Platform Super Admin</option>
-            <option value="institution_admin">Level 2: Institution Admin</option>
-            <option value="academic_admin">Level 3: Department Head (HOD)</option>
-            <option value="teacher">Level 4: Faculty / Teacher</option>
-            <option value="student">Level 5: Student (Aditya Verma)</option>
-            <option value="guardian">Guardian / Parent</option>
+            <option value="super_admin">{currentLanguage === 'hi' ? 'स्तर 1: प्लेटफ़ॉर्म सुपर व्यवस्थापक' : currentLanguage === 'en' ? 'Level 1: Platform Super Admin' : 'లెవల్ 1: ప్లాట్‌ఫామ్ సూపర్ అడ్మిన్'}</option>
+            <option value="institution_admin">{currentLanguage === 'hi' ? 'स्तर 2: संस्थान व्यवस्थापक' : currentLanguage === 'en' ? 'Level 2: Institution Admin' : 'లెవల్ 2: సంస్థ అడ్మిన్'}</option>
+            <option value="academic_admin">{currentLanguage === 'hi' ? 'स्तर 3: विभागाध्यक्ष / HOD' : currentLanguage === 'en' ? 'Level 3: Department Head (HOD)' : 'లెవల్ 3: విభాగాధిపతి (HOD)'}</option>
+            <option value="teacher">{currentLanguage === 'hi' ? 'स्तर 4: शिक्षक / प्राध्यापक' : currentLanguage === 'en' ? 'Level 4: Faculty / Teacher' : 'లెవల్ 4: అధ్యాపకులు / ఉపాధ్యాయులు'}</option>
+            <option value="student">{currentLanguage === 'hi' ? 'स्तर 5: विद्यार्थी (आदित्य वर्मा)' : currentLanguage === 'en' ? 'Level 5: Student (Aditya Verma)' : 'లెవల్ 5: విద్యార్థి (ఆదిత్య వర్మ)'}</option>
+            <option value="guardian">{currentLanguage === 'hi' ? 'अभिभावक' : currentLanguage === 'en' ? 'Guardian / Parent' : 'తల్లిదండ్రులు / సంరక్షకులు'}</option>
           </select>
         </div>
 
@@ -284,7 +318,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
           className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-[8px] bg-white hover:bg-[#FEE2E2] border border-[#E2E8F0] text-xs font-bold text-[#DC2626] transition-all min-h-[40px]"
         >
           <LogOut className="w-3.5 h-3.5" />
-          <span>Sign Out</span>
+          <span>{t.signOut}</span>
         </button>
       </div>
     </div>

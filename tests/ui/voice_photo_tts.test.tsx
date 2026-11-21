@@ -27,7 +27,7 @@ describe('voice, photo and TTS fallbacks', () => {
         <VoiceInputButton onTranscript={vi.fn()} size="md" label="Voice Answer" />
       </AppTestRoot>
     );
-    expect(await screen.findByText(/అందుబాటులో లేదు/)).toBeInTheDocument();
+    expect(await screen.findByText(/not supported|అందుబాటులో లేదు|उपलब्ध नहीं/i)).toBeInTheDocument();
   });
 
   it('Listen control shows a visible fallback when speech synthesis is unsupported', async () => {

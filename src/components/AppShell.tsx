@@ -66,7 +66,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       case 'ADMIN':
       case 'ADMIN_PANEL':
       case 'S12_PACK_EDITOR':
-        return 'Admin & Teacher Portal';
+        return t.adminPortal;
       default:
         return t.appTitle;
     }
@@ -143,8 +143,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             <h1 className="font-extrabold text-base tracking-tight text-[#0F172A] leading-tight">
               {t.appTitle}
             </h1>
-            <p className="text-[11px] text-[#475569] font-medium leading-none">
-              The Last-Mile Tutor
+            <p className="text-[11px] text-[#475569] font-medium leading-none truncate max-w-[150px]">
+              {t.tagline}
             </p>
           </div>
         </div>
@@ -229,7 +229,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             >
               <Lock className="w-5 h-5 shrink-0" />
             </span>
-            <span className="truncate">Admin &amp; Teacher Portal</span>
+            <span className="truncate">{t.adminPortal}</span>
           </button>
         </nav>
       </div>
@@ -240,7 +240,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         <div className="flex items-center justify-between bg-[#F8FAFC] p-2 rounded-[12px] border border-[#E2E8F0]">
           <div className="flex items-center gap-1.5 text-xs font-bold text-[#475569] shrink-0">
             <Globe className="w-4 h-4 text-[#0F766E]" />
-            <span>Language:</span>
+            <span>{t.languageLabel}</span>
           </div>
           <select
             value={currentLanguage}
@@ -298,7 +298,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               <RefreshCw className="w-4 h-4 text-[#0F766E]" />
               <span>{currentLanguage === 'te' ? 'ఇప్పుడే సింక్ చేయి' : currentLanguage === 'hi' ? 'अभी सिंक करें' : 'Sync Progress'}</span>
             </div>
-            <span className="text-[10px] bg-[#0F766E] text-white px-1.5 py-0.5 rounded-sm">Sync</span>
+            <span className="text-[10px] bg-[#0F766E] text-white px-1.5 py-0.5 rounded-sm">
+              {currentLanguage === 'te' ? 'సింక్' : currentLanguage === 'hi' ? 'सिंक' : 'Sync'}
+            </span>
           </button>
         )}
 

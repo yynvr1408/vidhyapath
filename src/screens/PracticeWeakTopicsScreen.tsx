@@ -241,7 +241,7 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
             {t.questionNumber} {currentIndex + 1}
           </span>
           <AudioButton
-            text={`${currentQ.text}. ఆప్షన్లు: A. ${currentQ.options[0]}, B. ${currentQ.options[1]}, C. ${currentQ.options[2]}, D. ${currentQ.options[3]}`}
+            text={`${currentQ.text}. ${currentLanguage === 'hi' ? 'विकल्प' : currentLanguage === 'en' ? 'Options' : 'ఆప్షన్లు'}: A. ${currentQ.options[0]}, B. ${currentQ.options[1]}, C. ${currentQ.options[2]}, D. ${currentQ.options[3]}`}
             label={t.listen}
             size="sm"
           />

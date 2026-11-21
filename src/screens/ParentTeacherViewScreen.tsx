@@ -85,9 +85,17 @@ export const ParentTeacherViewScreen: React.FC = () => {
     ],
     needsHelpTopic: 'సమితుల భేదం & ఛేదనం (Difference A - B)',
     parentGuidance:
-      'పిల్లలను కాగితంపై రెండు వృత్తాలు (Venn Diagram) గీయించి, మొదటి భాగంలో మాత్రమే ఉన్నవాటిని గుర్తించేలా ప్రోత్సహించండి.',
+      currentLanguage === 'en'
+        ? 'Encourage your child to draw two circles (Venn Diagram) on paper and identify items only in the first set.'
+        : currentLanguage === 'hi'
+        ? 'बच्चे को कागज़ पर दो वृत्त (वेन आरेख) बनाने और केवल पहले भाग की वस्तुओं को पहचानने के लिए प्रोत्साहित करें।'
+        : 'పిల్లలను కాగితంపై రెండు వృత్తాలు (Venn Diagram) గీయించి, మొదటి భాగంలో మాత్రమే ఉన్నవాటిని గుర్తించేలా ప్రోత్సహించండి.',
     funHomeActivity:
-      'ఇంట్లో ఉన్న పప్పులు లేదా గింజలను రెండు పళ్ళాలలో ఉంచి, మొదటి పళ్ళెంలో మాత్రమే ఉన్నవాటిని వేరుచేసే సరదా ఆట ఆడించండి.',
+      currentLanguage === 'en'
+        ? 'Place lentils or grains in two plates and play a fun game identifying what is only in the first plate.'
+        : currentLanguage === 'hi'
+        ? 'घर पर दाल या दानों को दो थालियों में रखें और केवल पहली थाली में मौजूद वस्तुओं को अलग करने का मजेदार खेल खेलें।'
+        : 'ఇంట్లో ఉన్న పప్పులు లేదా గింజలను రెండు పళ్ళాలలో ఉంచి, మొదటి పళ్ళెంలో మాత్రమే ఉన్నవాటిని వేరుచేసే సరదా ఆట ఆడించండి.',
   };
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -189,7 +197,7 @@ export const ParentTeacherViewScreen: React.FC = () => {
 
           {pinError && (
             <div className="text-xs text-[#DC2626] font-semibold bg-[#FEE2E2] p-2 rounded-lg border border-[#FECACA]">
-              తప్పు పిన్! దయచేసి 1234 నమోదు చేయండి.
+              {t.incorrectPin}
             </div>
           )}
 
@@ -198,7 +206,7 @@ export const ParentTeacherViewScreen: React.FC = () => {
             className="w-full py-3 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] text-white font-bold text-xs shadow-xs min-h-[48px] flex items-center justify-center gap-2 active:scale-95"
           >
             <Unlock className="w-4 h-4" />
-            <span>అన్‌లాక్ చేయండి (Unlock)</span>
+            <span>{t.unlockBtn}</span>
           </button>
         </form>
       </div>
@@ -245,7 +253,7 @@ export const ParentTeacherViewScreen: React.FC = () => {
               {summaryReport.sessionsCompleted}
             </div>
             <div className="text-[11px] font-bold text-[#475569] mt-0.5">
-              పూర్తయిన సెషన్లు
+              {t.completedSessions}
             </div>
           </div>
           <div>
@@ -253,7 +261,7 @@ export const ParentTeacherViewScreen: React.FC = () => {
               {summaryReport.accuracy}%
             </div>
             <div className="text-[11px] font-bold text-[#475569] mt-0.5">
-              సగటు ఖచ్చితత్వం
+              {t.averageAccuracy}
             </div>
           </div>
         </div>

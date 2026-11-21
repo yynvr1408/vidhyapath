@@ -70,8 +70,19 @@ export const MyProgressScreen: React.FC = () => {
       return [
         {
           topicId: pack.topics[0]?.id || 'ch1_real_numbers',
-          title: pack.topics[0]?.title || (currentLanguage === 'te' ? 'యూక్లిడ్ భాగహార న్యాయం & గ.సా.భా' : 'Euclid Division Lemma & HCF'),
-          reason: currentLanguage === 'te' ? 'పునశ్చరణ కోసం సిద్ధంగా ఉంది' : 'Ready for revision practice',
+          title:
+            pack.topics[0]?.title ||
+            (currentLanguage === 'te'
+              ? 'యూక్లిడ్ భాగహార న్యాయం & గ.సా.భా'
+              : currentLanguage === 'hi'
+              ? 'यूक्लिड विभाजन प्रमेयिका और म.स.प.'
+              : 'Euclid Division Lemma & HCF'),
+          reason:
+            currentLanguage === 'te'
+              ? 'పునశ్చరణ కోసం సిద్ధంగా ఉంది'
+              : currentLanguage === 'hi'
+              ? 'पुनरीक्षण के लिए तैयार'
+              : 'Ready for revision practice',
           mastery: 45,
         },
       ];

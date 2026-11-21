@@ -216,7 +216,14 @@ export const MySyllabusScreen: React.FC = () => {
         </div>
         <div className="flex items-center gap-1.5 text-xs bg-[#F0FDFA] text-[#0F766E] px-3 py-1 rounded-full border border-[#E2E8F0] font-bold">
           <BookOpen className="w-3.5 h-3.5" />
-          <span>{pack.topics.length} అధ్యాయాలు</span>
+          <span>
+            {pack.topics.length}{' '}
+            {currentLanguage === 'hi'
+              ? 'अध्याय'
+              : currentLanguage === 'en'
+              ? 'Chapters'
+              : 'అధ్యాయాలు'}
+          </span>
         </div>
       </div>
 
@@ -263,7 +270,7 @@ export const MySyllabusScreen: React.FC = () => {
                       style={{ backgroundColor: statusColor }}
                     />
                     <span className="text-xs font-bold text-[#0F766E] group-hover:underline">
-                      అధ్యాయం {index + 1}
+                      {t.chapterLabel} {index + 1}
                     </span>
                   </div>
                   <h3 className="font-extrabold text-base text-[#0F172A] leading-snug group-hover:text-[#0F766E] transition-colors">
@@ -297,7 +304,12 @@ export const MySyllabusScreen: React.FC = () => {
                 <div className="flex-1">
                   <div className="flex items-center justify-between text-[11px] font-bold text-[#475569] mb-1">
                     <span>
-                      {masteredCount} / {totalCount} నైపుణ్యాలు
+                      {masteredCount} / {totalCount}{' '}
+                      {currentLanguage === 'hi'
+                        ? 'कौशल'
+                        : currentLanguage === 'en'
+                        ? 'Skills'
+                        : 'నైపుణ్యాలు'}
                     </span>
                     <span style={{ color: statusColor }}>{percent}%</span>
                   </div>
@@ -319,7 +331,13 @@ export const MySyllabusScreen: React.FC = () => {
                     }}
                     className="p-2 rounded-lg bg-[#F8FAFC] hover:bg-[#F0FDFA] text-[#0F766E] border border-[#E2E8F0] text-xs font-bold flex items-center gap-1 min-h-[40px]"
                   >
-                    <span>చదవండి</span>
+                    <span>
+                      {currentLanguage === 'hi'
+                        ? 'पढ़ें'
+                        : currentLanguage === 'en'
+                        ? 'Read'
+                        : 'చదవండి'}
+                    </span>
                     <ChevronRight className="w-4 h-4" />
                   </button>
                   <button
