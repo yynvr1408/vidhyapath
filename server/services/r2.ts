@@ -15,6 +15,25 @@ export function isR2Configured(): boolean {
   return !!(accountId && accessKeyId && secretAccessKey);
 }
 
+export function getStorageInfo(): {
+  provider: 'cloudflare_r2' | 'local_disk';
+  isConfigured: boolean;
+  bucketOrDir: string;
+} {
+  if (isR2Configured()) {
+    return {
+      provider: 'cloudflare_r2',
+      isConfigured: true,
+      bucketOrDir: bucketName,
+    };
+  }
+  return {
+    provider: 'local_disk',
+    isConfigured: false,
+    bucketOrDir: 'public/uploads',
+  };
+}
+
 const r2Client = isR2Configured()
   ? new S3Client({
       region: 'auto',
@@ -28,6 +47,7 @@ const r2Client = isR2Configured()
 
 /**
  * Uploads a buffer to Cloudflare R2 object storage (or local disk fallback if R2 not configured).
+ * Works 100% out of the box with zero external configuration or cloud costs.
  */
 export async function uploadToStorage(
   fileName: string,
@@ -49,11 +69,11 @@ export async function uploadToStorage(
       const publicDomain = process.env.R2_PUBLIC_DOMAIN || `https://${bucketName}.r2.dev`;
       return `${publicDomain}/${safeName}`;
     } catch (err: any) {
-      console.warn('[Cloudflare R2] Upload failed, falling back to local file:', err.message);
+      console.warn('[Cloudflare R2] Upload failed, falling back to local storage:', err.message);
     }
   }
 
-  // Local fallback storage in public/uploads/
+  // Local zero-cost fallback storage in public/uploads/
   const uploadsDir = path.resolve(__dirname, '../../public/uploads');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });

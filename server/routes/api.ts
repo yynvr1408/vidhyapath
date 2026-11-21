@@ -119,10 +119,14 @@ router.post('/auth/otp/send', async (req: Request, res: Response) => {
   // Dispatch via EmailJS / simulated mailer
   await EmailService.sendOtpEmail(email, otp, purpose);
 
+  const isEmailConfigured = EmailService.isConfigured();
   return res.json({
     success: true,
-    message: `A 6-digit verification code has been dispatched to ${email}.`,
+    message: isEmailConfigured
+      ? `A 6-digit verification code has been dispatched to ${email}.`
+      : `[Simulated Mode] EmailJS not configured. Verification code: ${otp}`,
     cooldownSeconds: 60,
+    ...(isEmailConfigured ? {} : { simulated: true, devOtp: otp }),
   });
 });
 

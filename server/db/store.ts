@@ -22,26 +22,63 @@ import {
   UserRole
 } from '../../src/types/enterprise.js';
 
+export type StoreSyncListeners = {
+  onSaveInstitution?: (inst: Institution) => void;
+  onSaveUser?: (user: any) => void;
+  onSaveSubject?: (subj: Subject) => void;
+  onSaveAssignment?: (a: Assignment) => void;
+  onSaveSubmission?: (sub: AssignmentSubmission) => void;
+  onSaveQuiz?: (q: Quiz) => void;
+  onSaveQuizAttempt?: (att: QuizAttempt) => void;
+  onSaveAnnouncement?: (ann: Announcement) => void;
+  onSaveNotification?: (notif: NotificationItem) => void;
+  onSaveOtp?: (otp: OtpRecord) => void;
+  onLogAudit?: (entry: AuditLog) => void;
+};
+
+class ObservableMap<K, V> extends Map<K, V> {
+  private onSet?: (value: V) => void;
+  constructor(onSet?: (value: V) => void) {
+    super();
+    this.onSet = onSet;
+  }
+  override set(key: K, value: V): this {
+    super.set(key, value);
+    if (this.onSet) {
+      try {
+        this.onSet(value);
+      } catch (_) {}
+    }
+    return this;
+  }
+}
+
 class InMemoryDataStore {
-  institutions: Map<string, Institution> = new Map();
-  users: Map<string, User & { passwordHash: string; salt: string }> = new Map();
+  syncListeners: StoreSyncListeners = {};
+
+  institutions: Map<string, Institution> = new ObservableMap<string, Institution>((v) => this.syncListeners.onSaveInstitution?.(v));
+  users: Map<string, User & { passwordHash: string; salt: string }> = new ObservableMap((v) => this.syncListeners.onSaveUser?.(v));
   departments: Map<string, Department> = new Map();
   programmes: Map<string, Programme> = new Map();
   academicYears: Map<string, AcademicYear> = new Map();
-  subjects: Map<string, Subject> = new Map();
+  subjects: Map<string, Subject> = new ObservableMap<string, Subject>((v) => this.syncListeners.onSaveSubject?.(v));
   learningResources: Map<string, LearningResource> = new Map();
-  assignments: Map<string, Assignment> = new Map();
-  submissions: Map<string, AssignmentSubmission> = new Map();
-  quizzes: Map<string, Quiz> = new Map();
-  quizAttempts: Map<string, QuizAttempt> = new Map();
-  announcements: Map<string, Announcement> = new Map();
-  notifications: Map<string, NotificationItem> = new Map();
-  otps: Map<string, OtpRecord> = new Map();
+  assignments: Map<string, Assignment> = new ObservableMap<string, Assignment>((v) => this.syncListeners.onSaveAssignment?.(v));
+  submissions: Map<string, AssignmentSubmission> = new ObservableMap<string, AssignmentSubmission>((v) => this.syncListeners.onSaveSubmission?.(v));
+  quizzes: Map<string, Quiz> = new ObservableMap<string, Quiz>((v) => this.syncListeners.onSaveQuiz?.(v));
+  quizAttempts: Map<string, QuizAttempt> = new ObservableMap<string, QuizAttempt>((v) => this.syncListeners.onSaveQuizAttempt?.(v));
+  announcements: Map<string, Announcement> = new ObservableMap<string, Announcement>((v) => this.syncListeners.onSaveAnnouncement?.(v));
+  notifications: Map<string, NotificationItem> = new ObservableMap<string, NotificationItem>((v) => this.syncListeners.onSaveNotification?.(v));
+  otps: Map<string, OtpRecord> = new ObservableMap<string, OtpRecord>((v) => this.syncListeners.onSaveOtp?.(v));
   auditLogs: AuditLog[] = [];
   aiPolicies: Map<string, AiSafetyPolicy> = new Map();
 
   constructor() {
     this.seedDefaultData();
+  }
+
+  registerSyncListeners(listeners: StoreSyncListeners) {
+    this.syncListeners = { ...this.syncListeners, ...listeners };
   }
 
   // Password hashing helper
@@ -690,6 +727,7 @@ class InMemoryDataStore {
     if (this.auditLogs.length > 500) {
       this.auditLogs.pop();
     }
+    this.syncListeners.onLogAudit?.(entry);
     return entry;
   }
 }

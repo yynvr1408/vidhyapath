@@ -4,8 +4,17 @@ export function isGroqConfigured(): boolean {
   return !!process.env.GROQ_API_KEY;
 }
 
+// Ordered fallback models supported on Groq Cloud
+const CANDIDATE_LLM_MODELS = [
+  process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
+  'openai/gpt-oss-20b',
+  'qwen/qwen3.8-27b',
+  'llama-3.3-70b-versatile',
+];
+
 /**
- * Queries Groq LLM (Llama 3.3 70B / 8B) for ultra-fast pedagogical tutor responses.
+ * Queries Groq LLM for ultra-fast pedagogical tutor responses with automatic multi-model fallback.
+ * Uses 600 max_tokens to accommodate reasoning models (e.g. gpt-oss-120b / gpt-oss-20b) as well as direct completion models.
  */
 export async function askGroqTutor(
   doubtText: string,
@@ -14,111 +23,132 @@ export async function askGroqTutor(
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return null;
 
-  try {
-    const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: doubtText },
-        ],
-        temperature: 0.3,
-        max_tokens: 280,
-      }),
-    });
+  for (const model of CANDIDATE_LLM_MODELS) {
+    try {
+      const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: doubtText },
+          ],
+          temperature: 0.3,
+          max_tokens: 600,
+        }),
+      });
 
-    if (!res.ok) {
-      console.warn('[Groq API] Non-200 response:', res.status, await res.text());
-      return null;
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content && content.trim().length > 0) {
+          return content.trim();
+        }
+      } else {
+        const errText = await res.text();
+        console.warn(`[Groq API] Model ${model} returned ${res.status}:`, errText);
+      }
+    } catch (err: any) {
+      console.warn(`[Groq API] Failed with model ${model}:`, err.message);
     }
-
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || null;
-  } catch (err: any) {
-    console.error('[Groq API] Error querying Groq tutor:', err.message);
-    return null;
   }
+
+  return null;
 }
 
 /**
- * Transcribes student voice speech using Groq Whisper (whisper-large-v3-turbo).
+ * Transcribes student voice speech using Groq Whisper (whisper-large-v3-turbo / whisper-large-v3).
+ * Supports multilingual input (Telugu, Hindi, English).
  */
 export async function transcribeGroqWhisper(
   audioBuffer: Buffer,
-  mimeType: string = 'audio/webm'
+  mimeType: string = 'audio/webm',
+  languageHint?: string
 ): Promise<string | null> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return null;
 
-  try {
-    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
-    const ext = mimeType.includes('m4a') ? 'm4a' : mimeType.includes('mp3') ? 'mp3' : 'webm';
-    const filename = `voice_input.${ext}`;
+  const whisperModels = [
+    process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo',
+    'whisper-large-v3',
+  ];
 
-    // Construct multipart form data body manually to avoid external dependencies
-    const head = Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mimeType}\r\n\r\n`
-    );
-    const middle1 = Buffer.from(
-      `\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n${process.env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo'}`
-    );
-    const middle2 = Buffer.from(
-      `\r\n--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\nte`
-    );
-    const middle3 = Buffer.from(
-      `\r\n--${boundary}\r\nContent-Disposition: form-data; name="prompt"\r\n\r\n10th class maths Euclid lemma, sets, numbers, Telugu`
-    );
-    const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
+  for (const whisperModel of whisperModels) {
+    try {
+      const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+      const ext = mimeType.includes('m4a') ? 'm4a' : mimeType.includes('mp3') ? 'mp3' : 'webm';
+      const filename = `voice_input.${ext}`;
 
-    const payload = Buffer.concat([head, audioBuffer, middle1, middle2, middle3, tail]);
+      // Construct multipart form data body manually to avoid external dependencies
+      const head = Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mimeType}\r\n\r\n`
+      );
+      const modelPart = Buffer.from(
+        `\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\n${whisperModel}`
+      );
+      const langPart = Buffer.from(
+        `\r\n--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\n${languageHint || 'te'}`
+      );
+      const promptPart = Buffer.from(
+        `\r\n--${boundary}\r\nContent-Disposition: form-data; name="prompt"\r\n\r\nMathematics, Euclid division lemma, sets, numbers, school curriculum`
+      );
+      const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
 
-    const res = await fetch(`${GROQ_BASE_URL}/audio/transcriptions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': `multipart/form-data; boundary=${boundary}`,
-      },
-      body: payload,
-    });
+      const payload = Buffer.concat([head, audioBuffer, modelPart, langPart, promptPart, tail]);
 
-    if (!res.ok) {
-      console.warn('[Groq Whisper] Non-200 response:', res.status, await res.text());
-      return null;
+      const res = await fetch(`${GROQ_BASE_URL}/audio/transcriptions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        },
+        body: payload,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text && data.text.trim()) {
+          return data.text.trim();
+        }
+      } else {
+        const errText = await res.text();
+        console.warn(`[Groq Whisper] Model ${whisperModel} returned ${res.status}:`, errText);
+      }
+    } catch (err: any) {
+      console.warn(`[Groq Whisper] Attempt with ${whisperModel} failed:`, err.message);
     }
-
-    const data = await res.json();
-    return data.text ? data.text.trim() : null;
-  } catch (err: any) {
-    console.error('[Groq Whisper] Transcription error:', err.message);
-    return null;
   }
+
+  return null;
 }
 
 /**
  * Generates an automated AI progress summary using Groq LLM.
  */
 export async function generateGroqStudySummary(
-  nickname: string,
-  accuracyPercent: number,
-  strongSkills: string[],
-  weakSkills: string[]
+  studentName: string,
+  subject: string,
+  stats: { totalSessions: number; accuracy: number; weakTopics: string[]; strongTopics: string[] }
 ): Promise<string | null> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return null;
 
-  const prompt = `విద్యార్థి పేరు: ${nickname}
-సగటు ఖచ్చితత్వం: ${accuracyPercent}%
-బాగా వచ్చిన నైపుణ్యాలు: ${strongSkills.join(', ') || 'ప్రారంభ దశ'}
-మరింత సాధన అవసరమైన నైపుణ్యాలు: ${weakSkills.join(', ') || 'ఏవీ లేవు'}
+  const system = `You are a supportive, insightful educational AI mentor writing a brief progress summary for student "${studentName}" in ${subject}.
+Keep it strictly under 3 bullet points:
+1. Praise strong topics
+2. Constructive action plan for weak topics
+3. Encouraging motivational quote.
+Respond concisely in plain text.`;
 
-దయచేసి తల్లిదండ్రులు లేదా ఉపాధ్యాయులకు అర్థమయ్యేలా 2-3 చిన్న వాక్యాలలో సరళమైన తెలుగులో ప్రోత్సాహకరమైన సారాంశం మరియు ఒక ఆచరణాత్మక సలహా రాయండి.`;
-
-  const system = `You are an empathetic, encouraging educator summarizing a Class 10 student's progress in Telugu. Be brief, positive, and give one concrete family practice tip. Under 80 words.`;
+  const prompt = `Student stats:
+Sessions completed: ${stats.totalSessions}
+Average Accuracy: ${stats.accuracy}%
+Strong Topics: ${stats.strongTopics.join(', ') || 'Consistent foundations'}
+Weak Topics: ${stats.weakTopics.join(', ') || 'None identified yet'}`;
 
   return askGroqTutor(prompt, system);
 }

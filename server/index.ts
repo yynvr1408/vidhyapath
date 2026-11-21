@@ -42,6 +42,13 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Serve local static uploads (Cloudflare R2 zero-cost fallback)
+const uploadsDir = path.resolve(__dirname, '../public/uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+
 // Health & readiness probes (unlimited for load balancer / K8s ingress)
 app.use(healthRouter);
 
@@ -572,6 +579,20 @@ app.post('/api/admin/packs/publish', (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/upload', async (req: Request, res: Response) => {
+  try {
+    const { fileName, fileData, contentType } = req.body;
+    if (!fileName || !fileData) {
+      return res.status(400).json({ error: 'Missing fileName or fileData (base64 string).' });
+    }
+    const buffer = Buffer.from(fileData, 'base64');
+    const url = await uploadToStorage(fileName, buffer, contentType || 'application/octet-stream');
+    return res.json({ success: true, fileUrl: url });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Upload failed: ' + err.message });
+  }
+});
+
 // Serve frontend build if exists
 const distDir = path.resolve(__dirname, '../dist');
 if (fs.existsSync(distDir)) {
@@ -584,6 +605,9 @@ if (fs.existsSync(distDir)) {
 export { app };
 
 if (process.env.NODE_ENV !== 'test') {
+  initNeonDb().catch((err: any) => {
+    console.warn('[Neon DB] Startup initialization notice:', err.message);
+  });
   const s = app.listen(PORT, () => {
     console.log(`Vidyapath API server running on port ${PORT}`);
   });
