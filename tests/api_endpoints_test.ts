@@ -108,6 +108,13 @@ async function testApi() {
   console.assert(syncData.answeredDoubts.length === 1, 'Queued doubt should be resolved');
   console.log('[PASS] /api/sync processed attempts & answered queued doubts successfully');
 
+  // 8. Test /api/app/check-update
+  const updateRes = await fetch(`${baseUrl}/api/app/check-update?currentVersion=1.0.0`);
+  const updateData = await updateRes.json();
+  console.assert(typeof updateData.hasUpdate === 'boolean', 'hasUpdate must be boolean');
+  console.assert(updateData.currentVersion === '1.0.0', 'currentVersion must match query');
+  console.log('[PASS] /api/app/check-update response verified:', updateData);
+
   server.close();
   console.log('\n=== ALL API ENDPOINTS VERIFIED AND WORKING 100%! ===');
   process.exit(0);

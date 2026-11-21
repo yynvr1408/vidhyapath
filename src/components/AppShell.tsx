@@ -17,6 +17,7 @@ import {
 import { useApp, ScreenId } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { VidyapathLogo } from './VidyapathLogo';
+import { AppUpdateButton } from './AppUpdateButton';
 import { getTranslations, SupportedLang } from '../utils/translations';
 import { SCHEDULED_LANGUAGES } from '../config/languages';
 
@@ -282,6 +283,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             {isOffline ? 'OFF' : 'ON'}
           </span>
         </button>
+
+        {/* In-App Release & Update Checker */}
+        <AppUpdateButton />
 
         {/* 6. Switch Profile (Pinned at bottom) */}
         <button

@@ -28,6 +28,7 @@ import { localDb } from '../db/indexedDb';
 import { LearnerProfile, ContentPack } from '../types';
 import { StudentAvatar } from '../components/StudentAvatar';
 import { VidyapathLogo } from '../components/VidyapathLogo';
+import { AppUpdateButton } from '../components/AppUpdateButton';
 
 export const AdminPanelScreen: React.FC = () => {
   const {
@@ -589,6 +590,17 @@ export const AdminPanelScreen: React.FC = () => {
                     Connected
                   </span>
                 </div>
+              </div>
+
+              {/* In-App Release & Version Checker */}
+              <div className="mt-4 pt-4 border-t border-[#E2E8F0] space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-xs text-[#0F172A]">OTA App Releases & Version Channel</div>
+                    <div className="text-[11px] text-[#475569]">Automated GitHub Releases & APK update distribution</div>
+                  </div>
+                </div>
+                <AppUpdateButton />
               </div>
             </div>
           </div>
