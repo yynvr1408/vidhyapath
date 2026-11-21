@@ -1,18 +1,22 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
-const connectionString = process.env.DATABASE_URL;
+let poolInstance: any = null;
 
-export const pool = connectionString
-  ? new Pool({
-      connectionString,
+export function getPool() {
+  if (!poolInstance && process.env.DATABASE_URL) {
+    poolInstance = new Pool({
+      connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
-    })
-  : null;
+    });
+  }
+  return poolInstance;
+}
 
 let isConnected = false;
 
 export async function initNeonDb(): Promise<boolean> {
+  const pool = getPool();
   if (!pool) {
     console.log('[Neon DB] No DATABASE_URL set. Running in local fallback mode.');
     return false;
@@ -91,6 +95,7 @@ export async function insertSyncEvent(ev: {
   receiptHash?: string;
   ts: number;
 }): Promise<boolean> {
+  const pool = getPool();
   if (!pool || !isConnected) return false;
   try {
     await pool.query(
@@ -130,6 +135,7 @@ export async function insertOrUpdateDoubt(doubt: {
   status: string;
   ts: number;
 }): Promise<boolean> {
+  const pool = getPool();
   if (!pool || !isConnected) return false;
   try {
     await pool.query(
