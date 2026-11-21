@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="36" fill="#2B2D6E"/>
+  <!-- Lantern Ring -->
+  <circle cx="96" cy="40" r="14" fill="none" stroke="#F2A33A" stroke-width="6"/>
+  <!-- Lantern Top Cap -->
+  <path d="M60 62 L132 62 L120 74 L72 74 Z" fill="#F2A33A"/>
+  <!-- Lantern Glass Body with warm glow -->
+  <defs>
+    <radialGradient id="glow192" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF0D4"/>
+      <stop offset="50%" stop-color="#FFB84D"/>
+      <stop offset="100%" stop-color="#F2A33A"/>
+    </radialGradient>
+  </defs>
+  <path d="M68 74 L124 74 L134 130 L58 130 Z" fill="url(#glow192)" stroke="#2B2D6E" stroke-width="2"/>
+  <!-- Flame inside -->
+  <path d="M96 86 Q106 102 96 118 Q86 102 96 86 Z" fill="#FF5722"/>
+  <!-- Lantern Bottom Base -->
+  <path d="M54 130 L138 130 L130 148 L62 148 Z" fill="#F2A33A"/>
+  <!-- Base Feet -->
+  <rect x="68" y="148" width="12" height="6" rx="2" fill="#C47E20"/>
+  <rect x="112" y="148" width="12" height="6" rx="2" fill="#C47E20"/>
+</svg>

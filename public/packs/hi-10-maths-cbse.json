@@ -1,0 +1,131 @@
+{
+  "id": "hi-10-maths-cbse",
+  "version": "0.1.0",
+  "isStub": true,
+  "language": "hi",
+  "languageName": "हिन्दी (Hindi Preview Stub)",
+  "class": 10,
+  "subject": "maths",
+  "board": "CBSE",
+  "locales": {
+    "stt": "hi-IN",
+    "tts": "hi-IN",
+    "rtl": false
+  },
+  "uiStrings": {
+    "appTitle": "लालटेन एड",
+    "tagline": "अंतिम मील के छात्र के लिए स्मार्ट ट्यूटर",
+    "whoIsLearning": "कौन सीख रहा है?",
+    "addNewLearner": "नया शिक्षार्थी जोड़ें",
+    "switchLearner": "शिक्षार्थी बदलें",
+    "enterPin": "4 अंकों का पिन दर्ज करें",
+    "wrongPin": "गलत पिन। पुनः प्रयास करें।",
+    "optionalPinPrompt": "पिन सेट करें (वैकल्पिक)",
+    "chooseAnimal": "अपना प्रतीक चुनें",
+    "pickColor": "रंग चुनें",
+    "saveProfile": "प्रोफ़ाइल सहेजें",
+    "home": "होम",
+    "learn": "सीखें",
+    "practice": "अभ्यास करें",
+    "askDoubt": "संदेह पूछें",
+    "myProgress": "मेरी प्रगति",
+    "settings": "सेटिंग्स",
+    "todayGoal": "आज का लक्ष्य",
+    "sessionsLeft": "1 सत्र शेष",
+    "progressSaved": "आपकी प्रगति सहेजी गई",
+    "noInternet": "इंटरनेट नहीं है (ऑफ़लाइन)",
+    "onlineReady": "ऑनलाइन कनेक्टेड",
+    "syncSuccess": "सफलतापूर्वक सिंक हुआ",
+    "listen": "सुनें",
+    "hint": "संकेत",
+    "hintLevel": "संकेत चरण",
+    "nextStep": "अगला प्रश्न",
+    "checkAnswer": "उत्तर जांचें",
+    "greatJob": "बहुत बढ़िया!",
+    "tryAgain": "पुनः प्रयास करें",
+    "lookCloser": "आइए इसे ध्यान से देखें",
+    "remedyHeading": "याद रखने योग्य बात:",
+    "trySimilar": "समान प्रश्न का अभ्यास करें?",
+    "sessionComplete": "बधाई हो! सत्र पूर्ण हुआ",
+    "lanternGlowIncreased": "आपकी लालटेन की चमक बढ़ गई!",
+    "accuracy": "सटीकता",
+    "pointsEarned": "अर्जित अंक",
+    "backToHome": "होम पर वापस जाएं",
+    "start": "शुरू करें",
+    "speakAnswer": "उत्तर बोलें",
+    "listeningNow": "सुन रहे हैं... बोलिए",
+    "voiceUnsupported": "इस ब्राउज़र में वॉयस इनपुट समर्थित नहीं है।",
+    "typeDoubtPlaceholder": "अपना संदेह यहाँ लिखें...",
+    "askVoice": "माइक दबाकर पूछें",
+    "askPhoto": "फ़ोटो लेकर पूछें",
+    "sendDoubt": "संदेह भेजें",
+    "offlineQueueNotice": "आप ऑफ़लाइन हैं। नेटवर्क आने पर उत्तर मिलेगा।",
+    "queuedDoubtsCount": "कतारबद्ध संदेह",
+    "commonDoubtsHeading": "अक्सर पूछे जाने वाले प्रश्न",
+    "recentDoubts": "हाल के संदेह",
+    "didThisHelp": "क्या इस उत्तर से मदद मिली?",
+    "yesHelpful": "हाँ, समझ आ गया",
+    "noNeedMore": "और स्पष्टीकरण चाहिए",
+    "lowDataMode": "कम डेटा मोड",
+    "lowDataDesc": "डेटा बचाता है। चित्र और वॉयस अपलोड बंद हैं।",
+    "fontSize": "फ़ॉन्ट का आकार",
+    "dataUsed": "उपयोग किया गया डेटा",
+    "clearCache": "AI कैश साफ़ करें",
+    "guardianLink": "अभिभावक लिंक",
+    "guardianDesc": "अभिभावक को प्रगति दिखाने के लिए लिंक",
+    "copyLink": "लिंक कॉपी करें",
+    "linkCopied": "लिंक कॉपी हो गया!",
+    "chapter": "अध्याय",
+    "skill": "कौशल",
+    "masteryLevel": "दक्षता स्तर",
+    "mastered": "पूर्ण रूप से सीखा",
+    "needsPractice": "और अभ्यास की आवश्यकता",
+    "villageLanterns": "गाँव की लालटेनें",
+    "villageDesc": "जैसे-जैसे आप सीखते हैं, गाँव की लालटेनें और अधिक चमकती हैं!"
+  },
+  "topics": [
+    {
+      "id": "hi_ch1_real_numbers",
+      "title": "अध्याय 1: वास्तविक संख्याएँ (पूर्वावलोकन)",
+      "titleEn": "Chapter 1: Real Numbers (Preview)",
+      "description": "यूक्लिड विभाजन प्रमेयिका और अंकगणित की आधारभूत प्रमेय।",
+      "skills": ["hi_euclid_division", "hi_fundamental_arithmetic"]
+    }
+  ],
+  "questions": [
+    {
+      "id": "hq101",
+      "skillId": "hi_euclid_division",
+      "difficulty": 1,
+      "text": "यूक्लिड विभाजन प्रमेयिका a = bq + r में शेषफल 'r' के लिए कौन सा संबंध सत्य है?",
+      "options": [
+        "0 < r ≤ b",
+        "0 ≤ r < b",
+        "0 < r < b",
+        "r > b"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "0 <= r < b", "0 ≤ r < b", "बी"],
+      "hintLadder": [
+        "शेषफल हमेशा भाजक 'b' से छोटा और 0 या 0 से बड़ा होना चाहिए।",
+        "0 ≤ r और r < b को एक साथ लिखें।",
+        "सही नियम 0 ≤ r < b है। विकल्प B सही है।"
+      ],
+      "distractorMistakes": {
+        "A": "included_equal_to_b"
+      },
+      "explanation": "यूक्लिड विभाजन प्रमेयिका के अनुसार 0 ≤ r < b."
+    }
+  ],
+  "mistakeRemedies": {
+    "included_equal_to_b": "शेषफल कभी भी भाजक के बराबर नहीं हो सकता, हमेशा उससे छोटा होता है।"
+  },
+  "commonDoubts": [
+    {
+      "id": "hcd1",
+      "topicId": "hi_ch1_real_numbers",
+      "q": "यूक्लिड विभाजन प्रमेयिका का मुख्य उपयोग क्या है?",
+      "a": "दो धनात्मक पूर्णांकों का HCF (म.स.प.) ज्ञात करने के लिए यूक्लिड विभाजन प्रमेयिका का उपयोग किया जाता है।"
+    }
+  ]
+}

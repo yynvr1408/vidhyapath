@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="te">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#2B2D6E" />
+    <meta name="description" content="LanternEd - The Last-Mile Tutor for Class 10 Maths" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>LanternEd · లాంతర్న్ ఎడ్</title>
+    <!-- Preload Telugu font stack -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body class="bg-cream-100 text-slate-900 font-telugu min-h-screen selection:bg-lantern selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register Service Worker for offline PWA capabilities
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(
+            (reg) => console.log('LanternEd PWA ServiceWorker registered with scope:', reg.scope),
+            (err) => console.log('ServiceWorker registration failed:', err)
+          );
+        });
+      }
+    </script>
+  </body>
+</html>

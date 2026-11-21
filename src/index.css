@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #FFF8E7;
+    color: #1E293B;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+}
+
+/* Lantern Glow Pulse Effect */
+@keyframes lanternPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(242, 163, 58, 0.4), 0 0 30px rgba(242, 163, 58, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(242, 163, 58, 0.7), 0 0 50px rgba(242, 163, 58, 0.4);
+  }
+}
+
+.lantern-glow {
+  animation: lanternPulse 3s infinite ease-in-out;
+}
+
+/* Audio wave animation */
+@keyframes waveBar {
+  0%, 100% { height: 6px; }
+  50% { height: 22px; }
+}
+
+.audio-bar-1 { animation: waveBar 0.8s infinite ease-in-out; }
+.audio-bar-2 { animation: waveBar 0.8s infinite ease-in-out 0.2s; }
+.audio-bar-3 { animation: waveBar 0.8s infinite ease-in-out 0.4s; }
