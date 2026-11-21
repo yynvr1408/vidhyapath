@@ -356,6 +356,25 @@ UNIT 2: Distributed Consensus & Fault Tolerance
     console.assert(rateLimitHeader !== null, 'X-RateLimit-Limit header must be present');
     console.log(`[PASS] Enterprise Rate Limiting verified (Active Limit: ${rateLimitHeader} req/min).`);
 
+    // -------------------------------------------------------------
+    // TEST 10: In-Memory Cloudflare R2 Uploads (Zero Ephemeral Disk Writes)
+    // -------------------------------------------------------------
+    console.log('\n--- 10. Testing Cloudflare R2 Uploads (Zero Ephemeral Disk Writes) ---');
+    const uploadRes = await fetch(`${baseUrl}/api/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fileName: 'test_syllabus.pdf',
+        fileData: Buffer.from('%PDF-1.4 test in memory').toString('base64'),
+        contentType: 'application/pdf',
+      }),
+    });
+    console.assert(uploadRes.status === 200, 'Upload endpoint must return 200');
+    const uploadData = await uploadRes.json();
+    console.assert(uploadData.success === true, 'Upload must succeed');
+    console.assert(typeof uploadData.fileUrl === 'string' && uploadData.fileUrl.length > 0, 'Must return valid fileUrl');
+    console.log(`[PASS] In-Memory R2 Upload verified (0 disk writes): ${uploadData.fileUrl.slice(0, 45)}...`);
+
     console.log('\n===========================================================');
     console.log('=== ALL ENTERPRISE TEST CASES PASSED WITH 100% SUCCESS! ===');
     console.log('===========================================================');

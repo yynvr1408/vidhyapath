@@ -24,10 +24,11 @@ if (fs.existsSync(envPath)) {
   }
 }
 
+import multer from 'multer';
 import { initNeonDb, insertSyncEvent, insertOrUpdateDoubt, isNeonConnected } from './db/neon.js';
 import { isGroqConfigured, askGroqTutor, transcribeGroqWhisper, generateGroqStudySummary } from './services/groq.js';
 import { synthesizeElevenLabsVoice, isElevenLabsConfigured } from './services/elevenlabs.js';
-import { uploadToStorage, isR2Configured } from './services/r2.js';
+import { uploadToR2, uploadToStorage, isR2Configured } from './services/r2Storage.js';
 import { enterpriseApiRouter } from './routes/api.js';
 import { healthRouter } from './routes/health.js';
 import { idempotencyMiddleware } from './middleware/idempotency.js';
@@ -67,12 +68,18 @@ app.use(
 app.options('*', cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Serve local static uploads (Cloudflare R2 zero-cost fallback)
+// Memory storage for Multer (Zero files written to Render's ephemeral disk)
+const memoryStorage = multer.memoryStorage();
+const uploadMiddleware = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
+});
+
+// Optional legacy static uploads reader (no writes to disk)
 const uploadsDir = path.resolve(__dirname, '../public/uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+if (fs.existsSync(uploadsDir)) {
+  app.use('/uploads', express.static(uploadsDir));
 }
-app.use('/uploads', express.static(uploadsDir));
 
 // Health & readiness probes (unlimited for load balancer / K8s ingress)
 app.use(healthRouter);
@@ -614,17 +621,86 @@ app.post('/api/admin/packs/publish', (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/upload', async (req: Request, res: Response) => {
+app.post('/api/upload', uploadMiddleware.single('file'), async (req: Request, res: Response) => {
   try {
-    const { fileName, fileData, contentType } = req.body;
-    if (!fileName || !fileData) {
-      return res.status(400).json({ error: 'Missing fileName or fileData (base64 string).' });
+    // 1. In-memory multipart file upload via multer
+    if (req.file) {
+      const fileKey = `${Date.now()}_${req.file.originalname}`;
+      const fileUrl = await uploadToR2(req.file.buffer, fileKey, req.file.mimetype);
+      return res.json({ success: true, fileUrl, key: fileKey });
     }
-    const buffer = Buffer.from(fileData, 'base64');
-    const url = await uploadToStorage(fileName, buffer, contentType || 'application/octet-stream');
-    return res.json({ success: true, fileUrl: url });
+
+    // 2. In-memory Base64 JSON payload upload
+    const { fileName, fileData, contentType } = req.body;
+    if (fileName && fileData) {
+      const buffer = Buffer.from(fileData, 'base64');
+      const fileUrl = await uploadToR2(buffer, fileName, contentType || 'application/octet-stream');
+      return res.json({ success: true, fileUrl, key: fileName });
+    }
+
+    return res.status(400).json({ error: 'Missing file in multipart form or fileData in JSON body.' });
   } catch (err: any) {
-    return res.status(500).json({ error: 'Upload failed: ' + err.message });
+    return res.status(500).json({ error: 'Upload to R2 failed: ' + err.message });
+  }
+});
+
+// POST /api/tutor/voice: In-memory voice upload to R2 + Groq Whisper transcription (0 disk writes)
+app.post('/api/tutor/voice', uploadMiddleware.single('audio'), async (req: Request, res: Response) => {
+  try {
+    let audioBuffer: Buffer | null = null;
+    let mimeType = 'audio/webm';
+    let filename = `voice_${Date.now()}.webm`;
+
+    if (req.file) {
+      audioBuffer = req.file.buffer;
+      mimeType = req.file.mimetype || 'audio/webm';
+      filename = req.file.originalname || filename;
+    } else if (req.body.audioData) {
+      audioBuffer = Buffer.from(req.body.audioData, 'base64');
+      mimeType = req.body.mimeType || mimeType;
+    }
+
+    if (!audioBuffer) {
+      return res.status(400).json({ error: 'Missing audio file or audioData' });
+    }
+
+    const audioUrl = await uploadToR2(audioBuffer, filename, mimeType);
+    const transcript = await transcribeGroqWhisper(audioBuffer, mimeType, req.body.language);
+
+    return res.json({
+      success: true,
+      audioUrl,
+      transcript: transcript || '',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Voice processing failed: ' + err.message });
+  }
+});
+
+// POST /api/tutor/photo-doubt: In-memory photo doubt upload to R2 (0 disk writes)
+app.post('/api/tutor/photo-doubt', uploadMiddleware.single('photo'), async (req: Request, res: Response) => {
+  try {
+    let photoBuffer: Buffer | null = null;
+    let mimeType = 'image/jpeg';
+    let filename = `photo_${Date.now()}.jpg`;
+
+    if (req.file) {
+      photoBuffer = req.file.buffer;
+      mimeType = req.file.mimetype || 'image/jpeg';
+      filename = req.file.originalname || filename;
+    } else if (req.body.photoData) {
+      photoBuffer = Buffer.from(req.body.photoData, 'base64');
+      mimeType = req.body.mimeType || mimeType;
+    }
+
+    if (!photoBuffer) {
+      return res.status(400).json({ error: 'Missing photo file or photoData' });
+    }
+
+    const photoUrl = await uploadToR2(photoBuffer, filename, mimeType);
+    return res.json({ success: true, photoUrl });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Photo doubt upload failed: ' + err.message });
   }
 });
 
