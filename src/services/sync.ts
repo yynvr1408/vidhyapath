@@ -1,4 +1,5 @@
 import { localDb } from '../db/indexedDb';
+import { API_BASE } from '../config/api';
 import { SyncPayload, SyncResponse, DoubtItem } from '../types';
 
 export class SyncService {
@@ -37,7 +38,7 @@ export class SyncService {
         clientPackVersion: currentPackVersion,
       };
 
-      const res = await fetch('/api/sync', {
+      const res = await fetch(API_BASE + '/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

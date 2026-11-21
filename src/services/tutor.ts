@@ -1,10 +1,32 @@
 import { ContentPack, DoubtItem } from '../types';
 import { localDb } from '../db/indexedDb';
+import { API_BASE } from '../config/api';
 
 export interface TutorResponse {
   answer: string;
   source: 'common_doubts' | 'cache' | 'ai_model' | 'queued_offline';
   isQueued?: boolean;
+}
+
+/**
+ * Sends a compressed photo (data URL) to the server and returns the extracted problem text.
+ * Returns '' when the photo cannot be read. Used only to produce a question for the learner
+ * to confirm; it never checks answers.
+ */
+export async function extractProblemFromPhoto(packId: string, imageDataUrl: string): Promise<string> {
+  try {
+    const response = await fetch(API_BASE + '/api/tutor/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ packId, imageDataUrl }),
+    });
+    if (!response.ok) return '';
+    const data = await response.json();
+    return typeof data?.problemText === 'string' ? data.problemText.trim() : '';
+  } catch (err) {
+    console.warn('Photo extraction request failed:', err);
+    return '';
+  }
 }
 
 export class TutorService {
@@ -151,7 +173,7 @@ Learner doubt: "${doubtText}"`;
 
     // 4. Online: call API layer
     try {
-      const response = await fetch('/api/tutor/ask', {
+      const response = await fetch(API_BASE + '/api/tutor/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Check, Lock, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { LearnerProfile } from '../types';
+import { hashPin } from '../services/pinHash';
 
 const ANIMAL_OPTIONS = [
   { name: 'చిరుత', animal: 'cheetah', emoji: '🐆' },
@@ -37,7 +38,7 @@ export const S2_CreateProfile: React.FC = () => {
       avatarColor: selectedColor,
       avatarEmoji: selectedAnimal.emoji,
       packId: pack?.id || 'te-10-maths-ap',
-      pinHash: pin.length === 4 ? pin : null,
+      pinHash: pin.length === 4 ? await hashPin(pin) : null,
       createdAt: Date.now(),
     };
 

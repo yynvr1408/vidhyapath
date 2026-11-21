@@ -11,6 +11,7 @@ import { S9_SettingsScreen } from './screens/S9_SettingsScreen';
 import { S10_GuardianScreen } from './screens/S10_GuardianScreen';
 import { S11_ImpactScreen } from './screens/S11_ImpactScreen';
 import { S12_PackEditorScreen } from './screens/S12_PackEditorScreen';
+import { S13_CohortScreen } from './screens/S13_CohortScreen';
 
 export const AppContent: React.FC = () => {
   const { currentScreen, setScreen, activeLearner } = useApp();
@@ -53,6 +54,8 @@ export const AppContent: React.FC = () => {
       return <S11_ImpactScreen />;
     case 'S12_PACK_EDITOR':
       return <S12_PackEditorScreen />;
+    case 'S13_COHORT':
+      return <S13_CohortScreen />;
     default:
       return <S1_ProfilePicker />;
   }

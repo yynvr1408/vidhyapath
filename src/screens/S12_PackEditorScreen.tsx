@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CheckCircle2, AlertCircle, FileCode2, Upload, Save, Sparkles, BookOpen } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { API_BASE } from '../config/api';
 
 export const S12_PackEditorScreen: React.FC = () => {
   const { pack, setScreen, switchPack, activeLearner } = useApp();
@@ -104,7 +105,7 @@ export const S12_PackEditorScreen: React.FC = () => {
 
     try {
       const parsed = JSON.parse(jsonText);
-      const res = await fetch('/api/admin/packs/publish', {
+      const res = await fetch(API_BASE + '/api/admin/packs/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed),

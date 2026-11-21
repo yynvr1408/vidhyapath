@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Shield, Share2, Heart, Sparkles, CheckCircle2, AlertCircle, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Shield, Share2, Heart, Sparkles, CheckCircle2, AlertCircle, Copy, Check, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AudioButton } from '../components/AudioButton';
 
@@ -146,6 +146,16 @@ export const S10_GuardianScreen: React.FC = () => {
             <span>{copied ? 'లింక్ కాపీ అయింది!' : 'సంరక్షకుని లింక్ కాపీ చేయండి'}</span>
           </button>
         </div>
+
+        {/* Link to cohort (teacher/volunteer) view */}
+        <button
+          type="button"
+          onClick={() => setScreen('S13_COHORT')}
+          className="w-full min-h-[56px] py-3 px-4 rounded-xl bg-indigo-brand text-white font-bold text-base flex items-center justify-center gap-2 active:scale-95 transition-all"
+        >
+          <Users className="w-5 h-5" />
+          <span>ఉపాధ్యాయ వీక్షణ (teacher view)</span> {/* TODO native review */}
+        </button>
       </main>
     </div>
   );

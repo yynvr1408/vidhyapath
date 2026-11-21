@@ -302,6 +302,66 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   return res.json({ source: 'fallback', answer: tutorAnswer });
 });
 
+// 2b. Photo doubt text extraction (/api/tutor/extract). Returns only the problem text for the
+// learner to confirm. Never grades or checks answers. Key is never logged.
+app.post('/api/tutor/extract', async (req: Request, res: Response) => {
+  const { packId, imageDataUrl } = req.body || {};
+  if (!isSafePackId(packId)) return res.status(400).json({ error: 'Invalid pack id' });
+  if (
+    typeof imageDataUrl !== 'string' ||
+    !(imageDataUrl.startsWith('data:image/jpeg') || imageDataUrl.startsWith('data:image/png')) ||
+    imageDataUrl.length > 300000
+  ) {
+    return res.status(400).json({ error: 'Invalid image' });
+  }
+
+  const config = getTutorConfig();
+  if (!config) return res.json({ source: 'fallback', problemText: '' });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TUTOR_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Read the maths problem in this photo. Reply with only the problem text, in the original language, no solution.',
+              },
+              { type: 'image_url', image_url: { url: imageDataUrl } },
+            ],
+          },
+        ],
+        max_tokens: 300,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      console.error(`Photo extraction request failed with status ${response.status}`);
+      return res.json({ source: 'fallback', problemText: '' });
+    }
+    const data: any = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    const problemText = typeof content === 'string' ? content.trim().slice(0, 600) : '';
+    if (!problemText) return res.json({ source: 'fallback', problemText: '' });
+    return res.json({ source: 'model', problemText });
+  } catch (err: any) {
+    console.error('Photo extraction failed:', err?.name === 'AbortError' ? 'timeout' : 'network or parse error');
+    return res.json({ source: 'fallback', problemText: '' });
+  } finally {
+    clearTimeout(timer);
+  }
+});
+
 // 3. Guardian View-Only Token Endpoint (/api/guardian/:token)
 app.get('/api/guardian/:token', (req: Request, res: Response) => {
   const token = String(req.params.token || '');

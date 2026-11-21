@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Lock, X, Check } from 'lucide-react';
+import { verifyPin } from '../services/pinHash';
 
 interface PinModalProps {
   expectedPin?: string | null;
-  onSuccess: () => void;
+  onSuccess: (enteredPin: string) => void;
   onCancel: () => void;
   title?: string;
 }
@@ -17,15 +18,15 @@ export const PinModal: React.FC<PinModalProps> = ({
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
 
-  const handleKeyPress = (num: string) => {
+  const handleKeyPress = async (num: string) => {
     if (pin.length < 4) {
       const nextPin = pin + num;
       setPin(nextPin);
       setError(false);
 
       if (nextPin.length === 4) {
-        if (!expectedPin || nextPin === expectedPin) {
-          setTimeout(onSuccess, 100);
+        if (!expectedPin || (await verifyPin(nextPin, expectedPin))) {
+          setTimeout(() => onSuccess(nextPin), 100);
         } else {
           setError(true);
           setTimeout(() => setPin(''), 500);
@@ -33,6 +34,7 @@ export const PinModal: React.FC<PinModalProps> = ({
       }
     }
   };
+
 
   const handleBackspace = () => {
     setPin((prev) => prev.slice(0, -1));

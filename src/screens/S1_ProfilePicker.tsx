@@ -3,6 +3,8 @@ import { Plus, Flame, HeartHandshake, FileCode2, Shield, Sparkles } from 'lucide
 import { useApp } from '../context/AppContext';
 import { LearnerProfile } from '../types';
 import { PinModal } from '../components/PinModal';
+import { hashPin } from '../services/pinHash';
+import { localDb } from '../db/indexedDb';
 
 export const S1_ProfilePicker: React.FC = () => {
   const { learners, selectLearner, setScreen, pack } = useApp();
@@ -77,8 +79,17 @@ export const S1_ProfilePicker: React.FC = () => {
       {selectedProfileForPin && (
         <PinModal
           expectedPin={selectedProfileForPin.pinHash}
-          onSuccess={() => {
-            selectLearner(selectedProfileForPin);
+          onSuccess={async (enteredPin) => {
+            const profile = selectedProfileForPin;
+            // PIN verified. If the stored value is still a legacy plaintext PIN,
+            // migrate it to the hashed form now (one write, same pinHash field).
+            if (profile.pinHash && !profile.pinHash.startsWith('pbkdf2$')) {
+              const upgraded = { ...profile, pinHash: await hashPin(enteredPin) };
+              await localDb.saveLearner(upgraded);
+              selectLearner(upgraded);
+            } else {
+              selectLearner(profile);
+            }
             setSelectedProfileForPin(null);
           }}
           onCancel={() => setSelectedProfileForPin(null)}

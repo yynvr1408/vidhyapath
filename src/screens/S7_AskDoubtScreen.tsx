@@ -4,7 +4,8 @@ import { useApp } from '../context/AppContext';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { AudioButton } from '../components/AudioButton';
 import { OfflineBanner } from '../components/OfflineBanner';
-import { TutorService, TutorResponse } from '../services/tutor';
+import { TutorService, TutorResponse, extractProblemFromPhoto } from '../services/tutor';
+import { compressPhotoToDataUrl, approxDataUrlBytes } from '../services/photo';
 import { DoubtItem } from '../types';
 import { localDb } from '../db/indexedDb';
 
@@ -17,6 +18,9 @@ export const S7_AskDoubtScreen: React.FC = () => {
   const [currentAnswer, setCurrentAnswer] = useState<TutorResponse | null>(null);
   const [doubtHistory, setDoubtHistory] = useState<DoubtItem[]>([]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoKb, setPhotoKb] = useState<number>(0);
+  const [photoBusy, setPhotoBusy] = useState<boolean>(false);
+  const [photoNotice, setPhotoNotice] = useState<{ tone: 'gate' | 'check' | 'fail' | 'busy'; text: string } | null>(null);
   const [helpFeedbackGiven, setHelpFeedbackGiven] = useState<boolean>(false);
 
   // Load history from localDb
@@ -53,6 +57,7 @@ export const S7_AskDoubtScreen: React.FC = () => {
       setCurrentAnswer(res);
       setDoubtText('');
       setPhotoPreview(null);
+      setPhotoNotice(null);
       await loadHistory();
       await refreshLearnerData();
     } catch (err) {
@@ -62,18 +67,50 @@ export const S7_AskDoubtScreen: React.FC = () => {
     }
   };
 
-  // Photo capture simulation with client-side compression
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Photo doubt: compress, send only when online and low-data mode is off, then
+  // put the extracted text in the box for the learner to confirm. Never sends to the tutor.
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Simulate client-side compression to <= 200 KB
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPhotoPreview(reader.result as string);
-      setDoubtText('చిత్రంలో ఉన్న సమస్య: యూక్లిడ్ పద్ధతిలో గ.సా.భా ను ఎలా కనుగొనాలి? వివరించండి.');
-    };
-    reader.readAsDataURL(file);
+    // Gate: photo is sent only when online and low-data mode is off
+    if (!navigator.onLine || lowDataMode) { // TODO native review
+      setPhotoNotice({
+        tone: 'gate',
+        text: 'ఇంటర్నెట్ లేదు లేదా తక్కువ డేటా మోడ్ ఆన్‌లో ఉంది. దయచేసి ప్రశ్నను టైప్ చేయండి, లేదా కనెక్ట్ అయినప్పుడు ఫోటో ప్రయత్నించండి.', // TODO native review
+      });
+      return;
+    }
+    if (!pack) return;
+
+    setPhotoBusy(true);
+    setPhotoNotice({ tone: 'busy', text: 'ఫోటో చదువుతున్నాను...' }); // TODO native review
+    try {
+      const dataUrl = await compressPhotoToDataUrl(file);
+      setPhotoPreview(dataUrl);
+      setPhotoKb(Math.round(approxDataUrlBytes(dataUrl) / 1024));
+      const problemText = await extractProblemFromPhoto(pack.id, dataUrl);
+      if (problemText) {
+        setDoubtText(problemText);
+        setPhotoNotice({
+          tone: 'check',
+          text: 'దయచేసి వచనాన్ని తనిఖీ చేసి, తర్వాత సందేహం పంపు నొక్కండి.', // TODO native review
+        });
+      } else {
+        setPhotoNotice({
+          tone: 'fail',
+          text: 'ఫోటోలోని ప్రశ్నను చదవలేకపోయాము. దయచేసి ప్రశ్నను టైప్ చేయండి.', // TODO native review
+        });
+      }
+    } catch (err) {
+      console.error('Photo doubt failed:', err);
+      setPhotoNotice({
+        tone: 'fail',
+        text: 'ఫోటోలోని ప్రశ్నను చదవలేకపోయాము. దయచేసి ప్రశ్నను టైప్ చేయండి.', // TODO native review
+      });
+    } finally {
+      setPhotoBusy(false);
+    }
   };
 
   return (
@@ -152,7 +189,7 @@ export const S7_AskDoubtScreen: React.FC = () => {
                 className="w-full h-32 object-cover rounded-xl border border-slate-200"
               />
               <span className="absolute top-2 left-2 bg-indigo-dark text-white text-[10px] px-2 py-0.5 rounded-md font-semibold">
-                కంప్రెస్ చేయబడింది (180 KB)
+                కంప్రెస్ చేయబడింది ({photoKb} KB)
               </span>
             </div>
           )}
@@ -164,6 +201,25 @@ export const S7_AskDoubtScreen: React.FC = () => {
             placeholder={pack?.uiStrings.typeDoubtPlaceholder || 'మీ సందేహాన్ని ఇక్కడ రాయండి...'}
             className="w-full text-sm text-slate-800 placeholder-slate-400 p-2 focus:outline-hidden resize-none font-medium"
           />
+
+          {photoNotice && (
+            <div
+              className={`flex items-start gap-1.5 text-xs font-bold p-2 rounded-xl border mb-2 ${
+                photoNotice.tone === 'check'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : photoNotice.tone === 'busy'
+                    ? 'bg-cream-100 text-indigo-brand border-slate-200'
+                    : 'bg-amber-50 text-amber-900 border-amber-200'
+              }`}
+            >
+              {photoNotice.tone === 'gate' ? (
+                <WifiOff className="w-4 h-4 shrink-0 mt-0.5" />
+              ) : (
+                <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              )}
+              <span>{photoNotice.text}</span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between pt-2 border-t border-slate-100">
             {/* Camera / Photo Doubt (Stretch) */}
@@ -189,7 +245,7 @@ export const S7_AskDoubtScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => handleSubmitDoubt()}
-              disabled={isLoading || !doubtText.trim()}
+              disabled={isLoading || photoBusy || !doubtText.trim()}
               className="py-2.5 px-5 rounded-xl bg-indigo-brand hover:bg-indigo-dark disabled:bg-slate-200 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95"
             >
               {isLoading ? (

@@ -14,7 +14,8 @@ export type ScreenId =
   | 'S9_SETTINGS'
   | 'S10_GUARDIAN'
   | 'S11_IMPACT'
-  | 'S12_PACK_EDITOR';
+  | 'S12_PACK_EDITOR'
+  | 'S13_COHORT';
 
 interface AppContextValue {
   pack: ContentPack | null;
