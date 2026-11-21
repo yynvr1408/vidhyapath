@@ -32,4 +32,4 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Verify Capacitor Sync
-        run: npx cap sync android
+        run: npx @capacitor/cli sync android
