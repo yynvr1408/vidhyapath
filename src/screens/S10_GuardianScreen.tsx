@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Shield, Share2, Heart, Sparkles, CheckCircle2, AlertCircle, Copy, Check, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AudioButton } from '../components/AudioButton';
+import { localDb } from '../db/indexedDb';
 
 export const S10_GuardianScreen: React.FC = () => {
-  const { activeLearner, setScreen } = useApp();
+  const { activeLearner, pack, setScreen } = useApp();
   const [copied, setCopied] = useState(false);
+  const [liveSummary, setLiveSummary] = useState<{
+    sessionsCompleted: number;
+    accuracyPercent: number;
+    strongSkills: string[];
+    weakSkill: string;
+  } | null>(null);
 
   // View-only dummy token or current learner data
   const nickname = activeLearner?.nickname || 'చిరుత (Cheetah)';
-  const tokenUrl = `${window.location.origin}/#guardian?token=g_token_cheetah_01`;
+  const tokenUrl = `${window.location.origin}/#guardian?token=g_token_${activeLearner?.animal || 'cheetah'}_01`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(tokenUrl);
@@ -17,7 +24,50 @@ export const S10_GuardianScreen: React.FC = () => {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const summaryData = {
+  useEffect(() => {
+    if (!activeLearner) return;
+    localDb.getAttemptsByLearner(activeLearner.id).then((attempts) => {
+      if (attempts && attempts.length > 0) {
+        const correctCount = attempts.filter((a) => a.correct).length;
+        const accuracy = Math.round((correctCount / attempts.length) * 100);
+        const sessions = Math.max(1, Math.ceil(attempts.length / 5));
+
+        // Group attempts by skill
+        const skillStats: Record<string, { correct: number; total: number }> = {};
+        for (const a of attempts) {
+          if (!skillStats[a.skillId]) skillStats[a.skillId] = { correct: 0, total: 0 };
+          skillStats[a.skillId].total++;
+          if (a.correct) skillStats[a.skillId].correct++;
+        }
+
+        const sorted = Object.entries(skillStats).sort(
+          (a, b) => b[1].correct / b[1].total - a[1].correct / a[1].total
+        );
+
+        // Find readable labels from pack
+        const getSkillName = (skId: string) => {
+          if (skId.includes('euclid')) return 'యూక్లిడ్ భాగహార న్యాయం (Euclid Lemma)';
+          if (skId.includes('factor')) return 'ప్రధాన కారణాంకాలు (Prime Factors)';
+          if (skId.includes('union')) return 'సమితుల సమ్మేళనం (Union ∪)';
+          if (skId.includes('diff') || skId.includes('difference')) return 'సమితుల భేదం (Difference A - B)';
+          if (skId.includes('decimal')) return 'అంతమయ్యే దశాంశాలు (Terminating Decimals)';
+          return skId;
+        };
+
+        const strong = sorted.slice(0, 3).map(([id]) => getSkillName(id));
+        const weak = sorted.length > 0 ? getSkillName(sorted[sorted.length - 1][0]) : 'సమితుల భేదం (Difference A - B)';
+
+        setLiveSummary({
+          sessionsCompleted: sessions,
+          accuracyPercent: accuracy,
+          strongSkills: strong.length > 0 ? strong : ['యూక్లిడ్ భాగహార న్యాయం', 'ప్రధాన కారణాంకాలు'],
+          weakSkill: weak,
+        });
+      }
+    });
+  }, [activeLearner]);
+
+  const defaultSummaryData = {
     week: 'ఈ వారం సమీక్ష (Weekly Summary)',
     sessionsCompleted: 6,
     accuracyPercent: 82,
@@ -30,6 +80,16 @@ export const S10_GuardianScreen: React.FC = () => {
     suggestedAction: 'రెండు వర్తులాలు (Venn Diagram) కాగితంపై గీసి, మొదటి వృత్తంలో మాత్రమే ఉండే భాగం గుర్తించడాన్ని సాధన చేయించండి.',
     practiceTogetherPrompt: 'ఇంట్లో ఉన్న పప్పులు లేదా గింజలను రెండు పళ్ళాలలో ఉంచి, మొదటి పళ్ళెంలో మాత్రమే ఉన్నవాటిని వేరుచేసే సరదా ఆట ఆడండి.'
   };
+
+  const summaryData = liveSummary
+    ? {
+        ...defaultSummaryData,
+        sessionsCompleted: liveSummary.sessionsCompleted,
+        accuracyPercent: liveSummary.accuracyPercent,
+        strongSkills: liveSummary.strongSkills,
+        weakSkill: liveSummary.weakSkill,
+      }
+    : defaultSummaryData;
 
   return (
     <div className="min-h-screen bg-cream-100 flex flex-col pb-8">
