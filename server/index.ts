@@ -510,8 +510,18 @@ app.post('/api/storage/upload', async (req: Request, res: Response) => {
 // 2g. In-App GitHub Releases Auto-Update Check (/api/app/check-update)
 app.get('/api/app/check-update', async (req: Request, res: Response) => {
   const currentVersion = String(req.query.currentVersion || '1.0.0');
-  const owner = process.env.GITHUB_REPO_OWNER || 'yynvr1408';
-  const repo = process.env.GITHUB_REPO_NAME || 'vidhyapath';
+
+  // Support either GITHUB_RELEASE_REPO="owner/repo" or GITHUB_REPO_OWNER + GITHUB_REPO_NAME
+  const releaseRepoEnv = process.env.GITHUB_RELEASE_REPO;
+  let owner = process.env.GITHUB_REPO_OWNER || 'yynvr1408';
+  let repo = process.env.GITHUB_REPO_NAME || 'vidhyapath';
+
+  if (releaseRepoEnv && releaseRepoEnv.includes('/')) {
+    const parts = releaseRepoEnv.trim().split('/');
+    owner = parts[0];
+    repo = parts[1];
+  }
+
   const pat = process.env.GITHUB_PAT_TOKEN;
 
   try {
@@ -523,21 +533,29 @@ app.get('/api/app/check-update', async (req: Request, res: Response) => {
 
     const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, { headers });
     if (!ghRes.ok) {
-      return res.json({ hasUpdate: false, currentVersion });
+      return res.json({ hasUpdate: false, currentVersion, repo: `${owner}/${repo}` });
     }
 
     const release = await ghRes.json();
-    const latestVersion = release.tag_name?.replace(/^v/, '') || currentVersion;
+    const latestVersion = (release.tag_name || '').replace(/^v/, '') || currentVersion;
 
-    const hasUpdate = latestVersion !== currentVersion;
+    // Semver comparison: only flag update if latest > current
+    const parseVer = (v: string) => v.replace(/^[^0-9]*/, '').split('.').map((n) => parseInt(n, 10) || 0);
+    const [lMaj = 0, lMin = 0, lPatch = 0] = parseVer(latestVersion);
+    const [cMaj = 0, cMin = 0, cPatch = 0] = parseVer(currentVersion);
+    const hasUpdate = lMaj > cMaj || (lMaj === cMaj && lMin > cMin) || (lMaj === cMaj && lMin === cMin && lPatch > cPatch);
+
     const apkAsset = release.assets?.find((a: any) => typeof a.name === 'string' && a.name.endsWith('.apk'));
 
     return res.json({
       hasUpdate,
       currentVersion,
       latestVersion,
+      tag: release.tag_name,
+      repo: `${owner}/${repo}`,
       releaseNotes: release.body || '',
       downloadUrl: apkAsset ? apkAsset.browser_download_url : release.html_url,
+      apkSizeMb: apkAsset?.size ? (apkAsset.size / (1024 * 1024)).toFixed(1) + ' MB' : undefined,
       publishedAt: release.published_at,
     });
   } catch (err: any) {

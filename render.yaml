@@ -34,5 +34,7 @@ services:
         value: yynvr1408
       - key: GITHUB_REPO_NAME
         value: vidhyapath
+      - key: GITHUB_RELEASE_REPO
+        value: yynvr1408/vidhyapath
       - key: GITHUB_PAT_TOKEN
         sync: false
