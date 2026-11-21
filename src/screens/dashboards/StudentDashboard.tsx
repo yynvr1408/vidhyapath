@@ -88,7 +88,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       </div>
 
       {/* QUICK ACTIONS ROW */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <button
           type="button"
           onClick={() => {
@@ -102,7 +102,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
             <div>
               <div className="font-extrabold text-xs text-[#0F172A] group-hover:text-[#0F766E]">
-                Open Classroom LMS
+                Classroom LMS
               </div>
               <div className="text-[11px] text-[#64748B]">Units, Notes, Quizzes</div>
             </div>
@@ -131,6 +131,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
         <button
           type="button"
+          onClick={() => {
+            window.location.hash = '#mascots';
+          }}
+          className="p-4 rounded-[12px] bg-white border border-[#E2E8F0] hover:border-[#7C3AED] shadow-2xs hover:shadow-xs transition-all text-left flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[10px] bg-[#F5F3FF] text-[#7C3AED] flex items-center justify-center font-bold">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-extrabold text-xs text-[#0F172A] group-hover:text-[#7C3AED]">
+                Class 10 Mascots
+              </div>
+              <div className="text-[11px] text-[#64748B]">Cheetah, Elephant, Lion</div>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#7C3AED] transition-all" />
+        </button>
+
+        <button
+          type="button"
           onClick={onOpenOfflineCenter}
           className="p-4 rounded-[12px] bg-white border border-[#E2E8F0] hover:border-[#2563EB] shadow-2xs hover:shadow-xs transition-all text-left flex items-center justify-between group"
         >
@@ -140,7 +161,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
             <div>
               <div className="font-extrabold text-xs text-[#0F172A] group-hover:text-[#2563EB]">
-                Offline Learning Center
+                Offline Learning
               </div>
               <div className="text-[11px] text-[#64748B]">0-Data Downloaded Notes</div>
             </div>
