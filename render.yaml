@@ -16,6 +16,8 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
       - key: ELEVENLABS_API_KEY
         sync: false
       - key: ELEVENLABS_VOICE_ID
