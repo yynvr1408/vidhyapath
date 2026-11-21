@@ -46,7 +46,8 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
 
   if (!isOpen) return null;
 
-  const expectedPin = learner.pin || learner.pinHash || '1234';
+  // Only the learner's own stored PIN unlocks; no hardcoded fallback.
+  const expectedPin = learner.pin || learner.pinHash || null;
 
   const handleDigit = (digit: string) => {
     if (enteredPin.length >= 4) return;
@@ -55,7 +56,7 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
     setErrorMsg(null);
 
     if (next.length === 4) {
-      if (next === expectedPin || next === '1234') {
+      if (expectedPin !== null && next === expectedPin) {
         setTimeout(() => {
           onSuccess();
         }, 150);

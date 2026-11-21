@@ -179,6 +179,7 @@ Learner doubt: "${doubtText}"`;
           doubt: queryTrimmed,
           topicId,
           mistakeTag,
+          language: pack.language,
         }),
         signal: controller.signal,
       });

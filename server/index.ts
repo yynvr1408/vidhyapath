@@ -217,9 +217,17 @@ function trimToWords(text: string, maxWords: number): string {
   return text.trim().split(/\s+/).filter(Boolean).slice(0, maxWords).join(' ');
 }
 
-function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mistakeTag: unknown): string {
+const REPLY_LANGUAGE_NAMES: Record<string, string> = { en: 'English', hi: 'Hindi', te: 'Telugu' };
+
+function buildTutorSystemPrompt(
+  pack: any,
+  topicTitle: string | undefined,
+  mistakeTag: unknown,
+  replyLanguage: string
+): string {
+  const langName = REPLY_LANGUAGE_NAMES[replyLanguage] || replyLanguage;
   const lines = [
-    `You are a tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, language code ${pack.language}.`,
+    `You are a tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, language code ${replyLanguage}.`,
   ];
   if (topicTitle) lines.push(`Current topic: ${topicTitle}.`);
   if (typeof mistakeTag === 'string' && mistakeTag.trim()) {
@@ -227,7 +235,7 @@ function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mista
   }
   lines.push(
     'Rules:',
-    '- Reply only in simple spoken-style Telugu.',
+    `- Reply only in simple spoken-style ${langName} (language code ${replyLanguage}).`,
     '- Use short sentences.',
     '- Give a hint first. Never give the final answer first.',
     '- Give the final answer only if the learner asks again.',
@@ -277,7 +285,7 @@ async function askTutorModel(systemPrompt: string, question: string): Promise<st
 
 // 2. AI Tutor Endpoint (/api/tutor/ask)
 app.post('/api/tutor/ask', async (req: Request, res: Response) => {
-  const { packId, learnerId, doubt, topicId, mistakeTag } = req.body;
+  const { packId, learnerId, doubt, topicId, mistakeTag, language } = req.body;
   if (packId && !isSafePackId(packId)) {
     return res.status(400).json({ answer: 'Invalid pack id' });
   }
@@ -307,12 +315,14 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   // Any failure, empty reply, or timeout falls through to the offline answers below.
   if (doubtText && pack) {
     const resolvedPackId = packId || 'te-10-maths-ap';
-    const cacheKey = `${resolvedPackId}|${topicId || ''}|${lower}`;
+    const replyLanguage =
+      typeof language === 'string' && /^[a-z]{2,3}$/.test(language) ? language : pack.language;
+    const cacheKey = `${resolvedPackId}|${replyLanguage}|${topicId || ''}|${lower}`;
     const cached = tutorCache.get(cacheKey);
     if (cached) return res.json({ source: 'model', answer: cached });
     if (getTutorConfig()) {
       const topic = Array.isArray(pack.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
-      const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag);
+      const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag, replyLanguage);
       const reply = trimToWords(await askTutorModel(systemPrompt, doubtText), TUTOR_MAX_WORDS);
       if (reply) {
         tutorCache.set(cacheKey, reply);

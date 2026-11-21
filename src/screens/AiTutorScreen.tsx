@@ -61,7 +61,7 @@ export const AiTutorScreen: React.FC = () => {
   }, [activeLearner, currentLanguage]);
 
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatBottomRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
   const handleSubmitDoubt = async (queryText?: string) => {

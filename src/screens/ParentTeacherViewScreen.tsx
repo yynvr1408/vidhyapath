@@ -52,7 +52,9 @@ export const ParentTeacherViewScreen: React.FC = () => {
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (parentPin === '1234' || parentPin.length === 4) {
+    // Check against the active learner's stored PIN (the app's only PIN store).
+    const storedPin = activeLearner?.pin || activeLearner?.pinHash || null;
+    if (storedPin && parentPin === storedPin) {
       setIsUnlocked(true);
       setPinError(false);
     } else {
