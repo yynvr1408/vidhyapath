@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 
 function runTests() {
-  console.log('=== LanternEd Verification & Test Suite ===\n');
+  console.log('=== Vidyapath Verification & Test Suite ===\n');
 
   // Load Telugu pack
   const packPath = path.resolve(process.cwd(), 'public/packs/te-10-maths-ap.json');

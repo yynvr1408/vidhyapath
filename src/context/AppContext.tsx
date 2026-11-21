@@ -50,6 +50,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [pack, setPack] = useState<ContentPack | null>(null);
   const [learners, setLearners] = useState<LearnerProfile[]>([]);
   const [activeLearner, setActiveLearner] = useState<LearnerProfile | null>(null);
+  const activeLearnerRef = useRef<LearnerProfile | null>(null);
+  activeLearnerRef.current = activeLearner;
   const [skillStates, setSkillStates] = useState<Map<string, SkillState>>(new Map());
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('S1_PICKER');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
@@ -244,8 +246,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const triggerSync = async () => {
-    if (!activeLearner) return;
-    const res = await SyncService.syncOutbox(activeLearner.id, pack?.version);
+    const learner = activeLearnerRef.current;
+    if (!learner) return;
+    const res = await SyncService.syncOutbox(learner.id, pack?.version);
     if (res.syncedEventsCount > 0 || res.answeredDoubts.length > 0) {
       setSyncTick(true);
       setTimeout(() => setSyncTick(false), 3000);

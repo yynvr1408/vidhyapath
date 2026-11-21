@@ -1,11 +1,11 @@
-# LanternEd: Business Viability & Scaling Blueprint
+# Vidyapath: Business Viability & Scaling Blueprint
 **ACE Builders Hackathon 2026 · Problem Statement 3 (The Last-Mile Tutor)**  
 **Target:** Rural & Semirural Secondary School Students on Shared Basic Devices
 
 ---
 
 ## Executive Summary: The Last-Mile Multilingual Learning Engine
-**LanternEd** bridges the digital divide for India's 120M+ vernacular-medium students who rely on intermittent mobile internet and shared family phones. By decoupling pedagogical intelligence from application code into swappable **JSON Content Packs**, LanternEd delivers an offline-first, voice-enabled adaptive tutor that costs **10x less to operate** than conventional English-centric ed-tech platforms.
+**Vidyapath** bridges the digital divide for India's 120M+ vernacular-medium students who rely on intermittent mobile internet and shared family phones. By decoupling pedagogical intelligence from application code into swappable **JSON Content Packs**, Vidyapath delivers an offline-first, voice-enabled adaptive tutor that costs **10x less to operate** than conventional English-centric ed-tech platforms.
 
 ---
 
@@ -32,7 +32,7 @@ $$\text{Monthly Cost per Learner} = \text{AI Inference} + \text{Edge Hosting} + 
 
 ## 3. Competitive Moat vs. Existing Ed-Tech
 
-| Parameter | Traditional Ed-Tech (Byju's, Vedantu, Khan Academy) | LanternEd |
+| Parameter | Traditional Ed-Tech (Byju's, Vedantu, Khan Academy) | Vidyapath |
 |---|---|---|
 | **Device Model** | Assumes 1 personal smartphone per child | **Engineered for 1 shared budget family phone** (animal avatars, 1-tap switcher, 2-min auto-lock). |
 | **Network Demand** | Requires continuous 4G/5G video streaming | **100% offline practice, scoring, and adaptation**; syncs in background when connection flickers. |

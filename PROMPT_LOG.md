@@ -1,8 +1,8 @@
-# LanternEd: Codebenders Prompt & Iteration Log
+# Vidyapath: Codebenders Prompt & Iteration Log
 **ACE Builders Hackathon 2026 · Problem Statement 3 (The Last-Mile Tutor)**  
 **Launch pack: Telugu · Class 10 · Mathematics (AP Board)**
 
-This document logs every prompt, iteration, output, code modification, discovered issue, and architectural fix following Section 14 of the LanternEd blueprint.
+This document logs every prompt, iteration, output, code modification, discovered issue, and architectural fix following Section 14 of the Vidyapath blueprint.
 
 ---
 

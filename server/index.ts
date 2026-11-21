@@ -82,7 +82,13 @@ const guardianTokens: Record<string, any> = {
 // Helper: load packs from public directory
 const packsDir = path.resolve(__dirname, '../public/packs');
 
+const SAFE_PACK_ID = /^[A-Za-z0-9_-]{1,64}$/;
+function isSafePackId(id: unknown): id is string {
+  return typeof id === 'string' && SAFE_PACK_ID.test(id);
+}
+
 function getPack(packId: string) {
+  if (!isSafePackId(packId)) return null;
   try {
     const filePath = path.join(packsDir, `${packId}.json`);
     if (fs.existsSync(filePath)) {
@@ -145,9 +151,88 @@ app.post('/api/sync', (req: Request, res: Response) => {
   });
 });
 
+// AI tutor model (optional). Configured only via server env vars. The key is never
+// sent to the client or logged. Any OpenAI-compatible /chat/completions endpoint works.
+const TUTOR_TIMEOUT_MS = 15000;
+const TUTOR_MAX_WORDS = 120;
+const tutorCache = new Map<string, string>();
+
+function getTutorConfig() {
+  const baseUrl = (process.env.TUTOR_API_BASE_URL || '').trim();
+  const model = (process.env.TUTOR_MODEL || '').trim();
+  const apiKey = (process.env.TUTOR_API_KEY || '').trim();
+  if (!baseUrl || !model || !apiKey) return null;
+  return { baseUrl: baseUrl.replace(/\/+$/, ''), model, apiKey };
+}
+
+function trimToWords(text: string, maxWords: number): string {
+  return text.trim().split(/\s+/).filter(Boolean).slice(0, maxWords).join(' ');
+}
+
+function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mistakeTag: unknown): string {
+  const lines = [
+    `You are a tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, language code ${pack.language}.`,
+  ];
+  if (topicTitle) lines.push(`Current topic: ${topicTitle}.`);
+  if (typeof mistakeTag === 'string' && mistakeTag.trim()) {
+    lines.push(`The learner's last mistake tag: ${mistakeTag.trim()}.`);
+  }
+  lines.push(
+    'Rules:',
+    '- Reply only in simple spoken-style Telugu.',
+    '- Use short sentences.',
+    '- Give a hint first. Never give the final answer first.',
+    '- Give the final answer only if the learner asks again.',
+    '- Reply in at most 120 words.',
+    '- If the question is off-topic, unsafe, or asks for personal data, refuse kindly in Telugu and steer back to the lesson.',
+    '- Use only content from this pack. Do not invent facts. Do not judge whether a learner answer is correct.'
+  );
+  return lines.join('\n');
+}
+
+async function askTutorModel(systemPrompt: string, question: string): Promise<string> {
+  const config = getTutorConfig();
+  if (!config) return '';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TUTOR_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question },
+        ],
+        max_tokens: 300,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      console.error(`Tutor model request failed with status ${response.status}`);
+      return '';
+    }
+    const data: any = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    return typeof content === 'string' ? content : '';
+  } catch (err: any) {
+    console.error('Tutor model request failed:', err?.name === 'AbortError' ? 'timeout' : 'network or parse error');
+    return '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // 2. AI Tutor Endpoint (/api/tutor/ask)
 app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   const { packId, learnerId, doubt, topicId, mistakeTag } = req.body;
+  if (packId && !isSafePackId(packId)) {
+    return res.status(400).json({ answer: 'Invalid pack id' });
+  }
   const pack = getPack(packId || 'te-10-maths-ap');
 
   const doubtText = (doubt || '').trim();
@@ -157,6 +242,7 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   const unsafePatterns = ['phone', 'ఫోన్', 'పాస్‌వర్డ్', 'డబ్బు', 'hack', 'password'];
   if (unsafePatterns.some((p) => lower.includes(p))) {
     return res.json({
+      source: 'fallback',
       answer: 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.'
     });
   }
@@ -164,8 +250,27 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   // Guardrail 2: Off-topic general conversation
   if (lower.includes('సినిమా') || lower.includes('cricket') || lower.includes('రాజకీయాలు')) {
     return res.json({
+      source: 'fallback',
       answer: 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.'
     });
+  }
+
+  // Model answer: only when TUTOR_API_BASE_URL, TUTOR_MODEL and TUTOR_API_KEY are all set.
+  // Any failure, empty reply, or timeout falls through to the offline answers below.
+  if (doubtText && pack) {
+    const resolvedPackId = packId || 'te-10-maths-ap';
+    const cacheKey = `${resolvedPackId}|${topicId || ''}|${lower}`;
+    const cached = tutorCache.get(cacheKey);
+    if (cached) return res.json({ source: 'model', answer: cached });
+    if (getTutorConfig()) {
+      const topic = Array.isArray(pack.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
+      const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag);
+      const reply = trimToWords(await askTutorModel(systemPrompt, doubtText), TUTOR_MAX_WORDS);
+      if (reply) {
+        tutorCache.set(cacheKey, reply);
+        return res.json({ source: 'model', answer: reply });
+      }
+    }
   }
 
   // Precomputed common doubts check
@@ -174,7 +279,7 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
       lower.includes(cd.q.toLowerCase()) || (cd.keywords && cd.keywords.some((k: string) => lower.includes(k.toLowerCase())))
     );
     if (matched) {
-      return res.json({ answer: matched.a });
+      return res.json({ source: 'fallback', answer: matched.a });
     }
   }
 
@@ -194,7 +299,7 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
     tutorAnswer = 'సూచన: సమస్యలోని ప్రాథమిక సూత్రాన్ని గమనించండి. మొదట ఇచ్చిన సంఖ్యలను సూత్రంలో ప్రతిక్షేపించండి. మొదటి దశను ప్రయత్నించండి, సమాధానం సమీపిస్తుంది!';
   }
 
-  return res.json({ answer: tutorAnswer });
+  return res.json({ source: 'fallback', answer: tutorAnswer });
 });
 
 // 3. Guardian View-Only Token Endpoint (/api/guardian/:token)
@@ -264,7 +369,8 @@ app.get('/api/admin/packs', (req: Request, res: Response) => {
 });
 
 app.get('/api/admin/packs/:id', (req: Request, res: Response) => {
-  const pack = getPack(String(req.params.id || ''));
+  if (!isSafePackId(req.params.id)) return res.status(400).json({ error: 'Invalid pack id' });
+  const pack = getPack(req.params.id);
   if (!pack) return res.status(404).json({ error: 'Pack not found' });
   return res.json(pack);
 });
@@ -332,6 +438,7 @@ app.post('/api/admin/packs/validate', (req: Request, res: Response) => {
 app.post('/api/admin/packs/publish', (req: Request, res: Response) => {
   const pack = req.body;
   if (!pack.id) return res.status(400).json({ error: 'Missing pack id' });
+  if (!isSafePackId(pack.id)) return res.status(400).json({ error: 'Invalid pack id' });
 
   try {
     const filePath = path.join(packsDir, `${pack.id}.json`);
@@ -355,6 +462,6 @@ export { app };
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`LanternEd API server running on port ${PORT}`);
+    console.log(`Vidyapath API server running on port ${PORT}`);
   });
 }

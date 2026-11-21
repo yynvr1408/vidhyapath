@@ -1,6 +1,6 @@
 import { LearnerProfile, AttemptEvent, SkillState, DoubtItem } from '../types';
 
-const DB_NAME = 'LanternEd_DB';
+const DB_NAME = 'Vidyapath_DB';
 const DB_VERSION = 1;
 
 export class LocalDatabase {

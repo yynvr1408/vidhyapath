@@ -38,7 +38,7 @@ export const S11_ImpactScreen: React.FC = () => {
             </button>
             <div>
               <span className="font-bold text-base block leading-tight">స్పాన్సర్ & ఇంపాక్ట్ డాష్‌బోర్డ్</span>
-              <span className="text-[11px] text-amber-300">LanternEd Impact & Business Viability</span>
+              <span className="text-[11px] text-amber-300">Vidyapath Impact & Business Viability</span>
             </div>
           </div>
         </div>
@@ -274,7 +274,7 @@ export const S11_ImpactScreen: React.FC = () => {
                 <span>కంటెంట్ ప్యాక్ స్కేలింగ్ (How Any Language Scales)</span>
               </div>
               <p className="text-xs text-indigo-100 leading-relaxed mb-3">
-                లాంతర్న్ ఎడ్ కోడ్‌లో ఎక్కడా ఏ భాష లేదా సిలబస్ హార్డ్ కోడ్ చేయబడలేదు. ప్రతి సబ్జెక్ట్ మరియు భాష ఒక JSON డేటా ప్యాక్ మాత్రమే.
+                విద్యాపథ్ కోడ్‌లో ఎక్కడా ఏ భాష లేదా సిలబస్ హార్డ్ కోడ్ చేయబడలేదు. ప్రతి సబ్జెక్ట్ మరియు భాష ఒక JSON డేటా ప్యాక్ మాత్రమే.
               </p>
               <div className="p-3 rounded-xl bg-white/10 text-xs text-amber-200 space-y-1 font-medium">
                 <div>✓ కొత్త భాష (ఉదా: హిందీ, ఒడియా) జోడించడానికి కేవలం 2 వారాలు.</div>
@@ -293,7 +293,7 @@ export const S11_ImpactScreen: React.FC = () => {
               <div className="flex items-center justify-between border-b-2 border-indigo-brand pb-3 mb-4">
                 <div>
                   <h2 className="text-lg font-black text-indigo-brand">
-                    LanternEd: The Last-Mile Multilingual Learning Engine
+                    Vidyapath: The Last-Mile Multilingual Learning Engine
                   </h2>
                   <p className="text-xs text-slate-500 font-bold">
                     ACE Builders Hackathon 2026 · Problem Statement 3 · Business Viability Slide
@@ -322,7 +322,7 @@ export const S11_ImpactScreen: React.FC = () => {
                     <span>Competitive Moat vs Existing Ed-Tech</span>
                   </div>
                   <p className="text-slate-700 leading-tight font-medium">
-                    Traditional ed-tech is English-first and assumes dedicated personal smartphones with 4G/5G. LanternEd is built for <strong>shared low-end basic phones</strong> with 0-data offline practice, deterministic wrong-math prevention, and pure data-pack swappability.
+                    Traditional ed-tech is English-first and assumes dedicated personal smartphones with 4G/5G. Vidyapath is built for <strong>shared low-end basic phones</strong> with 0-data offline practice, deterministic wrong-math prevention, and pure data-pack swappability.
                   </p>
                 </div>
 

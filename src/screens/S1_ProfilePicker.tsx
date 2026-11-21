@@ -24,7 +24,7 @@ export const S1_ProfilePicker: React.FC = () => {
           <span className="text-3xl">🏮</span>
         </div>
         <h1 className="text-2xl font-bold text-indigo-brand tracking-tight">
-          {pack?.uiStrings.appTitle || 'లాంతర్న్ ఎడ్'}
+          {pack?.uiStrings.appTitle || 'విద్యాపథ్'}
         </h1>
         <p className="text-sm text-slate-600 mt-1">
           {pack?.uiStrings.whoIsLearning || 'ఎవరు చదువుకుంటున్నారు?'}

@@ -1,4 +1,4 @@
-# LanternEd: 3-Minute Scripted Demonstration Guide
+# Vidyapath: 3-Minute Scripted Demonstration Guide
 **ACE Builders Hackathon 2026 · Problem Statement 3 (The Last-Mile Tutor)**  
 **Launch pack: Telugu · Class 10 · Mathematics (AP Board)**
 
@@ -10,7 +10,7 @@
 * **Action:** Open `http://localhost:3000` on a simulated mobile view (360px portrait width).
 * **Script:**
   > *"Meet Priya, a Class 10 student in rural Chittoor district, Andhra Pradesh. Her family shares a single budget Android phone with limited 1.5 GB daily data that often exhausts by afternoon. Existing ed-tech apps fail Priya: they assume English fluency, high-speed 4G, and a personal phone.  
-  > This is **LanternEd: The Last-Mile Multilingual Learning Engine**.  
+  > This is **Vidyapath: The Last-Mile Multilingual Learning Engine**.  
   > Watch the home screen: 'Who is learning?' (ఎవరు చదువుకుంటున్నారు?). Priya taps her animal avatar — the Cheetah (చిరుత). No real names, no phone numbers, and no passwords required. Her elder brother or sister can switch profiles in one single tap, with an automatic 2-minute safety lock protecting everyone's progress."*
 
 ---
@@ -59,7 +59,7 @@
 #### 2:30 - 2:50 · Sponsor Dashboard (/impact) & Unit Economics
 * **Action:** Tap the heart icon or navigate to `/#impact`. Switch between KPIs and Unit Economics slider.
 * **Script:**
-  > *"Who pays for this? The students never pay. NGOs, CSR funds, and state education boards fund LanternEd on outcome-based milestones.  
+  > *"Who pays for this? The students never pay. NGOs, CSR funds, and state education boards fund Vidyapath on outcome-based milestones.  
   > On our `/impact` dashboard, sponsors see live cohort KPIs across 124 learners — privacy guaranteed with a minimum cohort threshold of 5.  
   > Our unit economics are revolutionary: by resolving 78%+ of queries and 100% of practice locally, **our monthly operating cost is just ₹18.50 per active learner** — 10x cheaper than standard LLM chatbots. We have mapped out an 8-week pilot across 100 learners in Chittoor district."*
 

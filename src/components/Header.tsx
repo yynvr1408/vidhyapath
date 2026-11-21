@@ -41,7 +41,7 @@ export const Header: React.FC = () => {
         ) : (
           <div className="flex items-center gap-2">
             <span className="text-xl">🏮</span>
-            <span className="font-bold text-lg text-cream-100">లాంతర్న్ ఎడ్</span>
+            <span className="font-bold text-lg text-cream-100">విద్యాపథ్</span>
           </div>
         )}
       </div>

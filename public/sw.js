@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lanterned-cache-v1';
+const CACHE_NAME = 'vidyapath-cache-v1';
 const PRECACHE_URLS = [
   '/',
   '/index.html',

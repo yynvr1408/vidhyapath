@@ -1,4 +1,4 @@
-# 🏮 LanternEd: The Last-Mile Multilingual Learning Engine
+# 🏮 Vidyapath: The Last-Mile Multilingual Learning Engine
 **ACE Builders Hackathon 2026 · Problem Statement 3 (The Last-Mile Tutor)**  
 **Launch Pack:** Telugu · Class 10 · Mathematics (Andhra Pradesh State Board)
 
@@ -13,7 +13,7 @@ In rural and semirural India, over **120 million vernacular-medium students** fa
 2. **The "Data-Runs-Out" Dilemma:** Modest 1.5 GB daily cellular plans exhaust by afternoon; network connectivity in village outskirts drops from slow 3G to 0 bars.
 3. **The Ed-Tech Mismatch:** Existing ed-tech platforms are English-first, require continuous high-speed video streaming, assume personal devices, and rely on hallucination-prone LLMs that frequently compute wrong mathematics.
 
-**LanternEd** was built from scratch to solve these exact constraints:
+**Vidyapath** was built from scratch to solve these exact constraints:
 * **Offline-First & Zero-Data:** 100% of lessons, practice sessions, adaptive scoring, and common doubts execute locally on-device in the browser using IndexedDB and Service Workers.
 * **Deterministic Answer Checker:** AI **never marks mathematics answers**. Every question has stored answer keys, accepted formats, and distractor mistake mappings. AI only coaches and explains.
 * **Pack-Driven Engine:** Zero hard-coded language, class, or curriculum strings. Swapping a JSON content pack completely transforms the app into a new language or subject.
@@ -56,7 +56,7 @@ In rural and semirural India, over **120 million vernacular-medium students** fa
 
 ## 3. Proof Against Judging Criteria
 
-| Criterion | Weight | Proof Delivered in LanternEd |
+| Criterion | Weight | Proof Delivered in Vidyapath |
 |---|:---:|---|
 | **Working Product** | **30%** | Fully functional installable PWA with Service Worker precaching, IndexedDB storage, Web Speech API (te-IN recognition & synthesis), offline banner with automatic silent switch, and responsive design tested at 360px portrait width. |
 | **Business Viability** | **25%** | Dedicated `/impact` dashboard displaying live cohort KPIs across 124 learners, interactive unit economics calculator with explicit assumptions demonstrating **₹18.50 / learner / month**, an 8-week pilot plan, and a 1-page business slide. |
@@ -68,7 +68,7 @@ In rural and semirural India, over **120 million vernacular-medium students** fa
 
 ## 4. Performance Budget Audit
 
-| Item | Blueprint Target | LanternEd Actual | Audit Result |
+| Item | Blueprint Target | Vidyapath Actual | Audit Result |
 |---|:---:|:---:|:---:|
 | **First Load (App Shell gzip)** | $\le$ 150 KB | **92.3 KB** | **PASSED (38% under budget)** |
 | **Content Pack (gzip/raw)** | $\le$ 100 KB | **18.4 KB** | **PASSED (81% under budget)** |
@@ -96,7 +96,7 @@ In rural and semirural India, over **120 million vernacular-medium students** fa
 
 ## 6. Add-a-Language Guide: Creating a New Content Pack
 
-LanternEd is 100% data-pack driven. To add a new language (e.g., Hindi, Tamil, Odia) or subject, **zero code changes are required**.
+Vidyapath is 100% data-pack driven. To add a new language (e.g., Hindi, Tamil, Odia) or subject, **zero code changes are required**.
 
 ### Step 1: Create the JSON File
 Create a new file in `public/packs/` following the naming convention `<lang>-<class>-<subject>-<board>.json` (e.g., `hi-10-maths-cbse.json`).
@@ -182,6 +182,19 @@ npm run dev
 npm run server
 ```
 
+### AI Tutor Setup (optional)
+The `/api/tutor/ask` endpoint can use any OpenAI-compatible chat provider. Copy `.env.example` to `.env` and set:
+
+| Variable | Purpose |
+|---|---|
+| `TUTOR_API_BASE_URL` | Provider base URL; the server calls `${TUTOR_API_BASE_URL}/chat/completions` |
+| `TUTOR_MODEL` | Model name the provider expects |
+| `TUTOR_API_KEY` | Provider API key, sent as a Bearer token |
+
+* Any OpenAI-compatible provider works. No provider-specific fields are used.
+* The key stays on the server. It is never sent to the browser or written to logs. `.env` is git-ignored.
+* Without all three variables, or if a model call fails, times out (15 s), or returns empty text, the app uses the offline answers. Responses include `source: "model"` or `source: "fallback"`.
+
 ### Production Build & Preview
 ```bash
 # Build the production PWA bundle (TypeScript + Vite)
@@ -216,7 +229,7 @@ All tests execute offline and assert:
 
 ## 9. Privacy, DPDP Compliance & Responsible AI
 
-* **Zero Personal Identifiers:** LanternEd does not request or store real names, phone numbers, email addresses, school IDs, or GPS locations. Learners are identified strictly by preset animal nicknames and avatars.
+* **Zero Personal Identifiers:** Vidyapath does not request or store real names, phone numbers, email addresses, school IDs, or GPS locations. Learners are identified strictly by preset animal nicknames and avatars.
 * **Shared-Phone Privacy:** Profiles are sandboxed locally. A 2-minute inactivity timer automatically locks back to the profile picker.
 * **Sponsor Privacy Safeguard:** In compliance with India's Digital Personal Data Protection (DPDP) Act, sponsor and NGO views only display aggregated cohort metrics when **cohort size is at least 5 learners**.
 * **Zero Commercial Ads or Trackers:** No third-party ad SDKs or user tracking scripts.

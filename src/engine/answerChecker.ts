@@ -40,11 +40,11 @@ export class DeterministicAnswerChecker {
     // Check if input directly matches one of the option keys
     if (['A', 'B', 'C', 'D'].includes(upperInput)) {
       chosenOptionKey = upperInput as 'A' | 'B' | 'C' | 'D';
-    } else {
+    } else if (normalizedInput !== '') {
       // Check if input matches one of the 4 options text or acceptedForms
       const optionIndex = question.options.findIndex((opt) => {
         const normOpt = this.normalize(opt);
-        return normOpt === normalizedInput || normalizedInput.includes(normOpt) || normOpt.includes(normalizedInput);
+        return normOpt === normalizedInput;
       });
 
       if (optionIndex !== -1) {
@@ -53,7 +53,7 @@ export class DeterministicAnswerChecker {
         // Check accepted forms
         const matchedAccepted = question.acceptedForms.some((form) => {
           const normForm = this.normalize(form);
-          return normForm === normalizedInput || normalizedInput.includes(normForm);
+          return normForm === normalizedInput;
         });
 
         if (matchedAccepted) {
