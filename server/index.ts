@@ -194,9 +194,36 @@ function trimToWords(text: string, maxWords: number): string {
   return text.trim().split(/\s+/).filter(Boolean).slice(0, maxWords).join(' ');
 }
 
+function getLanguageName(langCode: string): string {
+  switch (langCode) {
+    case 'hi': return 'Hindi';
+    case 'en': return 'English';
+    case 'te':
+    default: return 'Telugu';
+  }
+}
+
+function getGuardrailRefusal(language: string, type: 'safety' | 'offtopic'): string {
+  if (language === 'en') {
+    return type === 'safety'
+      ? 'I can only assist with academic syllabus questions. Please ask your mathematics doubt.'
+      : 'We are studying Class 10 Mathematics. Please ask a question related to your current syllabus topic.';
+  }
+  if (language === 'hi') {
+    return type === 'safety'
+      ? 'क्षमा करें, मैं केवल कक्षा 10 पाठ्यक्रम के प्रश्नों में सहायता कर सकता हूँ। कृपया अपना गणितीय संदेह पूछें।'
+      : 'हम अभी कक्षा 10 गणित का अध्ययन कर रहे हैं। कृपया अपने विषय से संबंधित संदेह पूछें।';
+  }
+  // Default Telugu
+  return type === 'safety'
+    ? 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.'
+    : 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.';
+}
+
 function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mistakeTag: unknown): string {
+  const langName = getLanguageName(pack.language);
   const lines = [
-    `You are a tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, language code ${pack.language}.`,
+    `You are an empathetic, world-class educational AI tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, speaking in ${langName} (language code: ${pack.language}).`,
   ];
   if (topicTitle) lines.push(`Current topic: ${topicTitle}.`);
   if (typeof mistakeTag === 'string' && mistakeTag.trim()) {
@@ -204,13 +231,13 @@ function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mista
   }
   lines.push(
     'Rules:',
-    '- Reply only in simple spoken-style Telugu.',
-    '- Use short sentences.',
-    '- Give a hint first. Never give the final answer first.',
-    '- Give the final answer only if the learner asks again.',
+    `- Reply only in simple, warm, conversational spoken-style ${langName}.`,
+    '- Use short, encouraging sentences suitable for high school learners.',
+    '- Give a gentle nudge or conceptual hint first. Never give away the final numerical answer directly on first inquiry.',
+    '- If the learner has made a mistake, explain the core misconception kindly without shame.',
     '- Reply in at most 120 words.',
-    '- If the question is off-topic, unsafe, or asks for personal data, refuse kindly in Telugu and steer back to the lesson.',
-    '- Use only content from this pack. Do not invent facts. Do not judge whether a learner answer is correct.'
+    `- If the question is off-topic, unsafe, or asks for personal data, refuse kindly in ${langName} and steer back to the ${pack.subject} syllabus.`,
+    '- Rely on rigorous curriculum concepts. Never invent mathematical facts. Do not score the student.'
   );
   return lines.join('\n');
 }
@@ -264,19 +291,19 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   const lower = doubtText.toLowerCase();
 
   // Guardrail 1: Personal info / unsafe
-  const unsafePatterns = ['phone', 'ఫోన్', 'పాస్‌వర్డ్', 'డబ్బు', 'hack', 'password'];
+  const unsafePatterns = ['phone', 'ఫోన్', 'పాస్‌వర్డ్', 'డబ్బు', 'hack', 'password', 'पैसे', 'पासवर्ड'];
   if (unsafePatterns.some((p) => lower.includes(p))) {
     return res.json({
       source: 'fallback',
-      answer: 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.'
+      answer: getGuardrailRefusal(pack?.language || 'te', 'safety'),
     });
   }
 
   // Guardrail 2: Off-topic general conversation
-  if (lower.includes('సినిమా') || lower.includes('cricket') || lower.includes('రాజకీయాలు')) {
+  if (lower.includes('సినిమా') || lower.includes('cricket') || lower.includes('రాజకీయాలు') || lower.includes('movie') || lower.includes('फिल्म')) {
     return res.json({
       source: 'fallback',
-      answer: 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.'
+      answer: getGuardrailRefusal(pack?.language || 'te', 'offtopic'),
     });
   }
 

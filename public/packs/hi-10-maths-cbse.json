@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "isStub": true,
   "language": "hi",
-  "languageName": "हिन्दी (Hindi Preview Stub)",
+  "languageName": "हिन्दी (Hindi - CBSE Maths)",
   "class": 10,
   "subject": "maths",
   "board": "CBSE",
@@ -13,7 +13,7 @@
     "rtl": false
   },
   "uiStrings": {
-    "appTitle": "लालटेन एड",
+    "appTitle": "विद्यापथ",
     "tagline": "अंतिम मील के छात्र के लिए स्मार्ट ट्यूटर",
     "whoIsLearning": "कौन सीख रहा है?",
     "addNewLearner": "नया शिक्षार्थी जोड़ें",

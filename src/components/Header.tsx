@@ -49,21 +49,25 @@ export const Header: React.FC = () => {
 
       {/* Right Action Buttons */}
       <div className="flex items-center gap-2">
-        {/* Language Pack Selector / Preview Stub Switcher */}
+        {/* Language Pack Selector / Cycle Switcher (Telugu -> Hindi -> English) */}
         <button
           type="button"
           onClick={() => {
-            if (pack?.id === 'te-10-maths-ap') {
-              switchPack('hi-10-maths-cbse');
-            } else {
-              switchPack('te-10-maths-ap');
-            }
+            const nextPackId =
+              pack?.language === 'te'
+                ? 'hi-10-maths-cbse'
+                : pack?.language === 'hi'
+                ? 'en-10-maths-cbse'
+                : 'te-10-maths-ap';
+            switchPack(nextPackId);
           }}
-          title="భాష మార్చు / Switch Language Pack"
-          className="text-xs bg-indigo-light/80 hover:bg-indigo-light text-cream-100 px-2.5 py-1.5 rounded-lg border border-indigo-400/30 flex items-center gap-1 min-h-[40px]"
+          title="భాష మార్చు / Switch Language (Telugu / Hindi / English)"
+          className="text-xs bg-indigo-light/80 hover:bg-indigo-light text-cream-100 px-2.5 py-1.5 rounded-lg border border-indigo-400/30 flex items-center gap-1.5 min-h-[40px] active:scale-95 transition-all"
         >
           <BookOpen className="w-3.5 h-3.5 text-lantern" />
-          <span className="font-semibold">{pack?.language === 'te' ? 'తెలుగు' : 'हिन्दी (Stub)'}</span>
+          <span className="font-bold">
+            {pack?.language === 'te' ? 'తెలుగు' : pack?.language === 'hi' ? 'हिन्दी' : 'English'}
+          </span>
         </button>
 
         {/* Switch Learner (1-tap for shared phone) */}

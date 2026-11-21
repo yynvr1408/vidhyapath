@@ -73,15 +73,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (res.ok) {
         const data: ContentPack = await res.json();
         setPack(data);
+        return data;
       }
     } catch (err) {
       console.warn('Failed to fetch pack:', err);
     }
+    return null;
   };
 
   // Switch pack
   const switchPack = async (packId: string) => {
     await loadPack(packId);
+    if (activeLearnerRef.current) {
+      const updated = { ...activeLearnerRef.current, packId };
+      setActiveLearner(updated);
+      await localDb.saveLearner(updated);
+      await loadLearnerSkills(updated.id);
+    }
   };
 
   // Seed default learners if first run
@@ -200,6 +208,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const selectLearner = (learner: LearnerProfile) => {
     setActiveLearner(learner);
+    if (learner.packId) {
+      loadPack(learner.packId);
+    }
     loadLearnerSkills(learner.id);
     setCurrentScreen('S3_HOME');
   };

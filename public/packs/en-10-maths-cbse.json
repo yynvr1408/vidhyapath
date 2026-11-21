@@ -1,0 +1,357 @@
+{
+  "id": "en-10-maths-cbse",
+  "version": "1.0.0",
+  "language": "en",
+  "languageName": "English (Class 10 CBSE Maths)",
+  "class": 10,
+  "subject": "maths",
+  "board": "CBSE",
+  "locales": {
+    "stt": "en-IN",
+    "tts": "en-IN",
+    "rtl": false
+  },
+  "uiStrings": {
+    "appTitle": "Vidyapath",
+    "tagline": "The Last-Mile Multilingual Smart Tutor",
+    "whoIsLearning": "Who is learning today?",
+    "addNewLearner": "Add New Learner",
+    "switchLearner": "Switch Learner",
+    "enterPin": "Enter 4-Digit PIN",
+    "wrongPin": "Incorrect PIN. Please try again.",
+    "optionalPinPrompt": "Set 4-Digit PIN (Optional)",
+    "chooseAnimal": "Choose Your Avatar",
+    "pickColor": "Pick Your Color",
+    "saveProfile": "Save Profile",
+    "home": "Home",
+    "learn": "Learn",
+    "practice": "Practice",
+    "askDoubt": "Ask AI Tutor",
+    "myProgress": "My Progress",
+    "settings": "Settings",
+    "todayGoal": "Today's Goal",
+    "sessionsLeft": "1 session remaining",
+    "progressSaved": "Progress saved locally",
+    "noInternet": "No Internet (Offline Mode)",
+    "onlineReady": "Online & Synced",
+    "syncSuccess": "All attempts synchronized",
+    "listen": "Listen",
+    "hint": "Hint",
+    "hintLevel": "Hint Level",
+    "nextStep": "Next Question",
+    "checkAnswer": "Check Answer",
+    "greatJob": "Great Job!",
+    "tryAgain": "Try Again",
+    "lookCloser": "Let's look closer",
+    "remedyHeading": "Key Concept to Remember:",
+    "trySimilar": "Practice a similar question?",
+    "sessionComplete": "Congratulations! Session Complete",
+    "lanternGlowIncreased": "Your village lantern glow increased!",
+    "accuracy": "Accuracy",
+    "pointsEarned": "Points Earned",
+    "backToHome": "Back to Home",
+    "start": "Start",
+    "speakAnswer": "Speak Answer",
+    "listeningNow": "Listening... speak now",
+    "voiceUnsupported": "Voice input is not supported in this browser. Please tap an option.",
+    "typeDoubtPlaceholder": "Type or speak your math doubt here...",
+    "askVoice": "Ask with Voice",
+    "askPhoto": "Ask with Photo",
+    "sendDoubt": "Send Doubt",
+    "offlineQueueNotice": "You are currently offline. Your question is queued and will be answered once reconnected.",
+    "queuedDoubtsCount": "Queued Doubts",
+    "commonDoubtsHeading": "Frequently Asked Doubts (Instant Offline)",
+    "recentDoubts": "Recent Doubts",
+    "didThisHelp": "Was this explanation helpful?",
+    "yesHelpful": "Yes, I understand",
+    "noNeedMore": "Need more explanation",
+    "lowDataMode": "Low-Data Mode",
+    "lowDataDesc": "Saves cellular data. Image and voice uploads are paused. On-device audio remains active.",
+    "fontSize": "Font Size",
+    "dataUsed": "Data Used",
+    "clearCache": "Clear AI Explanation Cache",
+    "guardianLink": "Guardian Summary Link",
+    "guardianDesc": "Read-only link for parents or guardians to see progress",
+    "copyLink": "Copy Link",
+    "linkCopied": "Link copied to clipboard!",
+    "chapter": "Chapter",
+    "skill": "Skill",
+    "masteryLevel": "Mastery Level",
+    "mastered": "Mastered",
+    "needsPractice": "Needs Practice",
+    "villageLanterns": "Village Lanterns",
+    "villageDesc": "As you master every mathematical skill, your village lantern shines brighter!"
+  },
+  "topics": [
+    {
+      "id": "en_ch1_real_numbers",
+      "title": "Chapter 1: Real Numbers",
+      "titleEn": "Chapter 1: Real Numbers",
+      "description": "Euclid's Division Lemma, HCF, Fundamental Theorem of Arithmetic, and Decimal Expansions.",
+      "skills": ["en_euclid_division", "en_hcf_euclid", "en_prime_factorization", "en_terminating_decimals", "en_irrational_proofs"],
+      "cards": [
+        {
+          "id": "en_c1_1",
+          "stepNumber": 1,
+          "heading": "Euclid's Division Lemma",
+          "conceptText": "For any two positive integers a and b, there exist unique integers q and r such that a = bq + r, where 0 ≤ r < b.",
+          "workedExample": {
+            "problem": "Divide 17 by 5 using Euclid's Lemma.",
+            "steps": [
+              "17 = 5 × 3 + 2",
+              "Here dividend a = 17, divisor b = 5, quotient q = 3, remainder r = 2.",
+              "Notice 0 ≤ 2 < 5."
+            ],
+            "finalAnswer": "Quotient = 3, Remainder = 2"
+          },
+          "keyTakeaway": "The remainder r is always non-negative and strictly smaller than the divisor b."
+        },
+        {
+          "id": "en_c1_2",
+          "stepNumber": 2,
+          "heading": "Fundamental Theorem of Arithmetic",
+          "conceptText": "Every composite number can be expressed as a product of primes, and this factorization is unique apart from the order in which prime factors occur.",
+          "workedExample": {
+            "problem": "Find the prime factorization of 36.",
+            "steps": [
+              "36 = 2 × 18",
+              "18 = 2 × 9",
+              "9 = 3 × 3",
+              "36 = 2² × 3²"
+            ],
+            "finalAnswer": "36 = 2² × 3²"
+          },
+          "keyTakeaway": "Prime factorization gives the unique foundational building blocks of any number."
+        }
+      ]
+    },
+    {
+      "id": "en_ch2_polynomials",
+      "title": "Chapter 2: Polynomials",
+      "titleEn": "Chapter 2: Polynomials",
+      "description": "Geometrical meaning of zeroes, relationship between zeroes and coefficients of quadratic polynomials.",
+      "skills": ["en_poly_zeroes", "en_quadratic_coefficients", "en_poly_factorization"],
+      "cards": [
+        {
+          "id": "en_c2_1",
+          "stepNumber": 1,
+          "heading": "Zeroes of a Polynomial",
+          "conceptText": "A real number k is a zero of polynomial p(x) if p(k) = 0. Graphically, zeroes are the x-coordinates of points where y = p(x) intersects the x-axis.",
+          "keyTakeaway": "A polynomial of degree n can have at most n zeroes."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "eq101",
+      "skillId": "en_euclid_division",
+      "difficulty": 1,
+      "text": "In Euclid's Division Lemma a = bq + r, which condition must remainder 'r' satisfy?",
+      "options": [
+        "0 < r ≤ b",
+        "0 ≤ r < b",
+        "0 < r < b",
+        "r > b"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "0 <= r < b", "0 ≤ r < b", "option b"],
+      "hintLadder": [
+        "Remainder cannot be negative, so it must be at least 0.",
+        "If remainder equals divisor b, you can divide once more! So r cannot equal b.",
+        "Therefore, 0 ≤ r < b. Correct option is B."
+      ],
+      "distractorMistakes": {
+        "A": "included_equal_to_b",
+        "C": "excluded_zero",
+        "D": "remainder_larger_than_divisor"
+      },
+      "explanation": "According to Euclid's Division Lemma, 0 ≤ r < b. Remainder cannot equal or exceed divisor b."
+    },
+    {
+      "id": "eq102",
+      "skillId": "en_hcf_euclid",
+      "difficulty": 1,
+      "text": "What is the HCF of 45 and 15 using Euclid's algorithm?",
+      "options": [
+        "3",
+        "5",
+        "15",
+        "45"
+      ],
+      "answer": "C",
+      "acceptedForms": ["C", "15", "fifteen", "option c"],
+      "hintLadder": [
+        "Divide 45 by 15.",
+        "45 = 15 × 3 + 0.",
+        "Since the remainder is 0, the divisor 15 is the HCF."
+      ],
+      "distractorMistakes": {
+        "A": "factor_not_highest",
+        "B": "common_factor_not_highest",
+        "D": "chose_dividend"
+      },
+      "explanation": "Since 45 = 15 × 3 + 0, the remainder is 0 and HCF is 15."
+    },
+    {
+      "id": "eq103",
+      "skillId": "en_prime_factorization",
+      "difficulty": 2,
+      "text": "What is the prime factorization of 140?",
+      "options": [
+        "2 × 70",
+        "2² × 5 × 7",
+        "4 × 35",
+        "2 × 5 × 14"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "2^2 * 5 * 7", "2^2 x 5 x 7", "option b"],
+      "hintLadder": [
+        "Prime factors must only contain prime numbers (no 70, 35, 14, 4).",
+        "140 = 2 × 70 = 2 × 2 × 35 = 2² × 5 × 7.",
+        "All factors (2, 5, 7) are prime. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "included_composite_70",
+        "C": "included_composite_4",
+        "D": "included_composite_14"
+      },
+      "explanation": "140 = 2 × 2 × 5 × 7 = 2² × 5 × 7. All numbers must be prime."
+    },
+    {
+      "id": "eq104",
+      "skillId": "en_terminating_decimals",
+      "difficulty": 2,
+      "text": "A rational number p/q has a terminating decimal expansion if the prime factorization of denominator q is of the form:",
+      "options": [
+        "2^n × 3^m",
+        "2^n × 5^m",
+        "3^n × 5^m",
+        "7^n × 5^m"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "2^n x 5^m", "2^n * 5^m", "option b"],
+      "hintLadder": [
+        "Decimal system is base 10.",
+        "Factors of 10 are 2 and 5.",
+        "So denominator must only have factors of 2 and 5 (2^n × 5^m)."
+      ],
+      "distractorMistakes": {
+        "A": "included_prime_3",
+        "C": "missing_factor_2",
+        "D": "included_prime_7"
+      },
+      "explanation": "A decimal terminates if and only if the denominator's prime factors are only 2 and 5 (q = 2^n × 5^m)."
+    },
+    {
+      "id": "eq105",
+      "skillId": "en_irrational_proofs",
+      "difficulty": 3,
+      "text": "Which of the following numbers is an irrational number?",
+      "options": [
+        "√4",
+        "√9",
+        "√5",
+        "0.25"
+      ],
+      "answer": "C",
+      "acceptedForms": ["C", "sqrt(5)", "√5", "option c"],
+      "hintLadder": [
+        "√4 = 2 and √9 = 3 (both are integers, so rational).",
+        "0.25 = 1/4 (rational).",
+        "5 is not a perfect square, so √5 cannot be written as p/q."
+      ],
+      "distractorMistakes": {
+        "A": "perfect_square_4",
+        "B": "perfect_square_9",
+        "D": "terminating_decimal"
+      },
+      "explanation": "√5 is irrational because 5 is a prime number and not a perfect square."
+    },
+    {
+      "id": "eq201",
+      "skillId": "en_poly_zeroes",
+      "difficulty": 1,
+      "text": "What is the zero of the linear polynomial p(x) = 2x + 6?",
+      "options": [
+        "3",
+        "-3",
+        "6",
+        "-6"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "-3", "minus 3", "option b"],
+      "hintLadder": [
+        "To find the zero, set p(x) = 0.",
+        "2x + 6 = 0  =>  2x = -6.",
+        "x = -6 / 2 = -3."
+      ],
+      "distractorMistakes": {
+        "A": "sign_error_positive_3",
+        "C": "constant_term_6",
+        "D": "constant_term_minus_6"
+      },
+      "explanation": "2x + 6 = 0 => 2x = -6 => x = -3."
+    },
+    {
+      "id": "eq202",
+      "skillId": "en_quadratic_coefficients",
+      "difficulty": 2,
+      "text": "For a quadratic polynomial ax² + bx + c with zeroes α and β, the sum of zeroes (α + β) equals:",
+      "options": [
+        "c/a",
+        "-b/a",
+        "b/a",
+        "-c/a"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "-b/a", "- b / a", "option b"],
+      "hintLadder": [
+        "Sum of zeroes has a minus sign with the coefficient of x.",
+        "α + β = -(coefficient of x) / (coefficient of x²).",
+        "Therefore, α + β = -b/a."
+      ],
+      "distractorMistakes": {
+        "A": "product_of_zeroes_c_over_a",
+        "C": "forgot_minus_sign",
+        "D": "wrong_coefficient_minus_c"
+      },
+      "explanation": "Sum of zeroes α + β = -b/a. Product of zeroes αβ = c/a."
+    }
+  ],
+  "mistakeRemedies": {
+    "included_equal_to_b": "The remainder can never equal the divisor b; it must always be strictly less than b (r < b).",
+    "excluded_zero": "The remainder can be 0 when a number is perfectly divisible (0 ≤ r).",
+    "remainder_larger_than_divisor": "The remainder cannot be larger than the divisor.",
+    "included_composite_70": "Prime factorization cannot include composite numbers like 70.",
+    "included_composite_4": "4 is not a prime number (2 × 2).",
+    "included_composite_14": "14 is a composite number (2 × 7).",
+    "included_prime_3": "Factors of 3 create non-terminating recurring decimals.",
+    "sign_error_positive_3": "Remember to change the sign when moving +6 across the equals sign to get -6.",
+    "forgot_minus_sign": "Sum of zeroes has a negative sign: -b/a.",
+    "product_of_zeroes_c_over_a": "c/a is the product of zeroes (αβ), not the sum."
+  },
+  "commonDoubts": [
+    {
+      "id": "ecd1",
+      "topicId": "en_ch1_real_numbers",
+      "q": "How to check if a fraction has a terminating decimal?",
+      "a": "First reduce the fraction to lowest terms. Then factorize the denominator q. If q has only 2s and 5s (2^n × 5^m), it terminates. If any other prime factor like 3, 7, 11 appears, it is non-terminating.",
+      "keywords": ["terminating", "decimal", "denominator", "fraction"]
+    },
+    {
+      "id": "ecd2",
+      "topicId": "en_ch1_real_numbers",
+      "q": "What is the difference between HCF and LCM?",
+      "a": "HCF (Highest Common Factor) is the product of the smallest powers of each common prime factor. LCM (Least Common Multiple) is the product of the greatest powers of all prime factors. Also: HCF(a, b) × LCM(a, b) = a × b.",
+      "keywords": ["hcf", "lcm", "difference", "formula"]
+    },
+    {
+      "id": "ecd3",
+      "topicId": "en_ch2_polynomials",
+      "q": "What are zeroes of a polynomial?",
+      "a": "The zeroes of a polynomial p(x) are the values of x for which p(x) becomes 0. On a graph, they are the exact points where the curve crosses the horizontal x-axis.",
+      "keywords": ["zeroes", "polynomial", "graph", "roots"]
+    }
+  ]
+}

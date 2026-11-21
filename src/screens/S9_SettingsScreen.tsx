@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Database, Type, Trash2, Users, Shield, HardDrive, Check, Sparkles } from 'lucide-react';
+import { ArrowLeft, Database, Type, Trash2, Users, Shield, HardDrive, Check, Sparkles, Globe, BookOpen } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { AppUpdateButton } from '../components/AppUpdateButton';
 
+const AVAILABLE_PACKS = [
+  { id: 'te-10-maths-ap', name: 'తెలుగు (Telugu)', sub: '10వ గణితం (AP బోర్డు)', badge: 'తెలుగు' },
+  { id: 'hi-10-maths-cbse', name: 'हिन्दी (Hindi)', sub: 'कक्षा 10 गणित (CBSE)', badge: 'हिन्दी' },
+  { id: 'en-10-maths-cbse', name: 'English', sub: 'Class 10 Maths (CBSE)', badge: 'English' },
+];
+
 export const S9_SettingsScreen: React.FC = () => {
   const {
+    pack,
+    switchPack,
     lowDataMode,
     toggleLowDataMode,
     fontSize,
@@ -17,6 +25,14 @@ export const S9_SettingsScreen: React.FC = () => {
   } = useApp();
 
   const [cacheCleared, setCacheCleared] = useState(false);
+  const [switchingPack, setSwitchingPack] = useState(false);
+
+  const handlePackSwitch = async (packId: string) => {
+    if (packId === pack?.id) return;
+    setSwitchingPack(true);
+    await switchPack(packId);
+    setTimeout(() => setSwitchingPack(false), 500);
+  };
 
   const handleClearCache = async () => {
     await clearAiCache();
@@ -43,6 +59,58 @@ export const S9_SettingsScreen: React.FC = () => {
       <OfflineBanner />
 
       <main className="flex-1 max-w-md w-full mx-auto px-4 pt-4 space-y-4">
+        {/* 0. Language & Subject Pack Switcher */}
+        <div className="bg-white rounded-3xl p-5 border-2 border-indigo-200 shadow-xs">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-brand flex items-center justify-center">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-indigo-brand">
+                {pack?.language === 'en'
+                  ? 'Language & Curriculum Pack'
+                  : pack?.language === 'hi'
+                  ? 'भाषा और पाठ्यक्रम'
+                  : 'భాష మరియు పాఠ్యాంశం (Language & Subject)'}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {pack?.language === 'en'
+                  ? 'Swapping data pack transforms all UI and AI tutoring instantly'
+                  : pack?.language === 'hi'
+                  ? 'डेटा पैक बदलने से पूरा इंटरफेस और ट्यूटर बदल जाता है'
+                  : 'డేటా ప్యాక్ మార్చడం ద్వారా ఇంటర్‌ఫేస్ మరియు AI ట్యూటర్ తక్షణమే మారుతుంది'}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {AVAILABLE_PACKS.map((p) => {
+              const isSelected = p.id === (pack?.id || 'te-10-maths-ap');
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handlePackSwitch(p.id)}
+                  disabled={switchingPack}
+                  className={`p-2.5 rounded-2xl border-2 text-center transition-all active:scale-95 flex flex-col items-center justify-center ${
+                    isSelected
+                      ? 'border-indigo-brand bg-indigo-50 text-indigo-950 font-black shadow-xs ring-2 ring-indigo-300'
+                      : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <span className="text-xs font-bold">{p.badge}</span>
+                  <span className="text-[10px] text-slate-500 mt-0.5">{p.sub}</span>
+                </button>
+              );
+            })}
+          </div>
+          {switchingPack && (
+            <div className="text-center text-xs text-indigo-brand font-bold mt-2 animate-pulse">
+              {pack?.language === 'en' ? 'Switching pack...' : 'ప్యాక్ లోడ్ అవుతోంది...'}
+            </div>
+          )}
+        </div>
+
         {/* 1. Low-Data Mode Toggle */}
         <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-xs">
           <div className="flex items-start justify-between gap-3">
