@@ -168,7 +168,8 @@ Learner doubt: "${doubtText}"`;
     topicId?: string,
     mistakeTag?: string,
     isOffline: boolean = false,
-    lowDataMode: boolean = false
+    lowDataMode: boolean = false,
+    tutoringLanguage?: string
   ): Promise<TutorResponse> {
     const queryTrimmed = doubtText.trim();
     if (!queryTrimmed) {
@@ -247,6 +248,7 @@ Learner doubt: "${doubtText}"`;
           doubt: queryTrimmed,
           topicId,
           mistakeTag,
+          language: tutoringLanguage || pack.language,
         }),
       });
 

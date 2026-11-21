@@ -194,36 +194,58 @@ function trimToWords(text: string, maxWords: number): string {
   return text.trim().split(/\s+/).filter(Boolean).slice(0, maxWords).join(' ');
 }
 
+const SCHEDULED_LANG_NAMES: Record<string, string> = {
+  en: 'English',
+  te: 'Telugu',
+  hi: 'Hindi',
+  ta: 'Tamil',
+  kn: 'Kannada',
+  bn: 'Bengali',
+  mr: 'Marathi',
+  gu: 'Gujarati',
+  ml: 'Malayalam',
+  or: 'Odia',
+  pa: 'Punjabi',
+  as: 'Assamese',
+  ur: 'Urdu',
+  sa: 'Sanskrit',
+  kok: 'Konkani',
+  mai: 'Maithili',
+  mni: 'Manipuri',
+  ne: 'Nepali',
+  brx: 'Bodo',
+  doi: 'Dogri',
+  ks: 'Kashmiri',
+  sat: 'Santali',
+  sd: 'Sindhi',
+};
+
 function getLanguageName(langCode: string): string {
-  switch (langCode) {
-    case 'hi': return 'Hindi';
-    case 'en': return 'English';
-    case 'te':
-    default: return 'Telugu';
-  }
+  return SCHEDULED_LANG_NAMES[langCode] || 'English';
 }
 
 function getGuardrailRefusal(language: string, type: 'safety' | 'offtopic'): string {
-  if (language === 'en') {
-    return type === 'safety'
-      ? 'I can only assist with academic syllabus questions. Please ask your mathematics doubt.'
-      : 'We are studying Class 10 Mathematics. Please ask a question related to your current syllabus topic.';
-  }
   if (language === 'hi') {
     return type === 'safety'
       ? 'क्षमा करें, मैं केवल कक्षा 10 पाठ्यक्रम के प्रश्नों में सहायता कर सकता हूँ। कृपया अपना गणितीय संदेह पूछें।'
       : 'हम अभी कक्षा 10 गणित का अध्ययन कर रहे हैं। कृपया अपने विषय से संबंधित संदेह पूछें।';
   }
-  // Default Telugu
+  if (language === 'te') {
+    return type === 'safety'
+      ? 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.'
+      : 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.';
+  }
+  // Default English / other languages
   return type === 'safety'
-    ? 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.'
-    : 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.';
+    ? 'I can only assist with academic syllabus questions. Please ask your mathematics doubt.'
+    : 'We are studying Class 10 Mathematics. Please ask a question related to your current syllabus topic.';
 }
 
-function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mistakeTag: unknown): string {
-  const langName = getLanguageName(pack.language);
+function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mistakeTag: unknown, requestedLang?: string): string {
+  const targetLang = requestedLang || pack.language || 'en';
+  const langName = getLanguageName(targetLang);
   const lines = [
-    `You are an empathetic, world-class educational AI tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, speaking in ${langName} (language code: ${pack.language}).`,
+    `You are an empathetic, world-class educational AI tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, speaking in ${langName} (language code: ${targetLang}).`,
   ];
   if (topicTitle) lines.push(`Current topic: ${topicTitle}.`);
   if (typeof mistakeTag === 'string' && mistakeTag.trim()) {
@@ -281,7 +303,7 @@ async function askTutorModel(systemPrompt: string, question: string): Promise<st
 
 // 2. AI Tutor Endpoint (/api/tutor/ask)
 app.post('/api/tutor/ask', async (req: Request, res: Response) => {
-  const { packId, learnerId, doubt, topicId, mistakeTag } = req.body;
+  const { packId, learnerId, doubt, topicId, mistakeTag, language } = req.body;
   if (packId && !isSafePackId(packId)) {
     return res.status(400).json({ answer: 'Invalid pack id' });
   }
@@ -295,7 +317,7 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   if (unsafePatterns.some((p) => lower.includes(p))) {
     return res.json({
       source: 'fallback',
-      answer: getGuardrailRefusal(pack?.language || 'te', 'safety'),
+      answer: getGuardrailRefusal(language || pack?.language || 'te', 'safety'),
     });
   }
 
@@ -303,7 +325,7 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   if (lower.includes('సినిమా') || lower.includes('cricket') || lower.includes('రాజకీయాలు') || lower.includes('movie') || lower.includes('फिल्म')) {
     return res.json({
       source: 'fallback',
-      answer: getGuardrailRefusal(pack?.language || 'te', 'offtopic'),
+      answer: getGuardrailRefusal(language || pack?.language || 'te', 'offtopic'),
     });
   }
 
@@ -311,12 +333,12 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   // Any failure, empty reply, or timeout falls through to the offline answers below.
   if (doubtText && pack) {
     const resolvedPackId = packId || 'te-10-maths-ap';
-    const cacheKey = `${resolvedPackId}|${topicId || ''}|${lower}`;
+    const cacheKey = `${resolvedPackId}|${language || ''}|${topicId || ''}|${lower}`;
     const cached = tutorCache.get(cacheKey);
     if (cached) return res.json({ source: 'model', answer: cached });
 
     const topic = Array.isArray(pack.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
-    const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag);
+    const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag, language);
 
     // 1. Check Groq API if configured
     if (isGroqConfigured()) {

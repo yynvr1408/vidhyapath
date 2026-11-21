@@ -30,6 +30,7 @@ interface AppContextValue {
   dataUsedKb: number;
   syncTick: boolean;
   queuedDoubtsCount: number;
+  tutoringLanguage: string;
   // Actions
   setScreen: (screen: ScreenId) => void;
   selectTopic: (topicId: string | null) => void;
@@ -43,12 +44,14 @@ interface AppContextValue {
   refreshLearnerData: () => Promise<void>;
   triggerSync: () => Promise<void>;
   switchPack: (packId: string) => Promise<void>;
+  setTutoringLanguage: (code: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [pack, setPack] = useState<ContentPack | null>(null);
+  const [tutoringLanguage, setTutoringLanguageState] = useState<string>('en');
   const [learners, setLearners] = useState<LearnerProfile[]>([]);
   const [activeLearner, setActiveLearner] = useState<LearnerProfile | null>(null);
   const activeLearnerRef = useRef<LearnerProfile | null>(null);
@@ -67,12 +70,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const autoLockTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load active pack
-  const loadPack = async (packId: string = 'te-10-maths-ap') => {
+  const loadPack = async (packId: string = 'en-10-maths-cbse') => {
     try {
       const res = await fetch(`/packs/${packId}.json`);
       if (res.ok) {
         const data: ContentPack = await res.json();
         setPack(data);
+        if (data.language) {
+          setTutoringLanguageState(data.language);
+        }
         return data;
       }
     } catch (err) {
@@ -83,13 +89,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Switch pack
   const switchPack = async (packId: string) => {
-    await loadPack(packId);
+    const loaded = await loadPack(packId);
+    if (loaded?.language) {
+      setTutoringLanguageState(loaded.language);
+      await localDb.setSetting('tutoringLanguage', loaded.language);
+    }
     if (activeLearnerRef.current) {
       const updated = { ...activeLearnerRef.current, packId };
       setActiveLearner(updated);
       await localDb.saveLearner(updated);
       await loadLearnerSkills(updated.id);
     }
+  };
+
+  const setTutoringLanguage = async (code: string) => {
+    setTutoringLanguageState(code);
+    await localDb.setSetting('tutoringLanguage', code);
   };
 
   // Seed default learners if first run
@@ -99,29 +114,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const seeded: LearnerProfile[] = [
         {
           id: 'learner_cheetah',
-          nickname: 'చిరుత',
+          nickname: 'Cheetah',
           animal: 'cheetah',
           avatarColor: '#F59E0B',
           avatarEmoji: '🐆',
-          packId: 'te-10-maths-ap',
+          packId: 'en-10-maths-cbse',
           createdAt: Date.now() - 3600 * 1000 * 24 * 3,
         },
         {
           id: 'learner_elephant',
-          nickname: 'ఏనుగు',
+          nickname: 'Elephant',
           animal: 'elephant',
           avatarColor: '#3B82F6',
           avatarEmoji: '🐘',
-          packId: 'te-10-maths-ap',
+          packId: 'en-10-maths-cbse',
           createdAt: Date.now() - 3600 * 1000 * 24 * 2,
         },
         {
-          id: 'learner_deer',
-          nickname: 'జింక',
-          animal: 'deer',
+          id: 'learner_lion',
+          nickname: 'Lion',
+          animal: 'lion',
           avatarColor: '#10B981',
-          avatarEmoji: '🦌',
-          packId: 'te-10-maths-ap',
+          avatarEmoji: '🦁',
+          packId: 'en-10-maths-cbse',
           createdAt: Date.now() - 3600 * 1000 * 24 * 1,
         },
       ];
@@ -150,7 +165,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Initialize
   useEffect(() => {
-    loadPack('te-10-maths-ap');
+    localDb.getSetting<string>('tutoringLanguage', 'en').then((savedLang) => {
+      setTutoringLanguageState(savedLang || 'en');
+    });
+    loadPack('en-10-maths-cbse');
     seedDefaultLearners();
 
     // Load persisted settings
@@ -283,6 +301,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dataUsedKb,
         syncTick,
         queuedDoubtsCount,
+        tutoringLanguage,
         setScreen: setCurrentScreen,
         selectTopic: setSelectedTopicId,
         selectLearner,
@@ -295,6 +314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refreshLearnerData,
         triggerSync,
         switchPack,
+        setTutoringLanguage,
       }}
     >
       <div

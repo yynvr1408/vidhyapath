@@ -10,7 +10,7 @@ import { DoubtItem } from '../types';
 import { localDb } from '../db/indexedDb';
 
 export const S7_AskDoubtScreen: React.FC = () => {
-  const { pack, activeLearner, isOffline, lowDataMode, setScreen, refreshLearnerData, queuedDoubtsCount } = useApp();
+  const { pack, activeLearner, isOffline, lowDataMode, setScreen, refreshLearnerData, queuedDoubtsCount, tutoringLanguage } = useApp();
 
   const [doubtText, setDoubtText] = useState('');
   const [activeTopicId, setActiveTopicId] = useState<string>('ch1_real_numbers');
@@ -51,7 +51,8 @@ export const S7_AskDoubtScreen: React.FC = () => {
         activeTopicId,
         undefined,
         isOffline,
-        lowDataMode
+        lowDataMode,
+        tutoringLanguage
       );
 
       setCurrentAnswer(res);
