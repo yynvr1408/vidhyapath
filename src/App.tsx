@@ -1,80 +1,105 @@
-import React, { useEffect } from 'react';
-import { useApp } from './context/AppContext';
-import { AppShell } from './components/AppShell';
-import { ProfileSelectorScreen } from './screens/ProfileSelectorScreen';
-import { MySyllabusScreen } from './screens/MySyllabusScreen';
-import { AiTutorScreen } from './screens/AiTutorScreen';
-import { PracticeWeakTopicsScreen } from './screens/PracticeWeakTopicsScreen';
-import { MyProgressScreen } from './screens/MyProgressScreen';
-import { ParentTeacherViewScreen } from './screens/ParentTeacherViewScreen';
-import { AdminPanelScreen } from './screens/AdminPanelScreen';
-import { S2_CreateProfile } from './screens/S2_CreateProfile';
+// Master Educational Platform Application Architecture
+import React, { useState } from 'react';
+import { EnterpriseAuthProvider, useEnterpriseAuth } from './context/EnterpriseAuthContext';
+import { AcademicProvider, useAcademic } from './context/AcademicContext';
+import { AppProvider } from './context/AppContext';
+import { EnterpriseShell, EnterpriseScreenId } from './components/layout/EnterpriseShell';
+import { SuperAdminDashboard } from './screens/dashboards/SuperAdminDashboard';
+import { InstitutionAdminDashboard } from './screens/dashboards/InstitutionAdminDashboard';
+import { AcademicAdminDashboard } from './screens/dashboards/AcademicAdminDashboard';
+import { TeacherDashboard } from './screens/dashboards/TeacherDashboard';
+import { StudentDashboard } from './screens/dashboards/StudentDashboard';
+import { GuardianDashboard } from './screens/dashboards/GuardianDashboard';
+import { SubjectEnvironmentScreen } from './screens/lms/SubjectEnvironmentScreen';
+import { AiTutorPortal } from './screens/ai/AiTutorPortal';
+import { SyllabusManagerScreen } from './screens/academic/SyllabusManagerScreen';
+import { OfflineLearningCenter } from './screens/offline/OfflineLearningCenter';
+import { Subject } from './types/enterprise';
 
-export const AppContent: React.FC = () => {
-  const { currentScreen, setScreen, activeLearner } = useApp();
+const MainAppContent: React.FC = () => {
+  const { activeRole } = useEnterpriseAuth();
+  const { subjects, activeSubject, setActiveSubject } = useAcademic();
+  const [currentScreen, setScreen] = useState<EnterpriseScreenId>('DASHBOARD');
 
-  // Support direct route hashes: #guardian, #admin, etc.
-  useEffect(() => {
-    const hash = window.location.hash.toLowerCase();
-    const path = window.location.pathname.toLowerCase();
+  const handleOpenSubject = (subject: Subject) => {
+    setActiveSubject(subject);
+    setScreen('SUBJECT_VIEW');
+  };
 
-    if (hash.includes('guardian') || path.includes('guardian')) {
-      setScreen('PARENT_VIEW');
-    } else if (hash.includes('admin') || path.includes('admin')) {
-      setScreen('ADMIN');
+  const renderContent = () => {
+    // 1. Dedicated Operational Screens
+    if (currentScreen === 'SUBJECT_VIEW') {
+      const sub = activeSubject || subjects[0];
+      if (!sub) return <StudentDashboard onOpenSubject={handleOpenSubject} onOpenAiTutor={() => setScreen('AI_TUTOR')} onOpenOfflineCenter={() => setScreen('OFFLINE_CENTER')} />;
+      return (
+        <SubjectEnvironmentScreen
+          subject={sub}
+          onBack={() => setScreen('DASHBOARD')}
+          onOpenAiTutor={() => setScreen('AI_TUTOR')}
+        />
+      );
     }
-  }, [setScreen]);
 
-  // Admin Panel directly accessible anytime
-  if (currentScreen === 'ADMIN' || currentScreen === 'ADMIN_PANEL' || currentScreen === 'S12_PACK_EDITOR') {
-    return <AdminPanelScreen />;
-  }
+    if (currentScreen === 'AI_TUTOR') {
+      return <AiTutorPortal onBack={() => setScreen('DASHBOARD')} />;
+    }
 
-  // Full Create Profile Registration Screen
-  if (currentScreen === 'S2_CREATE') {
-    return <S2_CreateProfile />;
-  }
+    if (currentScreen === 'SYLLABUS_MANAGER') {
+      return <SyllabusManagerScreen />;
+    }
 
-  // If no learner profile is unlocked and not on Parent/Teacher view, show Screen 1
-  if (!activeLearner && currentScreen !== 'PARENT_VIEW') {
-    return <ProfileSelectorScreen />;
-  }
+    if (currentScreen === 'OFFLINE_CENTER') {
+      return <OfflineLearningCenter onBack={() => setScreen('DASHBOARD')} />;
+    }
 
-  // When S1_PICKER is explicitly selected (e.g. switch profile)
-  if (currentScreen === 'S1_PICKER') {
-    return <ProfileSelectorScreen />;
-  }
-
-  // Render the core pages inside responsive AppShell
-  const renderScreen = () => {
-    switch (currentScreen) {
-      case 'MY_SYLLABUS':
-      case 'LESSON_DETAIL':
-      case 'S3_HOME':
-      case 'S4_LESSON':
-        return <MySyllabusScreen />;
-      case 'AI_TUTOR':
-      case 'S7_DOUBT':
-        return <AiTutorScreen />;
-      case 'PRACTICE':
-      case 'S5_PRACTICE':
-        return <PracticeWeakTopicsScreen />;
-      case 'PROGRESS':
-      case 'S8_PROGRESS':
-        return <MyProgressScreen />;
-      case 'PARENT_VIEW':
-      case 'S10_GUARDIAN':
-        return <ParentTeacherViewScreen />;
+    // 2. Role-Based Primary Dashboards
+    switch (activeRole) {
+      case 'super_admin':
+        return <SuperAdminDashboard />;
+      case 'institution_admin':
+        return <InstitutionAdminDashboard onNavigateToSyllabus={() => setScreen('SYLLABUS_MANAGER')} />;
+      case 'academic_admin':
+      case 'coordinator':
+      case 'exam_admin':
+        return <AcademicAdminDashboard onNavigateToSyllabus={() => setScreen('SYLLABUS_MANAGER')} />;
+      case 'teacher':
+        return (
+          <TeacherDashboard
+            onOpenSubject={handleOpenSubject}
+            onOpenAiTutor={() => setScreen('AI_TUTOR')}
+          />
+        );
+      case 'guardian':
+        return <GuardianDashboard />;
+      case 'student':
       default:
-        return <MySyllabusScreen />;
+        return (
+          <StudentDashboard
+            onOpenSubject={handleOpenSubject}
+            onOpenAiTutor={() => setScreen('AI_TUTOR')}
+            onOpenOfflineCenter={() => setScreen('OFFLINE_CENTER')}
+          />
+        );
     }
   };
 
-  return <AppShell>{renderScreen()}</AppShell>;
+  return (
+    <EnterpriseShell currentScreen={currentScreen} setScreen={setScreen}>
+      {renderContent()}
+    </EnterpriseShell>
+  );
 };
 
 export const App: React.FC = () => {
-  return <AppContent />;
+  return (
+    <EnterpriseAuthProvider>
+      <AcademicProvider>
+        <AppProvider>
+          <MainAppContent />
+        </AppProvider>
+      </AcademicProvider>
+    </EnterpriseAuthProvider>
+  );
 };
 
 export default App;

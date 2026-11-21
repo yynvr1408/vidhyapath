@@ -28,6 +28,7 @@ import { initNeonDb, insertSyncEvent, insertOrUpdateDoubt, isNeonConnected } fro
 import { isGroqConfigured, askGroqTutor, transcribeGroqWhisper, generateGroqStudySummary } from './services/groq.js';
 import { synthesizeElevenLabsVoice, isElevenLabsConfigured } from './services/elevenlabs.js';
 import { uploadToStorage, isR2Configured } from './services/r2.js';
+import { enterpriseApiRouter } from './routes/api.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,7 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+app.use('/api', enterpriseApiRouter);
 
 // In-memory data store for server-side events, cohorts, and guardian tokens
 interface StoredAttempt {

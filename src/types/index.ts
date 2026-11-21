@@ -1,3 +1,5 @@
+export * from './enterprise';
+
 export interface PackLocales {
   stt: string;
   tts: string;

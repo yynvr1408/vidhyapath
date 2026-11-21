@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "server": "tsx server/index.ts",
     "start": "tsx server/index.ts",
-    "test": "tsx tests/system_test.ts && tsx tests/api_endpoints_test.ts",
+    "test": "tsx tests/system_test.ts && tsx tests/api_endpoints_test.ts && tsx tests/enterprise_system_test.ts",
     "cap": "cap",
     "release": "node scripts/release.js"
   },
