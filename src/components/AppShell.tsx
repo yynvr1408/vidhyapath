@@ -236,7 +236,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
       {/* Bottom: Settings, Offline Demo Toggle, Language & Switch Profile */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2.5">
-        {/* Language Switcher Dropdown (All 22 Scheduled Languages) */}
+        {/* Language Switcher Dropdown (Telugu, Hindi, English) */}
         <div className="flex items-center justify-between bg-[#F8FAFC] p-2 rounded-[12px] border border-[#E2E8F0]">
           <div className="flex items-center gap-1.5 text-xs font-bold text-[#475569] shrink-0">
             <Globe className="w-4 h-4 text-[#0F766E]" />
@@ -246,7 +246,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             value={currentLanguage}
             onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
             className="text-xs bg-white text-[#0F172A] font-bold px-2 py-1 rounded-md border border-[#E2E8F0] focus:outline-hidden cursor-pointer max-w-[130px] truncate"
-            title="Choose from 22 Eighth Schedule Indian Languages"
+            title="Select Language (Telugu, Hindi, English)"
           >
             {SCHEDULED_LANGUAGES.map((lang) => (
               <option key={lang.code} value={lang.code}>

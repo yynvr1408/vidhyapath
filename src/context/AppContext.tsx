@@ -110,7 +110,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await loadPack(packId);
   };
 
-  // Switch language directly
+  // Switch language directly (Telugu, Hindi, English)
   const switchLanguage = async (lang: SupportedLang) => {
     setCurrentLanguage(lang);
     localStorage.setItem('vidyapath_language', lang);
@@ -119,7 +119,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else if (lang === 'te') {
       await switchPack('te-10-maths-ap');
     } else {
-      // English or any of the 22 scheduled languages
+      // Default to English
       await switchPack('en-10-maths-cbse');
     }
   };

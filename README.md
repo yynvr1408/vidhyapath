@@ -29,7 +29,7 @@ The platform is architected with a **decoupled cloud topology**:
                  ┌───────────────────────────────┐   [100% Offline Mode]
                  │   NETLIFY EDGE CDN FRONTEND   │   ├── Service Worker (Cache-First)
                  │  • Immutable Cache (1 Year)   │   ├── Local IndexedDB Outbox
-                 │  • 22 Indian Languages Switch │   └── 0-Token Doubt Engine
+                 │  • Trilingual Language Switch │   └── 0-Token Doubt Engine
                  │  • Edge Proxy (/api & /uploads│
                  └───────────────┬───────────────┘
                                  │
@@ -217,11 +217,14 @@ Vidyapath completely eliminates ephemeral file loss by streaming uploads directl
 
 ---
 
-## 7. 22 Eighth Schedule Indian Languages & Dual-Target UI
+## 7. Trilingual Multilingual Architecture (Telugu, Hindi, English) & Dual-Target UI
 
-### 22 Indian Languages + English
+### Core Trilingual Support
 Vidyapath provides a global language selector accessible from the top sticky header and navigation drawers across all screens:
-- **Languages Supported**: Hindi (हिन्दी), Telugu (తెలుగు), Tamil (தமிழ்), Kannada (ಕನ್ನಡ), Malayalam (മലയാളം), Bengali (বাংলা), Marathi (मराठी), Gujarati (ગુજરાતી), Punjabi (ਪੰਜਾਬੀ), Odia (ଓଡ଼ିଆ), Assamese (অসমীয়া), Urdu (اردو), Sanskrit (संस्कृतम्), Maithili (मैथिली), Kashmiri (कॉशुर), Konkani (कोंकणी), Manipuri (মৈতৈলোন্), Nepali (नेपाली), Bodo (बड़ो), Dogri (डोगरी), Santhali (ᱥᱟᱱᱛᱟᱲᱤ), Sindhi (سنڌي), and English.
+- **Languages Supported**:
+  1. **Telugu (తెలుగు)**: Primary launch pack for Class 10 AP State Board Mathematics (`te-10-maths-ap`) with phonetic math read-aloud.
+  2. **Hindi (हिन्दी)**: Class 10 CBSE / State Board Mathematics (`hi-10-maths-cbse`) with full Hindi Socratic AI coaching.
+  3. **English**: Class 10 CBSE / Pan-India curriculum (`en-10-maths-cbse`).
 - Real-time interface translation without reloading the page.
 
 ### Dual-Target UI Responsiveness

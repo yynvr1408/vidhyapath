@@ -169,7 +169,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  // 22-Language Selector Component
+  // Language Selector Component (Telugu, Hindi, English)
   const LanguageDropdown = ({ className = '' }: { className?: string }) => (
     <div className={`flex items-center gap-1.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-[8px] px-2 py-1 ${className}`}>
       <Globe className="w-4 h-4 text-[#0F766E] shrink-0" />
@@ -177,7 +177,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         value={currentLanguage}
         onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
         className="text-xs bg-transparent text-[#0F172A] font-bold cursor-pointer focus:outline-hidden truncate w-full"
-        title="Select Interface Language from 22 Eighth Schedule Indian Languages"
+        title="Select Language (Telugu, Hindi, English)"
       >
         {SCHEDULED_LANGUAGES.map((lang) => (
           <option key={lang.code} value={lang.code}>
@@ -225,7 +225,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         {/* Language Selection in Sidebar */}
         <div className="mb-4">
           <div className="text-[10px] font-extrabold uppercase text-[#64748B] tracking-wider mb-1">
-            Interface Language (22 Languages)
+            Interface Language (తెలుగు / हिन्दी / English)
           </div>
           <LanguageDropdown className="w-full" />
         </div>
@@ -317,9 +317,9 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
             </div>
           </div>
 
-          {/* Right Header Status Bar: 22-Language Dropdown + Offline Toggle + Notifications */}
+          {/* Right Header Status Bar: Language Dropdown + Offline Toggle + Notifications */}
           <div className="flex items-center gap-2">
-            {/* 22-Language Dropdown (Prominently Accessible Everywhere) */}
+            {/* Language Dropdown (Telugu, Hindi, English) */}
             <LanguageDropdown className="max-w-[130px] sm:max-w-[180px]" />
 
             {/* Interactive Offline / Online Mode Toggle */}

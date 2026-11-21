@@ -93,14 +93,14 @@ export const ProfileSelectorScreen: React.FC = () => {
           <span>{isOffline ? t.offlineSaved : t.online}</span>
         </button>
 
-        {/* 22-Language Selector Dropdown */}
+        {/* Language Selector Dropdown (Telugu, Hindi, English) */}
         <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 rounded-[12px] border border-[#E2E8F0] shadow-2xs">
           <Globe className="w-3.5 h-3.5 text-[#0F766E]" />
           <select
             value={currentLanguage}
             onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
             className="text-xs font-bold text-[#0F172A] bg-transparent focus:outline-hidden cursor-pointer max-w-[130px] truncate"
-            title="Choose from 22 Eighth Schedule Indian Languages"
+            title="Select Language (Telugu, Hindi, English)"
           >
             {SCHEDULED_LANGUAGES.map((lang) => (
               <option key={lang.code} value={lang.code}>
