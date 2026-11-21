@@ -11,21 +11,27 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-vidyapath-secret-key-32-chars-min}
       - DATABASE_URL=${DATABASE_URL:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
-      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-}
+      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-21m00Tcm4TlvDq8ikWAM}
       - R2_ACCOUNT_ID=${R2_ACCOUNT_ID:-}
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
       - R2_BUCKET_NAME=${R2_BUCKET_NAME:-vidyapath-assets}
       - R2_PUBLIC_DOMAIN=${R2_PUBLIC_DOMAIN:-}
+      - EMAILJS_SERVICE_ID=${EMAILJS_SERVICE_ID:-}
+      - EMAILJS_TEMPLATE_ID=${EMAILJS_TEMPLATE_ID:-}
+      - EMAILJS_PUBLIC_KEY=${EMAILJS_PUBLIC_KEY:-}
+      - EMAILJS_PRIVATE_KEY=${EMAILJS_PRIVATE_KEY:-}
       - GITHUB_REPO_OWNER=${GITHUB_REPO_OWNER:-yynvr1408}
       - GITHUB_REPO_NAME=${GITHUB_REPO_NAME:-vidhyapath}
       - GITHUB_PAT_TOKEN=${GITHUB_PAT_TOKEN:-}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/healthz"]
       interval: 30s
       timeout: 5s
       retries: 3

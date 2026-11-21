@@ -7,8 +7,8 @@ import { eventQueueService } from '../services/queueService.js';
 const router = Router();
 const startTime = Date.now();
 
-// Liveness Probe (GET /healthz) - Quick check if server process is running
-router.get('/healthz', (req: Request, res: Response) => {
+// Liveness Probe (GET /healthz and /api/health) - Quick check if server process is running
+router.get(['/healthz', '/api/health'], (req: Request, res: Response) => {
   return res.status(200).json({ status: 'healthy', uptimeSeconds: Math.floor((Date.now() - startTime) / 1000) });
 });
 
