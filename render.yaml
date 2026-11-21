@@ -22,16 +22,6 @@ services:
         sync: false
       - key: ELEVENLABS_VOICE_ID
         value: 21m00Tcm4TlvDq8ikWAM
-      - key: R2_ACCOUNT_ID
-        sync: false
-      - key: R2_ACCESS_KEY_ID
-        sync: false
-      - key: R2_SECRET_ACCESS_KEY
-        sync: false
-      - key: R2_BUCKET_NAME
-        value: vidyapath-assets
-      - key: R2_PUBLIC_DOMAIN
-        sync: false
       - key: GITHUB_REPO_OWNER
         value: yynvr1408
       - key: GITHUB_REPO_NAME
