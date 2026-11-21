@@ -115,14 +115,6 @@ export const S1_ProfilePicker: React.FC = () => {
             <HeartHandshake className="w-4 h-4 text-lantern" />
             <span>స్పాన్సర్ డాష్‌బోర్డ్</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setScreen('S12_PACK_EDITOR')}
-            className="flex items-center gap-1 py-2 px-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200"
-          >
-            <FileCode2 className="w-4 h-4 text-indigo-light" />
-            <span>ప్యాక్ ఎడిటర్</span>
-          </button>
         </div>
         <p className="text-[11px] text-slate-500 text-center mt-3">
           గోప్యత: ఎలాంటి వ్యక్తిగత పేర్లు, ఫోన్ నంబర్లు సేకరించబడవు.
