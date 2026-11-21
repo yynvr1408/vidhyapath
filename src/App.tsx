@@ -7,19 +7,33 @@ import { AiTutorScreen } from './screens/AiTutorScreen';
 import { PracticeWeakTopicsScreen } from './screens/PracticeWeakTopicsScreen';
 import { MyProgressScreen } from './screens/MyProgressScreen';
 import { ParentTeacherViewScreen } from './screens/ParentTeacherViewScreen';
+import { AdminPanelScreen } from './screens/AdminPanelScreen';
+import { S2_CreateProfile } from './screens/S2_CreateProfile';
 
 export const AppContent: React.FC = () => {
   const { currentScreen, setScreen, activeLearner } = useApp();
 
-  // Support direct route hashes: #guardian, etc.
+  // Support direct route hashes: #guardian, #admin, etc.
   useEffect(() => {
     const hash = window.location.hash.toLowerCase();
     const path = window.location.pathname.toLowerCase();
 
     if (hash.includes('guardian') || path.includes('guardian')) {
       setScreen('PARENT_VIEW');
+    } else if (hash.includes('admin') || path.includes('admin')) {
+      setScreen('ADMIN');
     }
   }, [setScreen]);
+
+  // Admin Panel directly accessible anytime
+  if (currentScreen === 'ADMIN' || currentScreen === 'ADMIN_PANEL' || currentScreen === 'S12_PACK_EDITOR') {
+    return <AdminPanelScreen />;
+  }
+
+  // Full Create Profile Registration Screen
+  if (currentScreen === 'S2_CREATE') {
+    return <S2_CreateProfile />;
+  }
 
   // If no learner profile is unlocked and not on Parent/Teacher view, show Screen 1
   if (!activeLearner && currentScreen !== 'PARENT_VIEW') {
@@ -31,7 +45,7 @@ export const AppContent: React.FC = () => {
     return <ProfileSelectorScreen />;
   }
 
-  // Render the core 5 pages inside responsive AppShell
+  // Render the core pages inside responsive AppShell
   const renderScreen = () => {
     switch (currentScreen) {
       case 'MY_SYLLABUS':

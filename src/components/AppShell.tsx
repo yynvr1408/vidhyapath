@@ -12,6 +12,7 @@ import {
   WifiOff,
   Globe,
   CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import { useApp, ScreenId } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
@@ -59,6 +60,10 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       case 'PARENT_VIEW':
       case 'S10_GUARDIAN':
         return t.navParentView;
+      case 'ADMIN':
+      case 'ADMIN_PANEL':
+      case 'S12_PACK_EDITOR':
+        return 'Admin & Teacher Portal';
       default:
         return t.appTitle;
     }
@@ -118,6 +123,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     }
     if (id === 'PARENT_VIEW') {
       return currentScreen === 'PARENT_VIEW' || currentScreen === 'S10_GUARDIAN';
+    }
+    if (id === 'ADMIN') {
+      return currentScreen === 'ADMIN' || currentScreen === 'ADMIN_PANEL' || currentScreen === 'S12_PACK_EDITOR';
     }
     return currentScreen === id;
   };
@@ -199,6 +207,26 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               <ShieldCheck className="w-5 h-5 shrink-0" />
             </span>
             <span className="truncate">{t.navParentView}</span>
+          </button>
+
+          {/* 6. Admin & Teacher Portal */}
+          <button
+            type="button"
+            onClick={() => handleNavClick('ADMIN')}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-[12px] text-sm font-bold transition-all min-h-[48px] text-left ${
+              isItemActive('ADMIN')
+                ? 'bg-[#0F766E] text-white shadow-xs'
+                : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+            }`}
+          >
+            <span
+              className={
+                isItemActive('ADMIN') ? 'text-white' : 'text-[#0F766E]'
+              }
+            >
+              <Lock className="w-5 h-5 shrink-0" />
+            </span>
+            <span className="truncate">Admin &amp; Teacher Portal</span>
           </button>
         </nav>
       </div>

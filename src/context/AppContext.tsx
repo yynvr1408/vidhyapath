@@ -12,7 +12,9 @@ export type ScreenId =
   | 'PRACTICE'        // 3. Practice & Weak Topics
   | 'PROGRESS'        // 4. My Progress (Student View)
   | 'PARENT_VIEW'     // 5. Parent / Teacher View
+  | 'ADMIN'           // 6. Admin & Curriculum Panel
   // Backwards-compatible aliases
+  | 'ADMIN_PANEL'
   | 'S2_CREATE'
   | 'S3_HOME'
   | 'S4_LESSON'
@@ -122,129 +124,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Seed default learners if first run and clean legacy animal profiles
+  // Seed default learners (Cheetah, Elephant, Lion, Ravi) for instant zero-friction demo & multi-sibling sharing
   const seedDefaultLearners = async () => {
     try {
       const existing = await localDb.getLearners();
 
-      // Check and delete any legacy profiles with animal names, ids, or animal emojis
-      const ANIMAL_PATTERN = /చిరుత|ఏనుగు|జింక|cheetah|elephant|deer|chiruta|leopard|tiger|lion|peacock|nemali|జంతు/i;
-      const ANIMAL_EMOJIS = ['🐆', '🐘', '🦌', '🐅', '🦁', '🦚', '🐯', '🦊', '🐺', '🐾'];
-
-      const cleanedLearners: LearnerProfile[] = [];
-      for (const l of existing) {
-        const isAnimal =
-          ANIMAL_PATTERN.test(l.nickname || '') ||
-          ANIMAL_PATTERN.test(l.id || '') ||
-          (l.animal && ANIMAL_PATTERN.test(l.animal)) ||
-          ANIMAL_EMOJIS.includes(l.avatarEmoji || '');
-
-        if (isAnimal) {
-          // Permanently purge animal-named record from IndexedDB
-          await localDb.deleteLearner(l.id);
-        } else {
-          cleanedLearners.push(l);
-        }
-      }
-
-      // Standard human student profiles representing siblings/learners sharing the phone
-      const defaultHumanLearners: LearnerProfile[] = [
+      // The core multi-sibling profiles (Mascots & Human students sharing phone)
+      const defaultLearnersList: LearnerProfile[] = [
         {
-          id: 'learner_ravi',
-          nickname: 'Ravi / రవి',
-          classGrade: 9,
+          id: 'learner_cheetah',
+          nickname: 'Cheetah / చిరుత',
+          animal: 'cheetah',
+          classGrade: 10,
           avatarType: 'icon',
           avatarColor: '#0F766E', // Primary Educational Teal
-          avatarEmoji: '👦', // School Boy
-          packId: 'te-10-maths-ap',
-          loginCode: 'RAVI-09',
+          avatarEmoji: '🐆', // Cheetah Mascot
+          packId: 'en-10-maths-cbse',
+          loginCode: 'CHTR-10',
+          pin: '1234',
+          pinHash: '1234',
+          createdAt: Date.now() - 3600 * 1000 * 24 * 5,
+        },
+        {
+          id: 'learner_elephant',
+          nickname: 'Elephant / ఏనుగు',
+          animal: 'elephant',
+          classGrade: 10,
+          avatarType: 'icon',
+          avatarColor: '#D97706', // Warm Amber
+          avatarEmoji: '🐘', // Elephant Mascot
+          packId: 'en-10-maths-cbse',
+          loginCode: 'ELPH-10',
           pin: '1234',
           pinHash: '1234',
           createdAt: Date.now() - 3600 * 1000 * 24 * 4,
         },
         {
-          id: 'learner_priya',
-          nickname: 'Priya / ప్రియ',
+          id: 'learner_lion',
+          nickname: 'Lion / సింహం',
+          animal: 'lion',
           classGrade: 10,
           avatarType: 'icon',
-          avatarColor: '#D97706', // Warm Amber
-          avatarEmoji: '👩‍🎓', // Graduate Girl
-          packId: 'te-10-maths-ap',
-          loginCode: 'PRIYA-10',
+          avatarColor: '#16A34A', // Leaf Green
+          avatarEmoji: '🦁', // Lion Mascot
+          packId: 'en-10-maths-cbse',
+          loginCode: 'LION-10',
           pin: '1234',
           pinHash: '1234',
           createdAt: Date.now() - 3600 * 1000 * 24 * 3,
         },
         {
-          id: 'learner_lakshmi',
-          nickname: 'Lakshmi / లక్ష్మి',
-          classGrade: 9,
+          id: 'learner_ravi',
+          nickname: 'Ravi / రవి',
+          classGrade: 10,
           avatarType: 'icon',
-          avatarColor: '#16A34A', // Leaf Green
-          avatarEmoji: '👧', // School Girl
-          packId: 'te-10-maths-ap',
-          loginCode: 'LAKSHMI-09',
+          avatarColor: '#2563EB', // Blue
+          avatarEmoji: '👦', // School Boy
+          packId: 'en-10-maths-cbse',
+          loginCode: 'RAVI-10',
           pin: '1234',
           pinHash: '1234',
           createdAt: Date.now() - 3600 * 1000 * 24 * 2,
         },
-        {
-          id: 'learner_arjun',
-          nickname: 'Arjun / అర్జున్',
-          classGrade: 10,
-          avatarType: 'icon',
-          avatarColor: '#0F766E', // Primary Educational Teal
-          avatarEmoji: '👨‍🎓', // Graduate Boy
-          packId: 'te-10-maths-ap',
-          loginCode: 'ARJUN-10',
-          pin: '1234',
-          pinHash: '1234',
-          createdAt: Date.now() - 3600 * 1000 * 12,
-        },
       ];
 
-      // Ensure each default human learner exists
-      for (const def of defaultHumanLearners) {
-        const found = cleanedLearners.find((c) => c.loginCode === def.loginCode || c.id === def.id);
+      const currentList = [...existing];
+      for (const def of defaultLearnersList) {
+        const found = currentList.find((c) => c.loginCode === def.loginCode || c.id === def.id || (def.animal && c.animal === def.animal));
         if (!found) {
           await localDb.saveLearner(def);
-          cleanedLearners.push(def);
+          currentList.push(def);
         } else {
-          // Ensure human avatar emoji & pin
-          let changed = false;
-          if (!found.avatarEmoji || ANIMAL_EMOJIS.includes(found.avatarEmoji)) {
-            found.avatarEmoji = def.avatarEmoji;
-            changed = true;
-          }
           if (!found.pin) {
             found.pin = '1234';
             found.pinHash = '1234';
-            changed = true;
-          }
-          if (!found.classGrade) {
-            found.classGrade = def.classGrade;
-            changed = true;
-          }
-          if (changed) {
             await localDb.saveLearner(found);
           }
         }
       }
 
-      setLearners(cleanedLearners);
-
-      // Reset activeLearner if it was an animal profile
-      if (activeLearner) {
-        const isCurrentAnimal =
-          ANIMAL_PATTERN.test(activeLearner.nickname || '') ||
-          ANIMAL_PATTERN.test(activeLearner.id || '') ||
-          ANIMAL_EMOJIS.includes(activeLearner.avatarEmoji || '');
-        if (isCurrentAnimal) {
-          setActiveLearner(cleanedLearners[0] || null);
-        }
-      }
+      setLearners(currentList);
     } catch (err) {
-      console.warn('Error seeding learners:', err);
+      console.warn('Failed to seed default learners:', err);
     }
   };
 

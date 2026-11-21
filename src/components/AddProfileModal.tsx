@@ -9,7 +9,7 @@ interface AddProfileModalProps {
   onClose: () => void;
 }
 
-const HUMAN_AVATARS = ['👦', '👧', '👩‍🎓', '👨‍🎓', '🧑‍🎓', '🧒'];
+const HUMAN_AVATARS = ['🐆', '🐘', '🦁', '👦', '👧', '👩‍🎓', '👨‍🎓', '🧑‍🎓'];
 const AVATAR_COLORS = ['#0F766E', '#D97706', '#16A34A', '#2563EB', '#7C3AED'];
 
 export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClose }) => {

@@ -3,7 +3,7 @@ import { localDb } from '../db/indexedDb';
 
 export interface TutorResponse {
   answer: string;
-  source: 'common_doubts' | 'cache' | 'ai_model' | 'queued_offline';
+  source: 'common_doubts' | 'cache' | 'ai_model' | 'queued_offline' | 'offline_pedagogy';
   isQueued?: boolean;
 }
 
@@ -108,11 +108,12 @@ Learner doubt: "${doubtText}"`;
     topicId?: string,
     mistakeTag?: string,
     isOffline: boolean = false,
-    lowDataMode: boolean = false
+    lowDataMode: boolean = false,
+    mode: 'auto' | 'manual_offline' = 'auto'
   ): Promise<TutorResponse> {
     const queryTrimmed = doubtText.trim();
     if (!queryTrimmed) {
-      return { answer: 'దయచేసి మీ సందేహాన్ని అడగండి.', source: 'common_doubts' };
+      return { answer: 'Please enter your mathematics doubt.', source: 'common_doubts' };
     }
 
     // 1. Check local common doubts (instant, 0 data, works offline)
@@ -139,28 +140,36 @@ Learner doubt: "${doubtText}"`;
       return { answer: cachedReply, source: 'cache' };
     }
 
-    // 3. If offline or in low-data mode without cache, queue the doubt
-    if (isOffline || !navigator.onLine || lowDataMode) {
-      const queuedItem: DoubtItem = {
-        id: 'doubt_q_' + Date.now(),
+    // 3. Manual Offline Mode or Device Offline:
+    // AUTOMATIC Socratic Fallback: Instantly return curriculum-mapped pedagogical hint locally!
+    if (mode === 'manual_offline' || isOffline || !navigator.onLine || lowDataMode) {
+      const localHint = this.generatePedagogicalHint(pack, queryTrimmed, topicId);
+
+      // Save locally as answered doubt so student history is complete
+      await localDb.saveDoubt({
+        id: 'doubt_' + Date.now(),
         learnerId,
         topicId: topicId || 'ch1_real_numbers',
         inputMode: 'text',
-        status: 'queued',
+        status: 'answered',
         question: queryTrimmed,
+        answer: localHint,
         ts: Date.now(),
-      };
-      await localDb.saveDoubt(queuedItem);
+      });
+      await localDb.setTutorCachedReply(cacheKey, localHint);
 
       return {
-        answer: pack.uiStrings.offlineQueueNotice || 'మీరు ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉన్నారు. నెట్‌వర్క్ రాగానే మీ సందేహానికి సమాధానం అందించబడుతుంది.',
-        source: 'queued_offline',
-        isQueued: true,
+        answer: localHint,
+        source: 'offline_pedagogy',
+        isQueued: false,
       };
     }
 
-    // 4. Online: call API layer
+    // 4. Online Mode: Call live Groq AI tutor API with seamless fallback
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6500);
+
       const response = await fetch('/api/tutor/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,7 +180,9 @@ Learner doubt: "${doubtText}"`;
           topicId,
           mistakeTag,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
@@ -195,10 +206,10 @@ Learner doubt: "${doubtText}"`;
         return { answer: safeAnswer, source: 'ai_model' };
       }
     } catch (err) {
-      console.warn('Network call to AI tutor failed:', err);
+      console.warn('Network call to AI tutor timed out or failed. Falling back to offline pedagogical engine:', err);
     }
 
-    // 5. Intelligent rule-based fallback if server API is momentarily unreachable
+    // 5. Intelligent Automatic Fallback: Returns curriculum Socratic hint
     const fallbackAnswer = this.generatePedagogicalHint(pack, queryTrimmed, topicId);
     await localDb.setTutorCachedReply(cacheKey, fallbackAnswer);
     return { answer: fallbackAnswer, source: 'ai_model' };

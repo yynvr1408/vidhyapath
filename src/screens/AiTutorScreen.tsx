@@ -33,6 +33,7 @@ export const AiTutorScreen: React.FC = () => {
 
   const [doubtText, setDoubtText] = useState('');
   const [activeTopicId, setActiveTopicId] = useState<string>('ch1_real_numbers');
+  const [tutorMode, setTutorMode] = useState<'auto' | 'manual_offline'>('auto');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<
     { sender: 'student' | 'tutor'; text: string; source?: string; isQueued?: boolean; photo?: string }[]
@@ -85,7 +86,8 @@ export const AiTutorScreen: React.FC = () => {
         activeTopicId,
         undefined,
         isOffline,
-        lowDataMode
+        lowDataMode,
+        tutorMode
       );
 
       setMessages((prev) => [
@@ -127,31 +129,70 @@ export const AiTutorScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-100px)] justify-between bg-[#FFFFFF] rounded-[12px] border border-[#E2E8F0] shadow-xs overflow-hidden">
-      {/* Header with Chapter Selector */}
-      <div className="bg-[#F8FAFC] p-3 border-b border-[#E2E8F0] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#0F766E]" />
-          <span className="font-extrabold text-sm text-[#0F172A]">
-            {t.aiTutorTitle}
-          </span>
+      {/* Header with Chapter Selector & Mode Switcher */}
+      <div className="bg-[#F8FAFC] p-3 border-b border-[#E2E8F0] space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#0F766E]" />
+            <span className="font-extrabold text-sm text-[#0F172A]">
+              {t.aiTutorTitle}
+            </span>
+          </div>
+
+          {/* Chapter Context Selector */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-[#475569] font-medium hidden sm:inline">
+              Chapter:
+            </span>
+            <select
+              value={activeTopicId}
+              onChange={(e) => setActiveTopicId(e.target.value)}
+              className="text-xs bg-[#FFFFFF] text-[#0F172A] font-bold px-2 py-1 rounded-[8px] border border-[#E2E8F0] focus:outline-hidden"
+            >
+              {pack?.topics.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* Chapter Context Selector */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-[#475569] font-medium hidden sm:inline">
-            అధ్యాయం:
-          </span>
-          <select
-            value={activeTopicId}
-            onChange={(e) => setActiveTopicId(e.target.value)}
-            className="text-xs bg-[#FFFFFF] text-[#0F172A] font-bold px-2 py-1 rounded-[8px] border border-[#E2E8F0] focus:outline-hidden"
-          >
-            {pack?.topics.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.title}
-              </option>
-            ))}
-          </select>
+        {/* AI Tutor Auto Fallback vs Manual Offline Mode & Lantern Mastery */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#E2E8F0]/60">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setTutorMode('auto')}
+              className={`py-1 px-2.5 rounded-full text-[11px] font-bold transition-all flex items-center gap-1 ${
+                tutorMode === 'auto'
+                  ? 'bg-[#0F766E] text-white shadow-2xs'
+                  : 'bg-white text-[#475569] border border-[#E2E8F0] hover:text-[#0F172A]'
+              }`}
+              title="Automatically uses live AI when online, seamless offline pedagogical hints when disconnected"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>⚡ Auto Fallback</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTutorMode('manual_offline')}
+              className={`py-1 px-2.5 rounded-full text-[11px] font-bold transition-all flex items-center gap-1 ${
+                tutorMode === 'manual_offline'
+                  ? 'bg-[#D97706] text-white shadow-2xs'
+                  : 'bg-white text-[#475569] border border-[#E2E8F0] hover:text-[#0F172A]'
+              }`}
+              title="Forces 100% textbook pedagogical hints with zero internet data consumption"
+            >
+              <span>🔒 Manual (0 Data)</span>
+            </button>
+          </div>
+
+          {/* Chapter Lantern Village Mastery Glow */}
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#FEF3C7] text-[#92400E] text-[11px] font-bold rounded-full border border-[#FDE68A]">
+            <span>🏮 Chapter Lantern Active</span>
+          </div>
         </div>
       </div>
 
@@ -189,8 +230,18 @@ export const AiTutorScreen: React.FC = () => {
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>{t.tutorReplyHeader}</span>
                       {msg.source === 'common_doubts' && (
-                        <span className="text-[10px] bg-[#FEF3C7] text-[#D97706] px-1.5 py-0.2 rounded-md font-bold">
-                          {t.offlinePreloadedBadge}
+                        <span className="text-[10px] bg-[#FEF3C7] text-[#D97706] px-1.5 py-0.5 rounded-md font-bold">
+                          📖 Curated FAQ
+                        </span>
+                      )}
+                      {msg.source === 'offline_pedagogy' && (
+                        <span className="text-[10px] bg-[#DCFCE7] text-[#166534] px-1.5 py-0.5 rounded-md font-bold">
+                          🛡️ Offline Pedagogical Hint
+                        </span>
+                      )}
+                      {msg.source === 'ai_model' && (
+                        <span className="text-[10px] bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1] px-1.5 py-0.5 rounded-md font-bold">
+                          ⚡ Groq LLaMA 70B
                         </span>
                       )}
                     </div>

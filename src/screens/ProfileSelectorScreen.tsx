@@ -33,6 +33,7 @@ export const ProfileSelectorScreen: React.FC = () => {
   const {
     learners,
     selectLearner,
+    loginWithCode,
     currentLanguage,
     switchLanguage,
     isOffline,
@@ -44,6 +45,8 @@ export const ProfileSelectorScreen: React.FC = () => {
 
   const [selectedLearnerForPin, setSelectedLearnerForPin] = useState<LearnerProfile | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [studentCodeInput, setStudentCodeInput] = useState('');
+  const [codeLoginError, setCodeLoginError] = useState<string | null>(null);
 
   const handleProfileClick = (learner: LearnerProfile) => {
     setSelectedLearnerForPin(learner);
@@ -53,6 +56,17 @@ export const ProfileSelectorScreen: React.FC = () => {
     if (selectedLearnerForPin) {
       selectLearner(selectedLearnerForPin);
       setSelectedLearnerForPin(null);
+    }
+  };
+
+  const handleDirectCodeLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentCodeInput.trim()) return;
+    const res = await loginWithCode(studentCodeInput.trim());
+    if (res.success && res.learner) {
+      setCodeLoginError(null);
+    } else {
+      setCodeLoginError(res.message || 'Student code not found. Please try again.');
     }
   };
 
@@ -196,18 +210,58 @@ export const ProfileSelectorScreen: React.FC = () => {
             </div>
           </button>
         </div>
+
+        {/* Student Code Direct Login (Optional) */}
+        <div className="mt-4 pt-3 border-t border-[#E2E8F0]">
+          <form onSubmit={handleDirectCodeLogin} className="flex items-center gap-2 max-w-sm mx-auto">
+            <input
+              type="text"
+              value={studentCodeInput}
+              onChange={(e) => {
+                setStudentCodeInput(e.target.value.toUpperCase());
+                setCodeLoginError(null);
+              }}
+              placeholder="Enter Student Code (e.g. CHTR-10)"
+              className="flex-1 text-xs font-mono font-bold p-2.5 rounded-[10px] bg-white border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden uppercase"
+            />
+            <button
+              type="submit"
+              className="py-2.5 px-3 rounded-[10px] bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-bold active:scale-95 transition-all shadow-2xs"
+            >
+              Login
+            </button>
+          </form>
+          {codeLoginError && (
+            <p className="text-[11px] text-[#DC2626] font-semibold text-center mt-1.5">
+              {codeLoginError}
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* 4. Minimal Footer with Guardian Link & Privacy Note */}
-      <footer className="pt-3 border-t border-[#E2E8F0] flex flex-col items-center text-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => setScreen('PARENT_VIEW')}
-          className="text-xs text-[#0F766E] hover:underline font-bold inline-flex items-center gap-1.5 py-1"
-        >
-          <ShieldCheck className="w-4 h-4 text-[#0F766E]" />
-          <span>{t.parentViewTitle}</span>
-        </button>
+      {/* 4. Minimal Footer with Guardian Link, Admin Portal & Privacy Note */}
+      <footer className="pt-3 border-t border-[#E2E8F0] flex flex-col items-center text-center gap-2">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setScreen('PARENT_VIEW')}
+            className="text-xs text-[#0F766E] hover:underline font-bold inline-flex items-center gap-1.5 py-1"
+          >
+            <ShieldCheck className="w-4 h-4 text-[#0F766E]" />
+            <span>{t.parentViewTitle}</span>
+          </button>
+
+          <span className="text-[#CBD5E1]">·</span>
+
+          <button
+            type="button"
+            onClick={() => setScreen('ADMIN')}
+            className="text-xs text-[#475569] hover:text-[#0F172A] hover:underline font-bold inline-flex items-center gap-1.5 py-1"
+          >
+            <Lock className="w-3.5 h-3.5 text-[#0F766E]" />
+            <span>Admin &amp; Teacher Portal</span>
+          </button>
+        </div>
 
         <p className="text-[11px] text-[#64748B] font-medium flex items-center justify-center gap-1">
           <Shield className="w-3 h-3 text-[#0F766E]" />
