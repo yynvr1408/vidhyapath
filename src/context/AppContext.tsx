@@ -77,23 +77,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lowDataMode, setLowDataMode] = useState<boolean>(false);
   const [fontSize, setFontSizeState] = useState<'normal' | 'large' | 'xlarge'>('normal');
   const [dataUsedKb, setDataUsedKb] = useState<number>(34);
+  const savedLang = (typeof window !== 'undefined' ? (localStorage.getItem('vidyapath_language') as SupportedLang) : null) || 'en';
   const [syncTick, setSyncTick] = useState<boolean>(false);
   const [queuedDoubtsCount, setQueuedDoubtsCount] = useState<number>(0);
-  const [currentLanguage, setCurrentLanguage] = useState<SupportedLang>('te');
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLang>(savedLang);
 
   // Inactivity timer for shared-phone 2-minute auto-lock
   const autoLockTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load active pack
-  const loadPack = async (packId: string = 'te-10-maths-ap') => {
+  const loadPack = async (packId?: string) => {
     try {
-      const res = await fetch(`/packs/${packId}.json`);
+      const targetPack = packId || localStorage.getItem('vidyapath_language_pack') || (savedLang === 'hi' ? 'hi-10-maths-cbse' : savedLang === 'te' ? 'te-10-maths-ap' : 'en-10-maths-cbse');
+      const res = await fetch(`/packs/${targetPack}.json`);
       if (res.ok) {
         const data: ContentPack = await res.json();
         setPack(data);
-        if (data.language.startsWith('en')) setCurrentLanguage('en');
-        else if (data.language.startsWith('hi')) setCurrentLanguage('hi');
-        else setCurrentLanguage('te');
+        if (data.language.startsWith('hi')) setCurrentLanguage('hi');
+        else if (data.language.startsWith('te')) setCurrentLanguage('te');
+        else setCurrentLanguage('en');
       }
     } catch (err) {
       console.warn('Failed to fetch pack:', err);
@@ -109,12 +111,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Switch language directly
   const switchLanguage = async (lang: SupportedLang) => {
     setCurrentLanguage(lang);
-    if (lang === 'en') {
-      await switchPack('en-10-maths-cbse');
-    } else if (lang === 'hi') {
+    localStorage.setItem('vidyapath_language', lang);
+    if (lang === 'hi') {
       await switchPack('hi-10-maths-cbse');
-    } else {
+    } else if (lang === 'te') {
       await switchPack('te-10-maths-ap');
+    } else {
+      // English or any of the 22 scheduled languages
+      await switchPack('en-10-maths-cbse');
     }
   };
 

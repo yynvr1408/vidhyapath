@@ -26,3 +26,5 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+.codebenders/
+public/uploads/

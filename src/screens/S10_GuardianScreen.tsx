@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Shield, Heart, CheckCircle2, AlertCircle, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Shield, Share2, Heart, Sparkles, CheckCircle2, AlertCircle, Copy, Check, Users } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AudioButton } from '../components/AudioButton';
-import { StudentAvatar } from '../components/StudentAvatar';
+import { localDb } from '../db/indexedDb';
 
 export const S10_GuardianScreen: React.FC = () => {
-  const { activeLearner, setScreen, pack } = useApp();
+  const { activeLearner, pack, setScreen } = useApp();
   const [copied, setCopied] = useState(false);
+  const [liveSummary, setLiveSummary] = useState<{
+    sessionsCompleted: number;
+    accuracyPercent: number;
+    strongSkills: string[];
+    weakSkill: string;
+  } | null>(null);
 
-  const isEn = pack?.language === 'en';
-  const isHi = pack?.language === 'hi';
-
-  const nickname = activeLearner?.nickname || (isEn ? 'Priya' : isHi ? 'प्रिया' : 'ప్రియ (Priya)');
-  const tokenUrl = `${window.location.origin}/#guardian?token=g_token_priya_01`;
+  // View-only dummy token or current learner data
+  const nickname = activeLearner?.nickname || 'చిరుత (Cheetah)';
+  const tokenUrl = `${window.location.origin}/#guardian?token=g_token_${activeLearner?.animal || 'cheetah'}_01`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(tokenUrl);
@@ -20,116 +24,143 @@ export const S10_GuardianScreen: React.FC = () => {
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const summaryData = isEn
-    ? {
-        week: 'Weekly Summary',
-        sessionsCompleted: 6,
-        accuracyPercent: 82,
-        strongSkills: [
-          "Euclid's Division Lemma (HCF)",
-          'Fundamental Theorem of Arithmetic (Prime Factors)',
-          'Union and Sets Definition (∪)',
-        ],
-        weakSkill: 'Set Difference (A - B)',
-        suggestedAction:
-          'Draw two circles (Venn Diagram) on paper and practice shading the region that belongs exclusively to set A.',
-        practiceTogetherPrompt:
-          'Take two bowls with different lentils or beans at home. Play a quick game identifying items that belong only to the first bowl.',
+  useEffect(() => {
+    if (!activeLearner) return;
+    localDb.getAttemptsByLearner(activeLearner.id).then((attempts) => {
+      if (attempts && attempts.length > 0) {
+        const correctCount = attempts.filter((a) => a.correct).length;
+        const accuracy = Math.round((correctCount / attempts.length) * 100);
+        const sessions = Math.max(1, Math.ceil(attempts.length / 5));
+
+        // Group attempts by skill
+        const skillStats: Record<string, { correct: number; total: number }> = {};
+        for (const a of attempts) {
+          if (!skillStats[a.skillId]) skillStats[a.skillId] = { correct: 0, total: 0 };
+          skillStats[a.skillId].total++;
+          if (a.correct) skillStats[a.skillId].correct++;
+        }
+
+        const sorted = Object.entries(skillStats).sort(
+          (a, b) => b[1].correct / b[1].total - a[1].correct / a[1].total
+        );
+
+        // Find readable labels from pack
+        const getSkillName = (skId: string) => {
+          if (skId.includes('euclid')) return 'యూక్లిడ్ భాగహార న్యాయం (Euclid Lemma)';
+          if (skId.includes('factor')) return 'ప్రధాన కారణాంకాలు (Prime Factors)';
+          if (skId.includes('union')) return 'సమితుల సమ్మేళనం (Union ∪)';
+          if (skId.includes('diff') || skId.includes('difference')) return 'సమితుల భేదం (Difference A - B)';
+          if (skId.includes('decimal')) return 'అంతమయ్యే దశాంశాలు (Terminating Decimals)';
+          return skId;
+        };
+
+        const strong = sorted.slice(0, 3).map(([id]) => getSkillName(id));
+        const weak = sorted.length > 0 ? getSkillName(sorted[sorted.length - 1][0]) : 'సమితుల భేదం (Difference A - B)';
+
+        setLiveSummary({
+          sessionsCompleted: sessions,
+          accuracyPercent: accuracy,
+          strongSkills: strong.length > 0 ? strong : ['యూక్లిడ్ భాగహార న్యాయం', 'ప్రధాన కారణాంకాలు'],
+          weakSkill: weak,
+        });
       }
-    : isHi
+    });
+  }, [activeLearner]);
+
+  const defaultSummaryData = {
+    week: 'ఈ వారం సమీక్ష (Weekly Summary)',
+    sessionsCompleted: 6,
+    accuracyPercent: 82,
+    strongSkills: [
+      'యూక్లిడ్ భాగహార న్యాయం (Euclid Lemma)',
+      'ప్రధాన కారణాంకాలు (Prime Factors)',
+      'సమితుల సమ్మేళనం (Union ∪)'
+    ],
+    weakSkill: 'సమితుల భేదం (Difference A - B)',
+    suggestedAction: 'రెండు వర్తులాలు (Venn Diagram) కాగితంపై గీసి, మొదటి వృత్తంలో మాత్రమే ఉండే భాగం గుర్తించడాన్ని సాధన చేయించండి.',
+    practiceTogetherPrompt: 'ఇంట్లో ఉన్న పప్పులు లేదా గింజలను రెండు పళ్ళాలలో ఉంచి, మొదటి పళ్ళెంలో మాత్రమే ఉన్నవాటిని వేరుచేసే సరదా ఆట ఆడండి.'
+  };
+
+  const summaryData = liveSummary
     ? {
-        week: 'साप्ताहिक सारांश',
-        sessionsCompleted: 6,
-        accuracyPercent: 82,
-        strongSkills: [
-          'यूक्लिड विभाजन प्रमेयिका (म.स.प.)',
-          'अंकगणित की आधारभूत प्रमेय (अभाज्य गुणनखंड)',
-          'समुच्चयों का सम्मिलन (Union ∪)',
-        ],
-        weakSkill: 'समुच्चयों का अंतर (A - B)',
-        suggestedAction:
-          'कागज़ पर दो वृत्त (वेन आरेख) खींचें और केवल पहले समुच्चय में आने वाले भाग को पहचानने का अभ्यास कराएं।',
-        practiceTogetherPrompt:
-          'घर में दो कटोरियों में अलग-अलग दालें या अनाज रखें। एक कटोरी में से अनूठे दानों को अलग करने का मजेदार अभ्यास करें।',
+        ...defaultSummaryData,
+        sessionsCompleted: liveSummary.sessionsCompleted,
+        accuracyPercent: liveSummary.accuracyPercent,
+        strongSkills: liveSummary.strongSkills,
+        weakSkill: liveSummary.weakSkill,
       }
-    : {
-        week: 'ఈ వారం సమీక్ష (Weekly Summary)',
-        sessionsCompleted: 6,
-        accuracyPercent: 82,
-        strongSkills: [
-          'యూక్లిడ్ భాగహార న్యాయం (Euclid Lemma)',
-          'ప్రధాన కారణాంకాలు (Prime Factors)',
-          'సమితుల సమ్మేళనం (Union ∪)',
-        ],
-        weakSkill: 'సమితుల భేదం (Difference A - B)',
-        suggestedAction:
-          'రెండు వృత్తాలు (Venn Diagram) కాగితంపై గీసి, మొదటి వృత్తంలో మాత్రమే ఉండే భాగం గుర్తించడాన్ని సాధన చేయించండి.',
-        practiceTogetherPrompt:
-          'ఇంట్లో ఉన్న పప్పులు లేదా గింజలను రెండు పళ్ళాలలో ఉంచి, మొదటి పళ్ళెంలో మాత్రమే ఉన్నవాటిని వేరుచేసే సరదా ఆట ఆడండి.',
-      };
+    : defaultSummaryData;
 
   return (
-    <div className="min-h-screen bg-[#F4F9F6] text-[#0F172A] flex flex-col pb-8">
+    <div className="min-h-screen bg-cream-100 flex flex-col pb-8">
       {/* Top Header */}
-      <header className="bg-[#FFFFFF] text-[#0F172A] px-4 py-3 shadow-xs border-b border-[#D1E7DD] sticky top-0 z-30">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          <div className="flex items-center gap-2">
+      <header className="bg-emerald-800 text-white px-4 py-3 shadow-md sticky top-0 z-30">
+        <div className="flex items-center justify-between max-w-md mx-auto gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setScreen(activeLearner ? 'S3_HOME' : 'S1_PICKER')}
-              className="p-2 rounded-xl bg-[#F4F9F6] hover:bg-[#DCFCE7] text-[#0F172A] active:scale-95 border border-[#D1E7DD]"
+              className="p-2 rounded-xl bg-emerald-900 hover:bg-emerald-700 text-white active:scale-95 shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-1.5">
-              <Shield className="w-5 h-5 text-[#059669]" />
-              <span className="font-bold text-base">సంరక్షకుని సారాంశం (Guardian View)</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Shield className="w-5 h-5 text-emerald-300 shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-sm sm:text-base leading-tight truncate">
+                  {pack?.language === 'hi' ? 'अभिभावक सारांश' : pack?.language === 'en' ? 'Guardian Summary' : 'సంరక్షకుని సారాంశం'}
+                </span>
+                <span className="text-[11px] text-emerald-200 truncate">
+                  {pack?.language === 'hi' ? 'साप्ताहिक प्रगति' : pack?.language === 'en' ? 'Weekly Digest' : 'Guardian View'}
+                </span>
+              </div>
             </div>
           </div>
-          <AudioButton
-            text={`సంరక్షకుని సారాంశం. విద్యార్థి ${nickname}. ఈ వారం 6 సెషన్లు పూర్తి చేశారు. ఖచ్చితత్వం 82 శాతం.`}
-            label=""
-            size="sm"
-          />
+          <div className="shrink-0">
+            <AudioButton
+              text={`సంరక్షకుని సారాంశం. విద్యార్థి ${nickname}. ఈ వారం 6 సెషన్లు పూర్తి చేశారు. ఖచ్చితత్వం 82 శాతం.`}
+              label=""
+              size="sm"
+            />
+          </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-md w-full mx-auto px-4 pt-4 space-y-4">
         {/* Banner Card */}
-        <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-[#D1E7DD] shadow-xs">
+        <div className="bg-white rounded-3xl p-5 border-2 border-emerald-200 shadow-xs">
           <div className="flex items-center gap-3 mb-3">
-            <StudentAvatar learner={activeLearner} size="lg" />
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-2xl font-bold border-2 border-emerald-300">
+              {activeLearner?.avatarEmoji || '🐆'}
+            </div>
             <div>
-              <div className="text-xs text-[#475569] font-medium">విద్యార్థి ప్రొఫైల్ (వీక్షణ మాత్రమే · Zero-PII)</div>
-              <h2 className="text-lg font-bold text-[#0F172A]">{nickname}</h2>
-              {activeLearner?.loginCode && (
-                <span className="text-xs font-mono text-[#15803D] font-bold">కోడ్: {activeLearner.loginCode}</span>
-              )}
+              <div className="text-xs text-slate-500 font-medium">విద్యార్థి ప్రొఫైల్ (చూడటానికి మాత్రమే)</div>
+              <h2 className="text-lg font-bold text-slate-900">{nickname}</h2>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 bg-[#F4F9F6] p-3.5 rounded-2xl border border-[#D1E7DD] text-center">
+          <div className="grid grid-cols-2 gap-3 bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 text-center">
             <div>
-              <div className="text-2xl font-black text-[#059669]">{summaryData.sessionsCompleted}</div>
-              <div className="text-[11px] font-bold text-[#475569]">పూర్తయిన సెషన్లు</div>
+              <div className="text-2xl font-black text-emerald-800">{summaryData.sessionsCompleted}</div>
+              <div className="text-[11px] font-bold text-emerald-950">పూర్తయిన సెషన్లు</div>
             </div>
             <div>
-              <div className="text-2xl font-black text-[#059669]">{summaryData.accuracyPercent}%</div>
-              <div className="text-[11px] font-bold text-[#475569]">సగటు ఖచ్చితత్వం</div>
+              <div className="text-2xl font-black text-emerald-800">{summaryData.accuracyPercent}%</div>
+              <div className="text-[11px] font-bold text-emerald-950">సగటు ఖచ్చితత్వం</div>
             </div>
           </div>
         </div>
 
         {/* Strong Skills */}
-        <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-[#D1E7DD] shadow-xs">
-          <h3 className="font-bold text-sm text-[#059669] mb-2.5 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-[#059669]" />
+        <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-xs">
+          <h3 className="font-bold text-sm text-indigo-brand mb-2.5 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <span>బాగా వచ్చిన అంశాలు (Strong Topics):</span>
           </h3>
           <ul className="space-y-1.5">
             {summaryData.strongSkills.map((sk, idx) => (
-              <li key={idx} className="flex items-center gap-2 text-xs font-semibold text-[#0F172A] bg-[#DCFCE7] p-2.5 rounded-xl border border-[#86EFAC]">
-                <span className="w-2 h-2 rounded-full bg-[#059669]"></span>
+              <li key={idx} className="flex items-center gap-2 text-xs font-semibold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                 <span>{sk}</span>
               </li>
             ))}
@@ -137,53 +168,63 @@ export const S10_GuardianScreen: React.FC = () => {
         </div>
 
         {/* Weak Skill & Suggested Action */}
-        <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-[#FECACA] shadow-xs">
-          <h3 className="font-bold text-sm text-[#DC2626] mb-2 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-[#DC2626]" />
+        <div className="bg-white rounded-3xl p-5 border-2 border-amber-300 shadow-xs">
+          <h3 className="font-bold text-sm text-amber-900 mb-2 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-600" />
             <span>మరింత శ్రద్ధ అవసరమైన అంశం (Weak Skill):</span>
           </h3>
-          <div className="text-xs font-bold text-[#DC2626] mb-3 bg-[#FEF2F2] p-2.5 rounded-xl border border-[#FECACA]">
+          <div className="text-xs font-bold text-slate-900 mb-3 bg-amber-50 p-2 rounded-xl border border-amber-200">
             {summaryData.weakSkill}
           </div>
 
-          <div className="border-t border-[#D1E7DD] pt-3">
-            <div className="text-xs font-bold text-[#15803D] uppercase tracking-wider mb-1">
-              తల్లిదండ్రులు / సంరక్షకులు చేయవలసిన సూచన:
+          <div className="border-t border-slate-100 pt-3">
+            <div className="text-xs font-bold text-indigo-brand uppercase mb-1">
+              తల్లిదండ్రులు / పెద్దలు చేయవలసిన సూచన:
             </div>
-            <p className="text-xs text-[#475569] leading-relaxed font-semibold">
+            <p className="text-xs text-slate-700 leading-relaxed font-medium">
               {summaryData.suggestedAction}
             </p>
           </div>
         </div>
 
         {/* Practice Together Activity Card */}
-        <div className="bg-[#FFFFFF] rounded-3xl p-5 border-2 border-[#16A34A] shadow-xs">
-          <div className="flex items-center gap-2 font-bold text-sm text-[#15803D] mb-2">
-            <Heart className="w-5 h-5 text-[#16A34A] fill-[#16A34A]" />
+        <div className="bg-[#0F766E] text-white rounded-3xl p-5 shadow-md">
+          <div className="flex items-center gap-2 font-bold text-sm text-[#FDE047] mb-2">
+            <Heart className="w-5 h-5 text-[#FDE047] fill-[#FDE047]" />
             <span>కలిసి సాధన చేద్దాం (Practice Together):</span>
           </div>
-          <p className="text-xs text-[#0F172A] leading-relaxed font-semibold mb-3">
+          <p className="text-xs text-white leading-relaxed font-semibold mb-3">
             {summaryData.practiceTogetherPrompt}
           </p>
-          <div className="text-[11px] text-[#15803D] font-bold italic">
+          <div className="text-[11px] text-[#CCFBF1] font-bold italic">
             "తల్లిదండ్రుల చిన్న ప్రోత్సాహం పిల్లలలో గణిత భయాన్ని తొలగిస్తుంది."
           </div>
         </div>
 
         {/* Shareable Link Box */}
-        <div className="bg-[#FFFFFF] rounded-2xl p-4 border border-[#D1E7DD] text-center shadow-xs">
-          <p className="text-xs text-[#475569] mb-3 font-medium">
-            ఈ పేజీని లాగిన్ లేకుండా చూడటానికి కుటుంబ సభ్యులకు ఈ లింక్‌ను పంపవచ్చు:
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 text-center">
+          <p className="text-xs text-slate-600 mb-3">
+            ఈ పేజీని లాగిన్ లేకుండా చూడటానికి మీ కుటుంబ సభ్యులకు ఈ లింక్‌ను పంపవచ్చు:
           </p>
           <button
             type="button"
             onClick={handleCopyLink}
-            className="w-full py-3 px-4 rounded-xl bg-[#15803D] hover:bg-[#166534] text-white font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md min-h-[48px]"
+            className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-indigo-brand font-bold text-xs flex items-center justify-center gap-2 active:scale-95 transition-all border border-slate-200"
           >
-            {copied ? <Check className="w-4 h-4 stroke-[3]" /> : <Copy className="w-4 h-4" />}
+            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? 'లింక్ కాపీ అయింది!' : 'సంరక్షకుని లింక్ కాపీ చేయండి'}</span>
           </button>
         </div>
+
+        {/* Link to cohort (teacher/volunteer) view */}
+        <button
+          type="button"
+          onClick={() => setScreen('PARENT_VIEW')}
+          className="w-full min-h-[56px] py-3 px-4 rounded-xl bg-[#0F766E] text-white font-bold text-base flex items-center justify-center gap-2 active:scale-95 transition-all"
+        >
+          <Users className="w-5 h-5" />
+          <span>ఉపాధ్యాయ వీక్షణ (teacher view)</span> {/* TODO native review */}
+        </button>
       </main>
     </div>
   );

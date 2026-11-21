@@ -5,13 +5,6 @@ import { ContentPack, Question } from '../src/types';
 import fs from 'fs';
 import path from 'path';
 
-import { DeterministicAnswerChecker } from '../src/engine/answerChecker';
-import { PracticeEngine } from '../src/engine/practiceEngine';
-import { TutorService } from '../src/services/tutor';
-import { ContentPack, Question } from '../src/types';
-import fs from 'fs';
-import path from 'path';
-
 function runTests() {
   console.log('=== Vidyapath Verification & Test Suite ===\n');
 
@@ -142,7 +135,5 @@ function runTests() {
 
   console.log('\n=== ALL MULTILINGUAL TEST CHECKS PASSED SUCCESSFULLY! ===');
 }
-
-runTests();
 
 runTests();

@@ -15,16 +15,46 @@
   --color-warning: #D97706;
   --color-error: #DC2626;
   --border-subtle: #E2E8F0;
+
+  /* Safe Area Insets for Mobile Notches, Cutouts & Status Bars */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
 }
 
 @layer base {
-  body {
+  html, body {
     background-color: #F8FAFC;
     color: #0F172A;
     -webkit-tap-highlight-color: transparent;
     font-size: 16px;
     line-height: 1.65;
     font-family: 'Noto Sans Telugu', system-ui, -apple-system, sans-serif;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior-y: none;
+    min-height: 100vh;
+  }
+
+  /* Universal safe-area top padding for all headers across the app */
+  header,
+  .safe-top-inset {
+    padding-top: max(0.75rem, calc(0.5rem + env(safe-area-inset-top, 0px))) !important;
+  }
+
+  /* Instant responsive touch targets with no 300ms delay */
+  button, a, select, [role="button"], input[type="button"], input[type="submit"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+  }
+
+  /* Smooth mobile scrolling */
+  main, .scroll-container, .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
 }
 

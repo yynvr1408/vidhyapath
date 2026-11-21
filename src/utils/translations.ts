@@ -1,4 +1,28 @@
-export type SupportedLang = 'te' | 'en' | 'hi';
+export type SupportedLang =
+  | 'en'
+  | 'te'
+  | 'hi'
+  | 'ta'
+  | 'kn'
+  | 'bn'
+  | 'mr'
+  | 'gu'
+  | 'ml'
+  | 'or'
+  | 'pa'
+  | 'as'
+  | 'ur'
+  | 'sa'
+  | 'kok'
+  | 'mai'
+  | 'mni'
+  | 'ne'
+  | 'brx'
+  | 'doi'
+  | 'ks'
+  | 'sat'
+  | 'sd'
+  | string;
 
 export interface TranslationDictionary {
   // Common & Layout
@@ -491,8 +515,9 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
 };
 
 export function getTranslations(langOrPackId?: string): TranslationDictionary {
-  if (!langOrPackId) return TRANSLATIONS.te;
+  if (!langOrPackId) return TRANSLATIONS.en;
   if (langOrPackId.startsWith('en') || langOrPackId.includes('-en')) return TRANSLATIONS.en;
+  if (langOrPackId.startsWith('te') || langOrPackId.includes('-te')) return TRANSLATIONS.te;
   if (langOrPackId.startsWith('hi') || langOrPackId.includes('-hi')) return TRANSLATIONS.hi;
-  return TRANSLATIONS.te;
+  return TRANSLATIONS.en;
 }

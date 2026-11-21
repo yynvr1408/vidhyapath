@@ -7,6 +7,7 @@ import { VidyapathLogo } from '../components/VidyapathLogo';
 import { PinPadModal } from '../components/PinPadModal';
 import { AddProfileModal } from '../components/AddProfileModal';
 import { getTranslations, SupportedLang } from '../utils/translations';
+import { SCHEDULED_LANGUAGES } from '../config/languages';
 
 // Formats display names cleanly based on current language
 const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
@@ -56,7 +57,7 @@ export const ProfileSelectorScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between p-4 sm:p-6 max-w-lg mx-auto text-[#0F172A]">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between p-4 sm:p-6 max-w-lg mx-auto text-[#0F172A] safe-top-inset">
       {/* 1. Sleek Top Bar with Status & Language Switcher */}
       <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
         {/* Offline Status / Demo Toggle */}
@@ -78,17 +79,20 @@ export const ProfileSelectorScreen: React.FC = () => {
           <span>{isOffline ? t.offlineSaved : t.online}</span>
         </button>
 
-        {/* 3-Language Selector Dropdown */}
+        {/* 22-Language Selector Dropdown */}
         <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 rounded-[12px] border border-[#E2E8F0] shadow-2xs">
           <Globe className="w-3.5 h-3.5 text-[#0F766E]" />
           <select
             value={currentLanguage}
             onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
-            className="text-xs font-bold text-[#0F172A] bg-transparent focus:outline-hidden cursor-pointer"
+            className="text-xs font-bold text-[#0F172A] bg-transparent focus:outline-hidden cursor-pointer max-w-[130px] truncate"
+            title="Choose from 22 Eighth Schedule Indian Languages"
           >
-            <option value="te">తెలుగు</option>
-            <option value="en">English</option>
-            <option value="hi">हिन्दी</option>
+            {SCHEDULED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.nativeName} ({lang.name})
+              </option>
+            ))}
           </select>
         </div>
       </div>

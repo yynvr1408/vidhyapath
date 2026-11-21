@@ -17,6 +17,7 @@ import { useApp, ScreenId } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { VidyapathLogo } from './VidyapathLogo';
 import { getTranslations, SupportedLang } from '../utils/translations';
+import { SCHEDULED_LANGUAGES } from '../config/languages';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -204,20 +205,23 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
       {/* Bottom: Settings, Offline Demo Toggle, Language & Switch Profile */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2.5">
-        {/* Language Switcher Dropdown */}
+        {/* Language Switcher Dropdown (All 22 Scheduled Languages) */}
         <div className="flex items-center justify-between bg-[#F8FAFC] p-2 rounded-[12px] border border-[#E2E8F0]">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#475569]">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#475569] shrink-0">
             <Globe className="w-4 h-4 text-[#0F766E]" />
-            <span>భాష / Language:</span>
+            <span>Language:</span>
           </div>
           <select
             value={currentLanguage}
             onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
-            className="text-xs bg-white text-[#0F172A] font-bold px-2 py-1 rounded-md border border-[#E2E8F0] focus:outline-hidden cursor-pointer"
+            className="text-xs bg-white text-[#0F172A] font-bold px-2 py-1 rounded-md border border-[#E2E8F0] focus:outline-hidden cursor-pointer max-w-[130px] truncate"
+            title="Choose from 22 Eighth Schedule Indian Languages"
           >
-            <option value="te">తెలుగు</option>
-            <option value="en">English</option>
-            <option value="hi">हिन्दी</option>
+            {SCHEDULED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.nativeName} ({lang.name})
+              </option>
+            ))}
           </select>
         </div>
 

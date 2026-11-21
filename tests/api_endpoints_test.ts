@@ -110,6 +110,7 @@ async function testApi() {
 
   server.close();
   console.log('\n=== ALL API ENDPOINTS VERIFIED AND WORKING 100%! ===');
+  process.exit(0);
 }
 
 testApi();
