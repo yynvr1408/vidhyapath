@@ -93,6 +93,17 @@ export class LocalDatabase {
     });
   }
 
+  async deleteLearner(id: string): Promise<void> {
+    const db = await this.getDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('learners', 'readwrite');
+      const store = tx.objectStore('learners');
+      const req = store.delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   async getLearnerById(id: string): Promise<LearnerProfile | null> {
     const db = await this.getDb();
     return new Promise((resolve, reject) => {
@@ -102,6 +113,20 @@ export class LocalDatabase {
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
     });
+  }
+
+  async findLearnerByLoginCode(code: string): Promise<LearnerProfile | null> {
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) return null;
+    const all = await this.getLearners();
+    return all.find((l) => (l.loginCode || '').trim().toUpperCase() === cleanCode) || null;
+  }
+
+  async isLoginCodeTaken(code: string, excludeId?: string): Promise<boolean> {
+    const cleanCode = code.trim().toUpperCase();
+    if (!cleanCode) return false;
+    const all = await this.getLearners();
+    return all.some((l) => l.id !== excludeId && (l.loginCode || '').trim().toUpperCase() === cleanCode);
   }
 
   // --- Attempts & Sync ---

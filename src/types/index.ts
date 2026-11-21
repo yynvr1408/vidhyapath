@@ -66,11 +66,16 @@ export interface ContentPack {
 
 export interface LearnerProfile {
   id: string;
-  nickname: string;
-  animal: string;
-  avatarColor: string;
-  avatarEmoji: string;
+  nickname: string; // Student first/display name (e.g. రవి / Ravi)
+  classGrade?: number; // e.g. 9 or 10
+  avatarType?: 'initials' | 'icon' | 'photo';
+  avatarColor: string; // Theme ring / badge background color
+  avatarEmoji?: string; // Student icon preset (e.g. 👦, 👧, 👩‍🎓, 👨‍🎓, 🧑‍🎓, 🧒)
+  avatarPhoto?: string | null; // 160x160 Data URL (< 25 KB)
+  animal?: string; // legacy fallback
   packId: string;
+  loginCode: string; // Unique student code (e.g. RAVI-09, PRIYA-10)
+  pin?: string; // 4-digit PIN (e.g. "1234")
   pinHash?: string | null;
   createdAt: number;
   cohortCode?: string;

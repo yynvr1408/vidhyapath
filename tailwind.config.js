@@ -7,45 +7,61 @@ export default {
   theme: {
     extend: {
       colors: {
-        cream: {
-          50: '#FFFCF5',
-          100: '#FFF8E7',
-          200: '#FDF0CD',
-          300: '#FBE4A8',
+        canvas: '#F8FAFC', // Soft Slate White
+        card: '#FFFFFF',   // Pure Crisp White
+        border: {
+          subtle: '#E2E8F0',
+          DEFAULT: '#E2E8F0',
         },
-        indigo: {
-          brand: '#2B2D6E',
-          dark: '#1C1E4F',
-          light: '#3F4294',
+        primary: {
+          DEFAULT: '#0F766E', // Deep Educational Teal
+          hover: '#115E59',
+          dark: '#115E59',
+          soft: '#F0FDFA',   // Pale Mint
+          light: '#F0FDFA',
+          text: '#FFFFFF',
         },
-        lantern: {
-          DEFAULT: '#F2A33A',
-          glow: '#FFB84D',
-          dim: '#C47E20',
-          light: '#FFF0D4',
+        accent: {
+          DEFAULT: '#D97706', // Warm Amber (Voice Mic / Highlights / Saved Offline)
+          hover: '#B45309',
+          soft: '#FEF3C7',
+          text: '#92400E',
+        },
+        text: {
+          main: '#0F172A',  // Deep Charcoal
+          muted: '#475569', // Muted Slate
+          sub: '#64748B',
         },
         success: {
-          brand: '#2E8B57',
-          light: '#E7F5ED',
+          brand: '#16A34A', // Mastered / Online Green
+          light: '#DCFCE7',
+          text: '#14532D',
         },
-        hint: {
-          brand: '#2F6DB5',
-          light: '#EAF2FB',
+        warning: {
+          brand: '#D97706', // In Progress / Saved Offline Amber
+          light: '#FEF3C7',
+          text: '#92400E',
         },
-        coral: {
-          brand: '#D9534F',
-          light: '#FCEBEA',
-        }
+        error: {
+          brand: '#DC2626', // Weak / Needs Help
+          light: '#FEE2E2',
+          border: '#FECACA',
+          text: '#991B1B',
+        },
       },
       fontFamily: {
         telugu: ['Noto Sans Telugu', 'Tenali Ramakrishna', 'system-ui', '-apple-system', 'sans-serif'],
       },
       minHeight: {
-        touch: '56px',
+        touch: '48px',
       },
       minWidth: {
-        touch: '56px',
-      }
+        touch: '48px',
+      },
+      borderRadius: {
+        'card': '12px',
+        'modal': '12px',
+      },
     },
   },
   plugins: [],

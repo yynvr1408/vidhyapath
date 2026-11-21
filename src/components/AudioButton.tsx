@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
+import { Volume2 } from 'lucide-react';
 import { SpeechService } from '../services/speech';
 
 interface AudioButtonProps {
@@ -39,7 +39,7 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
   };
 
   const sizeClasses = {
-    sm: 'p-1.5 text-xs min-h-[44px] min-w-[44px]',
+    sm: 'p-2 text-xs min-h-[44px] min-w-[44px]',
     md: 'px-3 py-2 text-sm min-h-[50px]',
     lg: 'px-4 py-2.5 text-base min-h-[56px]',
   };
@@ -49,22 +49,22 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
       type="button"
       onClick={handleTogglePlay}
       aria-label={`${label}: ${text.substring(0, 30)}`}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all active:scale-95 ${
+      className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-all active:scale-95 ${
         isPlaying
-          ? 'bg-amber-100 text-amber-900 border-2 border-lantern shadow-sm'
-          : 'bg-white/90 text-indigo-dark hover:bg-amber-50 border border-slate-200 shadow-xs'
+          ? 'bg-[#DCFCE7] text-[#15803D] border-2 border-[#15803D] shadow-xs'
+          : 'bg-[#FFFFFF] text-[#0F172A] hover:bg-[#F0FDF4] border border-[#D1E7DD] hover:border-[#15803D] shadow-xs'
       } ${sizeClasses[size]} ${className}`}
     >
       {isPlaying ? (
         <div className="flex items-end gap-0.5 h-4 w-4">
-          <span className="w-1 bg-lantern audio-bar-1 rounded-full"></span>
-          <span className="w-1 bg-lantern audio-bar-2 rounded-full"></span>
-          <span className="w-1 bg-lantern audio-bar-3 rounded-full"></span>
+          <span className="w-1 bg-[#15803D] audio-bar-1 rounded-full"></span>
+          <span className="w-1 bg-[#15803D] audio-bar-2 rounded-full"></span>
+          <span className="w-1 bg-[#15803D] audio-bar-3 rounded-full"></span>
         </div>
       ) : (
-        <Volume2 className="w-5 h-5 text-lantern" />
+        <Volume2 className="w-4 h-4 text-[#15803D] shrink-0" />
       )}
-      {label && <span className="font-semibold">{label}</span>}
+      {label && <span>{isPlaying ? 'ఆపు' : label}</span>}
     </button>
   );
 };

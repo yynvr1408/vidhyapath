@@ -59,8 +59,8 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
 
   if (!isSupported) {
     return (
-      <div className="text-center py-2 text-sm text-slate-500 flex items-center justify-center gap-1.5">
-        <MicOff className="w-4 h-4 text-slate-400" />
+      <div className="text-center py-2 text-xs text-[#475569] flex items-center justify-center gap-1.5 bg-[#FFFFFF] p-2.5 rounded-xl border border-[#D1E7DD]">
+        <MicOff className="w-4 h-4 text-[#94A3B8]" />
         <span>వాయిస్ అందుబాటులో లేదు (ట్యాప్ ద్వారా ఎంచుకోండి)</span>
       </div>
     );
@@ -76,19 +76,19 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
           aria-label={label}
           className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 ${
             lowDataMode
-              ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              ? 'bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed border border-[#CBD5E1]'
               : isListening
-              ? 'bg-red-500 text-white animate-pulse ring-8 ring-red-200'
-              : 'bg-indigo-brand text-white hover:bg-indigo-dark ring-4 ring-indigo-100'
+              ? 'bg-[#DC2626] text-white animate-pulse ring-8 ring-[#FECACA] shadow-red-500/20'
+              : 'bg-[#15803D] text-white hover:bg-[#166534] ring-4 ring-[#86EFAC] shadow-emerald-700/20'
           }`}
         >
-          {isListening ? <Mic className="w-10 h-10 animate-bounce" /> : <Mic className="w-10 h-10" />}
+          {isListening ? <Mic className="w-9 h-9 stroke-[2.5] animate-bounce" /> : <Mic className="w-9 h-9 stroke-[2.5]" />}
         </button>
-        <span className="text-sm font-semibold text-indigo-brand">
+        <span className="text-xs font-bold text-[#0F172A]">
           {isListening ? 'వింటున్నాము... మాట్లాడండి' : lowDataMode ? 'వాయిస్ నిలిపివేయబడింది (డేటా మోడ్)' : label}
         </span>
         {errorNotice && (
-          <div className="flex items-center gap-1.5 text-xs text-coral-brand bg-coral-light px-3 py-1.5 rounded-lg max-w-xs text-center">
+          <div className="flex items-center gap-1.5 text-xs text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] px-3 py-1.5 rounded-xl max-w-xs text-center font-medium">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorNotice}</span>
           </div>
@@ -97,26 +97,26 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     );
   }
 
-  // Medium / inline button
+  // Medium / inline button (e.g. S5 practice screen)
   return (
-    <div className="inline-flex flex-col items-start gap-1">
+    <div className="w-full flex flex-col items-stretch gap-1">
       <button
         type="button"
         onClick={handleStartListening}
         disabled={lowDataMode}
-        className={`inline-flex items-center gap-2 px-4 py-3 rounded-xl font-medium min-h-[56px] transition-all active:scale-95 ${
+        className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-bold text-sm min-h-[56px] transition-all active:scale-95 border-2 ${
           lowDataMode
-            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            ? 'bg-[#F1F5F9] text-[#94A3B8] border-[#D1E7DD] cursor-not-allowed'
             : isListening
-            ? 'bg-red-500 text-white animate-pulse'
-            : 'bg-indigo-brand text-white hover:bg-indigo-dark'
+            ? 'bg-[#DC2626] text-white border-[#DC2626] animate-pulse'
+            : 'bg-[#FFFFFF] text-[#15803D] border-[#15803D] hover:bg-[#F0FDF4]'
         }`}
       >
-        <Mic className="w-5 h-5" />
+        <Mic className="w-5 h-5 shrink-0" />
         <span>{isListening ? 'వింటున్నాము...' : label}</span>
       </button>
       {errorNotice && (
-        <span className="text-xs text-coral-brand">{errorNotice}</span>
+        <span className="text-[11px] text-[#DC2626] font-medium text-center">{errorNotice}</span>
       )}
     </div>
   );

@@ -1,32 +1,10 @@
 import { ContentPack, DoubtItem } from '../types';
 import { localDb } from '../db/indexedDb';
-import { API_BASE } from '../config/api';
 
 export interface TutorResponse {
   answer: string;
   source: 'common_doubts' | 'cache' | 'ai_model' | 'queued_offline';
   isQueued?: boolean;
-}
-
-/**
- * Sends a compressed photo (data URL) to the server and returns the extracted problem text.
- * Returns '' when the photo cannot be read. Used only to produce a question for the learner
- * to confirm; it never checks answers.
- */
-export async function extractProblemFromPhoto(packId: string, imageDataUrl: string): Promise<string> {
-  try {
-    const response = await fetch(API_BASE + '/api/tutor/extract', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ packId, imageDataUrl }),
-    });
-    if (!response.ok) return '';
-    const data = await response.json();
-    return typeof data?.problemText === 'string' ? data.problemText.trim() : '';
-  } catch (err) {
-    console.warn('Photo extraction request failed:', err);
-    return '';
-  }
 }
 
 export class TutorService {
@@ -58,12 +36,22 @@ Learner doubt: "${doubtText}"`;
    * 2. Detects totally off-topic questions
    * 3. Truncates length to ~120 words
    */
-  public static applyGuardrails(rawReply: string, doubtQuery: string): string {
+  public static applyGuardrails(rawReply: string, doubtQuery: string, pack?: ContentPack): string {
     const lowerQuery = doubtQuery.toLowerCase();
 
     // Check personal info or inappropriate query
-    const personalPatterns = ['phone', 'ఫోన్ నంబర్', 'చిరునామా', 'password', 'పాస్‌వర్డ్', 'డబ్బులు', 'money', 'hack'];
+    const personalPatterns = [
+      'phone', 'address', 'password', 'money', 'hack', 'contact', 'email',
+      'ఫోన్', 'నంబర్', 'చిరునామా', 'పాస్‌వర్డ్', 'డబ్బులు',
+      'फोन', 'नंबर', 'मोबाइल', 'पासवर्ड', 'पता', 'पैसे'
+    ];
     if (personalPatterns.some((p) => lowerQuery.includes(p))) {
+      if (pack?.language === 'en') {
+        return 'I am sorry, I cannot assist with personal or sensitive details. Please ask only Class 10 Mathematics questions.';
+      }
+      if (pack?.language === 'hi') {
+        return 'क्षमा करें, मैं व्यक्तिगत या संवेदनशील जानकारी में मदद नहीं कर सकता। केवल कक्षा 10 गणित से संबंधित प्रश्न पूछें।';
+      }
       return 'క్షమించండి, నేను వ్యక్తిగత లేదా సున్నితమైన వివరాలలో సహాయం చేయలేను. కేవలం 10వ తరగతి గణితం సంబంధిత సందేహాలు మాత్రమే అడగండి.';
     }
 
@@ -111,54 +99,6 @@ Learner doubt: "${doubtText}"`;
   }
 
   /**
-   * Searches packed syllabus concepts, lesson cards, and explanations for instant offline answering
-   */
-  public static findOfflineSyllabusAnswer(
-    pack: ContentPack,
-    query: string,
-    topicId?: string
-  ): string | null {
-    const qLower = query.toLowerCase();
-    const queryTokens = qLower.split(/[\s,?.!+]+/).filter((w) => w.length > 2);
-    if (queryTokens.length === 0) return null;
-
-    // 1. Search lesson cards in pack topics
-    for (const topic of pack.topics) {
-      if (topic.cards) {
-        for (const card of topic.cards) {
-          const cardText = `${card.heading} ${card.conceptText} ${card.keyTakeaway || ''}`.toLowerCase();
-          const matches = queryTokens.filter((token) => cardText.includes(token));
-          if (matches.length >= 2 || (queryTokens.length === 1 && matches.length === 1)) {
-            const prefix = pack.language === 'en' ? '💡 Offline Concept Note:\n' : pack.language === 'hi' ? '💡 ऑफ़लाइन संकल्पना:\n' : '💡 ఆఫ్‌లైన్ సూత్రం:\n';
-            let res = `${prefix}**${card.heading}**\n${card.conceptText}`;
-            if (card.workedExample) {
-              const egLabel = pack.language === 'en' ? '\n\nWorked Example: ' : pack.language === 'hi' ? '\n\nहल किया गया उदाहरण: ' : '\n\nసాధించిన ఉదాహరణ: ';
-              res += `${egLabel}${card.workedExample.problem}\n-> ${card.workedExample.finalAnswer}`;
-            }
-            if (card.keyTakeaway) {
-              const keyLabel = pack.language === 'en' ? '\n\n📌 Remember: ' : pack.language === 'hi' ? '\n\n📌 याद रखें: ' : '\n\n📌 గుర్తుంచుకోండి: ';
-              res += `${keyLabel}${card.keyTakeaway}`;
-            }
-            return res;
-          }
-        }
-      }
-    }
-
-    // 2. Search question explanations
-    for (const q of pack.questions) {
-      const qText = `${q.text} ${q.explanation || ''}`.toLowerCase();
-      const matches = queryTokens.filter((token) => qText.includes(token));
-      if (matches.length >= 2 && q.explanation) {
-        const prefix = pack.language === 'en' ? '💡 Concept Explanation:\n' : pack.language === 'hi' ? '💡 अवधारणा व्याख्या:\n' : '💡 గణిత వివరణ:\n';
-        return `${prefix}${q.explanation}\n\n-> ${q.hintLadder[0]}`;
-      }
-    }
-
-    return null;
-  }
-
-  /**
    * Full AI Tutor Resolution Pipeline
    */
   public static async askDoubt(
@@ -168,8 +108,7 @@ Learner doubt: "${doubtText}"`;
     topicId?: string,
     mistakeTag?: string,
     isOffline: boolean = false,
-    lowDataMode: boolean = false,
-    tutoringLanguage?: string
+    lowDataMode: boolean = false
   ): Promise<TutorResponse> {
     const queryTrimmed = doubtText.trim();
     if (!queryTrimmed) {
@@ -193,24 +132,7 @@ Learner doubt: "${doubtText}"`;
       return { answer: commonAnswer, source: 'common_doubts' };
     }
 
-    // 2. Search on-device pre-packaged syllabus knowledge base (works 100% offline)
-    const syllabusAnswer = this.findOfflineSyllabusAnswer(pack, queryTrimmed, topicId);
-    if (syllabusAnswer) {
-      const doubtRecord: DoubtItem = {
-        id: 'doubt_syl_' + Date.now(),
-        learnerId,
-        topicId: topicId || 'ch1_real_numbers',
-        inputMode: 'text',
-        status: 'answered',
-        question: queryTrimmed,
-        answer: syllabusAnswer,
-        ts: Date.now(),
-      };
-      await localDb.saveDoubt(doubtRecord);
-      return { answer: syllabusAnswer, source: 'common_doubts' };
-    }
-
-    // 3. Check local tutor cache in IndexedDB
+    // 2. Check local tutor cache in IndexedDB
     const cacheKey = `${pack.id}_${queryTrimmed.toLowerCase()}`;
     const cachedReply = await localDb.getTutorCachedReply(cacheKey);
     if (cachedReply) {
@@ -239,7 +161,7 @@ Learner doubt: "${doubtText}"`;
 
     // 4. Online: call API layer
     try {
-      const response = await fetch(API_BASE + '/api/tutor/ask', {
+      const response = await fetch('/api/tutor/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -248,13 +170,12 @@ Learner doubt: "${doubtText}"`;
           doubt: queryTrimmed,
           topicId,
           mistakeTag,
-          language: tutoringLanguage || pack.language,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        const safeAnswer = this.applyGuardrails(data.answer, queryTrimmed);
+        const safeAnswer = this.applyGuardrails(data.answer, queryTrimmed, pack);
 
         // Cache for offline reuse
         await localDb.setTutorCachedReply(cacheKey, safeAnswer);
@@ -284,7 +205,7 @@ Learner doubt: "${doubtText}"`;
   }
 
   /**
-   * Generates a pedagogical Telugu hint if remote API is offline
+   * Generates a pedagogical hint matching the active language if remote API is offline
    */
   private static generatePedagogicalHint(
     pack: ContentPack,
@@ -292,6 +213,38 @@ Learner doubt: "${doubtText}"`;
     topicId?: string
   ): string {
     const q = query.toLowerCase();
+    const lang = pack.language;
+
+    if (lang === 'en') {
+      if (q.includes('hcf') || q.includes('gcd') || q.includes('euclid')) {
+        return "Hint 1: Recall Euclid's division lemma: a = bq + r (0 ≤ r < b). Divide the larger number by the smaller, and repeat with the remainder until r = 0. The last divisor is the HCF.";
+      }
+      if (q.includes('polynomial') || q.includes('degree') || q.includes('quadratic')) {
+        return 'Hint 1: The degree of a polynomial is the highest power of the variable x. A quadratic polynomial has degree 2 and at most 2 real zeroes.';
+      }
+      if (q.includes('terminating') || q.includes('decimal') || q.includes('rational')) {
+        return 'Hint 1: Factorise the denominator q in simplest form p/q. If the prime factors are ONLY 2 and 5 (form 2^n * 5^m), it is a terminating decimal!';
+      }
+      if (q.includes('union') || q.includes('intersection') || q.includes('set')) {
+        return 'Hint 1: The union A ∪ B contains all elements from both sets without duplicates. The intersection A ∩ B contains only elements common to both sets.';
+      }
+      return 'For this question: review the fundamental formulas and theorems from Chapter 1 or 2. Try the first step, and I will guide you forward!';
+    }
+
+    if (lang === 'hi') {
+      if (q.includes('hcf') || q.includes('मसा') || q.includes('यूक्लिड')) {
+        return 'संकेत 1: यूक्लिड विभाजन प्रमेयिका a = bq + r याद रखें। बड़ी संख्या को छोटी संख्या से भाग दें और शेषफल 0 आने तक दोहराएं। अंतिम भाजक ही म.स.प. (HCF) होगा।';
+      }
+      if (q.includes('बहुपद') || q.includes('घात')) {
+        return 'संकेत 1: बहुपद की घात चर x का उच्चतम घातांक होती है। द्विघात बहुपद की घात 2 होती है और इसके अधिकतम 2 शून्यक होते हैं।';
+      }
+      if (q.includes('शांत') || q.includes('दशमलव')) {
+        return 'संकेत 1: हर के अभाज्य गुणनखंड ज्ञात करें। यदि हर में केवल 2 और 5 (2^n * 5^m के रूप) हों, तो दशमलव प्रसार शांत होगा!';
+      }
+      return 'इस प्रश्न के लिए: पहले मूल सूत्र और परिभाषा को याद करें। पहला कदम उठाएं, फिर आगे मार्गदर्शन मिलेगा!';
+    }
+
+    // Default: Telugu
     if (q.includes('hcf') || q.includes('గసాభా') || q.includes('యూక్లిడ్')) {
       return 'సూచన 1: యూక్లిడ్ సూత్రం a = bq + r గుర్తుచేసుకోండి. పెద్ద సంఖ్యను చిన్న సంఖ్యతో భాగించి శేషం 0 వచ్చే వరకు విభాజకాలను కొనసాగించండి. చివరి విభాజకమే గ.సా.భా అవుతుంది.';
     }

@@ -18,11 +18,9 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 
-# Editor & Scratch
+# Editor
 .vscode/
 .idea/
-.codebenders/scratch/
-public/uploads/
 *.suo
 *.ntvs*
 *.njsproj

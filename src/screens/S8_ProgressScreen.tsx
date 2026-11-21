@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, TrendingUp, Flame, CheckCircle, AlertTriangle, Calendar, Award } from 'lucide-react';
+import { ArrowLeft, Flame, Calendar, Award } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { PracticeEngine } from '../engine/practiceEngine';
 import { localDb } from '../db/indexedDb';
 import { AttemptEvent } from '../types';
+import { StudentAvatar } from '../components/StudentAvatar';
 
 export const S8_ProgressScreen: React.FC = () => {
   const { pack, activeLearner, skillStates, setScreen } = useApp();
@@ -23,14 +24,14 @@ export const S8_ProgressScreen: React.FC = () => {
   const accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 75;
 
   return (
-    <div className="min-h-screen bg-cream-100 flex flex-col pb-8">
+    <div className="min-h-screen bg-[#F4F9F6] text-[#0F172A] flex flex-col pb-8">
       {/* Header */}
-      <header className="bg-indigo-brand text-white px-4 py-3 shadow-md sticky top-0 z-30">
+      <header className="bg-[#FFFFFF] text-[#0F172A] px-4 py-3 shadow-xs border-b border-[#D1E7DD] sticky top-0 z-30">
         <div className="flex items-center gap-2 max-w-md mx-auto">
           <button
             type="button"
             onClick={() => setScreen('S3_HOME')}
-            className="p-2 rounded-xl bg-indigo-light hover:bg-indigo-dark text-white active:scale-95"
+            className="p-2 rounded-xl bg-[#F4F9F6] hover:bg-[#DCFCE7] text-[#0F172A] active:scale-95 border border-[#D1E7DD]"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -42,36 +43,33 @@ export const S8_ProgressScreen: React.FC = () => {
 
       <main className="flex-1 max-w-md w-full mx-auto px-4 pt-4 flex flex-col gap-4">
         {/* Profile Summary Card */}
-        <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-[#D1E7DD] shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-sm border-2 border-lantern"
-              style={{ backgroundColor: activeLearner?.avatarColor }}
-            >
-              {activeLearner?.avatarEmoji}
-            </div>
+            <StudentAvatar learner={activeLearner} size="lg" />
             <div>
-              <h2 className="text-lg font-bold text-indigo-brand flex items-center gap-1.5">
+              <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-1.5">
                 {activeLearner?.nickname}
-                <Flame className="w-4 h-4 text-lantern fill-lantern" />
+                <Flame className="w-4 h-4 text-[#16A34A] fill-[#16A34A]" />
               </h2>
-              <p className="text-xs text-slate-500">10వ తరగతి గణితం (AP బోర్డు)</p>
+              <p className="text-xs text-[#475569] font-medium">
+                కోడ్: <span className="font-mono text-[#15803D] font-bold">{activeLearner?.loginCode}</span> · 10వ తరగతి గణితం
+              </p>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-black text-emerald-600">{accuracy}%</div>
-            <div className="text-[11px] text-slate-500 font-semibold">ఖచ్చితత్వం</div>
+            <div className="text-2xl font-black text-[#059669]">{accuracy}%</div>
+            <div className="text-[11px] text-[#475569] font-bold">ఖచ్చితత్వం</div>
           </div>
         </div>
 
-        {/* Weekly Activity Dots (Section 10 wireframe) */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
+        {/* Weekly Activity Dots */}
+        <div className="bg-[#FFFFFF] rounded-2xl p-4 border border-[#D1E7DD] shadow-xs">
           <div className="flex items-center justify-between mb-3">
-            <span className="font-bold text-xs text-indigo-brand flex items-center gap-1.5 uppercase">
-              <Calendar className="w-4 h-4 text-lantern" />
+            <span className="font-bold text-xs text-[#15803D] flex items-center gap-1.5 uppercase">
+              <Calendar className="w-4 h-4 text-[#15803D]" />
               వారపు సాధన రోజులు
             </span>
-            <span className="text-xs text-emerald-700 font-bold">5 రోజులు క్రియాశీలకంగా</span>
+            <span className="text-xs text-[#059669] font-bold">5 రోజులు క్రియాశీలకంగా</span>
           </div>
 
           <div className="flex items-center justify-between px-2">
@@ -88,26 +86,26 @@ export const S8_ProgressScreen: React.FC = () => {
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
                     d.active
-                      ? 'bg-amber-400 text-indigo-dark shadow-sm ring-2 ring-amber-300'
-                      : 'bg-slate-100 text-slate-400'
+                      ? 'bg-[#15803D] text-white shadow-xs ring-2 ring-[#86EFAC]'
+                      : 'bg-[#F4F9F6] text-[#94A3B8] border border-[#D1E7DD]'
                   }`}
                 >
                   {d.active ? '✓' : ''}
                 </div>
-                <span className="text-[11px] font-semibold text-slate-600">{d.day}</span>
+                <span className="text-[11px] font-semibold text-[#475569]">{d.day}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Chapter Lanterns Progress Breakdown */}
-        <div className="bg-white rounded-3xl p-5 border-2 border-indigo-100 shadow-xs">
-          <h3 className="font-bold text-sm text-indigo-brand mb-4 flex items-center gap-2">
-            <Flame className="w-5 h-5 text-lantern fill-lantern" />
+        <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-[#D1E7DD] shadow-xs">
+          <h3 className="font-bold text-sm text-[#0F172A] mb-4 flex items-center gap-2">
+            <Flame className="w-5 h-5 text-[#16A34A] fill-[#16A34A]" />
             <span>అధ్యాయాల లాంతరు వెలుగు (Chapter Mastery)</span>
           </h3>
 
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             {pack.topics.map((t) => {
               const { percent, masteredCount, totalCount } = PracticeEngine.computeChapterLanternGlow(
                 pack,
@@ -116,22 +114,22 @@ export const S8_ProgressScreen: React.FC = () => {
               );
 
               return (
-                <div key={t.id} className="p-3 bg-cream-50 rounded-2xl border border-cream-200">
+                <div key={t.id} className="p-3.5 bg-[#F4F9F6] rounded-2xl border border-[#D1E7DD]">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold text-sm text-slate-900">{t.title}</span>
-                    <span className="font-black text-sm text-lantern">{percent}% వెలిగింది</span>
+                    <span className="font-bold text-sm text-[#0F172A]">{t.title}</span>
+                    <span className="font-black text-sm text-[#15803D]">{percent}% వెలిగింది</span>
                   </div>
 
-                  <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden mb-2">
+                  <div className="w-full bg-[#E2E8F0] rounded-full h-2.5 overflow-hidden mb-2 border border-[#D1E7DD]">
                     <div
-                      className="bg-lantern h-full rounded-full transition-all duration-500"
+                      className="bg-[#16A34A] h-full rounded-full transition-all duration-500"
                       style={{ width: `${percent}%` }}
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-600">
+                  <div className="flex items-center justify-between text-xs text-[#475569] font-medium">
                     <span>పూర్తయిన నైపుణ్యాలు: {masteredCount} / {totalCount}</span>
-                    <span className={percent >= 80 ? 'text-emerald-700 font-bold' : 'text-amber-700 font-medium'}>
+                    <span className={percent >= 80 ? 'text-[#059669] font-bold' : 'text-[#15803D] font-bold'}>
                       {percent >= 80 ? 'పూర్తి వెలుగు ✨' : 'మరింత సాధన అవసరం'}
                     </span>
                   </div>
@@ -142,14 +140,13 @@ export const S8_ProgressScreen: React.FC = () => {
         </div>
 
         {/* Strong vs Weak Skills Breakdown */}
-        <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-xs">
-          <h3 className="font-bold text-sm text-indigo-brand mb-3 flex items-center gap-2">
-            <Award className="w-5 h-5 text-emerald-600" />
+        <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-[#D1E7DD] shadow-xs">
+          <h3 className="font-bold text-sm text-[#0F172A] mb-3 flex items-center gap-2">
+            <Award className="w-5 h-5 text-[#059669]" />
             <span>నైపుణ్యాల విశ్లేషణ (Skills Analysis)</span>
           </h3>
 
           <div className="space-y-3">
-            {/* Example Skill Breakdown */}
             {[
               { name: 'యూక్లిడ్ భాగహార న్యాయం', level: 0.85, status: 'mastered' },
               { name: 'ప్రధాన కారణాంకాలు (Prime Factors)', level: 0.90, status: 'mastered' },
@@ -157,16 +154,16 @@ export const S8_ProgressScreen: React.FC = () => {
               { name: 'అంతమయ్యే దశాంశాలు', level: 0.45, status: 'needs_work' },
               { name: 'సమితుల భేదం (A - B)', level: 0.35, status: 'needs_work' },
             ].map((skill, sIdx) => (
-              <div key={sIdx} className="border-b border-slate-100 pb-2.5 last:border-b-0">
+              <div key={sIdx} className="border-b border-[#D1E7DD] pb-2.5 last:border-b-0">
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-semibold text-slate-800">{skill.name}</span>
+                  <span className="font-semibold text-[#0F172A]">{skill.name}</span>
                   <span
                     className={`font-bold px-2 py-0.5 rounded text-[10px] ${
                       skill.status === 'mastered'
-                        ? 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-[#DCFCE7] text-[#059669] border border-[#86EFAC]'
                         : skill.status === 'good'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-coral-light text-coral-brand'
+                        ? 'bg-[#CCFBF1] text-[#0D9488] border border-[#99F6E4]'
+                        : 'bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]'
                     }`}
                   >
                     {skill.status === 'mastered'
@@ -176,14 +173,14 @@ export const S8_ProgressScreen: React.FC = () => {
                       : 'సాధన కావాలి'}
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-[#E2E8F0] rounded-full h-1.5 overflow-hidden border border-[#D1E7DD]">
                   <div
                     className={`h-full rounded-full ${
                       skill.status === 'mastered'
-                        ? 'bg-emerald-500'
+                        ? 'bg-[#059669]'
                         : skill.status === 'good'
-                        ? 'bg-blue-500'
-                        : 'bg-coral-brand'
+                        ? 'bg-[#0D9488]'
+                        : 'bg-[#DC2626]'
                     }`}
                     style={{ width: `${Math.round(skill.level * 100)}%` }}
                   />

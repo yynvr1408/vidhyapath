@@ -2,28 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-canvas: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --color-primary: #0F766E;
+  --color-primary-hover: #115E59;
+  --color-primary-soft: #F0FDFA;
+  --color-accent: #D97706;
+  --text-main: #0F172A;
+  --text-muted: #475569;
+  --color-success: #16A34A;
+  --color-warning: #D97706;
+  --color-error: #DC2626;
+  --border-subtle: #E2E8F0;
+}
+
 @layer base {
   body {
-    background-color: #FFF8E7;
-    color: #1E293B;
+    background-color: #F8FAFC;
+    color: #0F172A;
     -webkit-tap-highlight-color: transparent;
-    font-size: 18px;
-    line-height: 1.6;
+    font-size: 16px;
+    line-height: 1.65;
+    font-family: 'Noto Sans Telugu', system-ui, -apple-system, sans-serif;
   }
 }
 
-/* Lantern Glow Pulse Effect */
-@keyframes lanternPulse {
-  0%, 100% {
-    box-shadow: 0 0 15px rgba(242, 163, 58, 0.4), 0 0 30px rgba(242, 163, 58, 0.2);
-  }
-  50% {
-    box-shadow: 0 0 25px rgba(242, 163, 58, 0.7), 0 0 50px rgba(242, 163, 58, 0.4);
-  }
-}
-
-.lantern-glow {
-  animation: lanternPulse 3s infinite ease-in-out;
+/* Card & Surface specs: 1px solid #E2E8F0 and 12px rounded corners */
+.card-surface {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
 }
 
 /* Audio wave animation */
@@ -35,3 +44,19 @@
 .audio-bar-1 { animation: waveBar 0.8s infinite ease-in-out; }
 .audio-bar-2 { animation: waveBar 0.8s infinite ease-in-out 0.2s; }
 .audio-bar-3 { animation: waveBar 0.8s infinite ease-in-out 0.4s; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F8FAFC;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}

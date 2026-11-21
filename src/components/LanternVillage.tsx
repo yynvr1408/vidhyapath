@@ -13,18 +13,18 @@ export const LanternVillage: React.FC<LanternVillageProps> = ({ onSelectTopic })
   if (!pack || !pack.topics) return null;
 
   return (
-    <div className="w-full bg-gradient-to-b from-indigo-dark to-indigo-brand text-white rounded-2xl p-4 shadow-lg mb-4 border border-indigo-500/20">
-      <div className="flex items-center justify-between mb-3 border-b border-indigo-400/20 pb-2">
+    <div className="w-full bg-[#FFFFFF] text-[#0F172A] rounded-3xl p-4.5 shadow-sm mb-4 border border-[#D1E7DD]">
+      <div className="flex items-center justify-between mb-3.5 border-b border-[#D1E7DD] pb-2.5">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-lantern animate-pulse" />
-          <h2 className="text-base font-bold text-cream-100">{pack.uiStrings.villageLanterns || 'పల్లె దీపాల వెలుగులు'}</h2>
+          <Sparkles className="w-5 h-5 text-[#16A34A] animate-pulse" />
+          <h2 className="text-base font-bold text-[#0F172A]">{pack.uiStrings.villageLanterns || 'పల్లె దీపాల వెలుగులు'}</h2>
         </div>
-        <span className="text-xs text-amber-200/90 font-medium">వెలిగే కొద్దీ జ్ఞానం పెరుగుతుంది</span>
+        <span className="text-xs text-[#15803D] font-bold">వెలిగే కొద్దీ జ్ఞానం పెరుగుతుంది</span>
       </div>
 
       {/* Chapters Lantern Grid */}
       <div className="grid grid-cols-2 gap-3">
-        {pack.topics.map((topic, idx) => {
+        {pack.topics.map((topic) => {
           const { percent, masteredCount, totalCount } = PracticeEngine.computeChapterLanternGlow(
             pack,
             topic.id,
@@ -34,16 +34,22 @@ export const LanternVillage: React.FC<LanternVillageProps> = ({ onSelectTopic })
           const isFullyLit = percent >= 80;
           const isGlowing = percent > 0;
 
+          // Glow shadow proportional to chapter mastery
+          const glowShadowStyle = isGlowing
+            ? { boxShadow: `0 0 ${Math.max(8, Math.round(percent * 0.22))}px rgba(22, 163, 74, ${Math.max(0.2, percent * 0.0035)})` }
+            : {};
+
           return (
             <div
               key={topic.id}
               onClick={() => onSelectTopic && onSelectTopic(topic.id)}
-              className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col items-center text-center ${
+              style={glowShadowStyle}
+              className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col items-center text-center active:scale-95 ${
                 isFullyLit
-                  ? 'bg-amber-500/20 border-lantern lantern-glow text-amber-100'
+                  ? 'bg-[#DCFCE7] border-[#16A34A] lantern-glow text-[#0F172A]'
                   : isGlowing
-                  ? 'bg-indigo-light/50 border-amber-400/40 text-cream-100'
-                  : 'bg-indigo-900/40 border-indigo-500/20 text-slate-300'
+                  ? 'bg-[#F0FDF4] border-[#86EFAC] text-[#0F172A]'
+                  : 'bg-[#F4F9F6] border-[#D1E7DD] text-[#475569] hover:border-[#86EFAC]'
               }`}
             >
               {/* Lantern Graphic */}
@@ -51,42 +57,42 @@ export const LanternVillage: React.FC<LanternVillageProps> = ({ onSelectTopic })
                 <div
                   className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                     isFullyLit
-                      ? 'bg-amber-400 text-indigo-dark shadow-lg ring-4 ring-amber-300/60'
+                      ? 'bg-[#16A34A] text-[#FACC15] shadow-md ring-4 ring-[#86EFAC]'
                       : isGlowing
-                      ? 'bg-amber-500/30 text-amber-300 ring-2 ring-amber-400/30'
-                      : 'bg-slate-700/60 text-slate-400'
+                      ? 'bg-[#DCFCE7] text-[#16A34A] ring-2 ring-[#86EFAC]'
+                      : 'bg-[#FFFFFF] text-[#94A3B8] border border-[#D1E7DD]'
                   }`}
                 >
                   <Flame
-                    className={`w-8 h-8 ${
+                    className={`w-7 h-7 ${
                       isFullyLit
-                        ? 'fill-amber-300 text-amber-600 animate-pulse'
+                        ? 'fill-[#FACC15] text-[#FACC15] animate-pulse'
                         : isGlowing
-                        ? 'fill-amber-400 text-amber-500'
-                        : 'text-slate-500'
+                        ? 'fill-[#16A34A] text-[#16A34A]'
+                        : 'text-[#94A3B8]'
                     }`}
                   />
                 </div>
                 {/* Glow badge */}
-                <span className="absolute -bottom-1 bg-indigo-dark text-lantern text-[11px] font-bold px-2 py-0.5 rounded-full border border-lantern/40 shadow-xs">
+                <span className="absolute -bottom-1 bg-[#FFFFFF] text-[#15803D] text-[11px] font-bold px-2 py-0.5 rounded-full border border-[#D1E7DD] shadow-xs">
                   {percent}%
                 </span>
               </div>
 
               {/* Chapter Title */}
-              <h3 className="font-bold text-sm leading-snug line-clamp-1 mb-1">
+              <h3 className="font-bold text-sm leading-snug line-clamp-1 mb-1 text-[#0F172A]">
                 {topic.title}
               </h3>
 
               {/* Skills Mastered Stats */}
-              <div className="text-[11px] text-indigo-200 mt-1">
+              <div className="text-[11px] text-[#475569] mt-0.5 font-medium">
                 {masteredCount} / {totalCount} నైపుణ్యాలు వెలిగాయి
               </div>
 
               {/* Small Progress Bar */}
-              <div className="w-full bg-indigo-950/80 rounded-full h-1.5 mt-2 overflow-hidden border border-indigo-400/20">
+              <div className="w-full bg-[#E2E8F0] rounded-full h-1.5 mt-2.5 overflow-hidden border border-[#D1E7DD]">
                 <div
-                  className="bg-lantern h-full transition-all duration-500"
+                  className="bg-[#16A34A] h-full transition-all duration-500 rounded-full"
                   style={{ width: `${percent}%` }}
                 ></div>
               </div>

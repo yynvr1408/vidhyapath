@@ -1,11 +1,10 @@
-const CACHE_NAME = 'vidyapath-cache-v2';
+const CACHE_NAME = 'vidyapath-cache-v1';
 const PRECACHE_URLS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/packs/te-10-maths-ap.json',
   '/packs/hi-10-maths-cbse.json',
-  '/packs/en-10-maths-cbse.json',
   '/icons/icon-192.svg',
   '/icons/icon-512.svg'
 ];

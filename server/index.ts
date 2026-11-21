@@ -3,7 +3,6 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
 // Auto-load local .env file if present
 const envPath = path.resolve(process.cwd(), '.env');
 if (fs.existsSync(envPath)) {
@@ -127,25 +126,8 @@ function getPack(packId: string) {
   return null;
 }
 
-// 0. Health & Deployment Status Check (/api/health)
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    version: '1.0.0',
-    app: 'Vidyapath PWA & API Server',
-    uptimeSeconds: Math.floor(process.uptime()),
-    timestamp: new Date().toISOString(),
-    services: {
-      neon: isNeonConnected(),
-      groq: isGroqConfigured(),
-      elevenlabs: isElevenLabsConfigured(),
-      r2: isR2Configured(),
-    },
-  });
-});
-
 // 1. Batch Sync Endpoint (/api/sync)
-app.post('/api/sync', async (req: Request, res: Response) => {
+app.post('/api/sync', (req: Request, res: Response) => {
   const { learnerId, events = [], doubts = [], clientPackVersion } = req.body;
 
   // Append new events idempotently (client UUID check)
@@ -154,8 +136,6 @@ app.post('/api/sync', async (req: Request, res: Response) => {
     if (!attemptsLog.some((a) => a.eventId === ev.eventId)) {
       attemptsLog.push(ev);
       newEventsCount++;
-      // Asynchronously mirror to Neon DB if connected
-      await insertSyncEvent(ev);
     }
   }
 
@@ -182,7 +162,6 @@ app.post('/api/sync', async (req: Request, res: Response) => {
     };
     serverDoubts.push(answered);
     answeredDoubts.push(answered);
-    await insertOrUpdateDoubt(answered);
   }
 
   const latestPackVersion = pack ? pack.version : '1.0.0';
@@ -194,7 +173,6 @@ app.post('/api/sync', async (req: Request, res: Response) => {
     answeredDoubts,
     latestPackVersion,
     packUpdateAvailable,
-    neonConnected: isNeonConnected(),
   });
 });
 
@@ -216,58 +194,9 @@ function trimToWords(text: string, maxWords: number): string {
   return text.trim().split(/\s+/).filter(Boolean).slice(0, maxWords).join(' ');
 }
 
-const SCHEDULED_LANG_NAMES: Record<string, string> = {
-  en: 'English',
-  te: 'Telugu',
-  hi: 'Hindi',
-  ta: 'Tamil',
-  kn: 'Kannada',
-  bn: 'Bengali',
-  mr: 'Marathi',
-  gu: 'Gujarati',
-  ml: 'Malayalam',
-  or: 'Odia',
-  pa: 'Punjabi',
-  as: 'Assamese',
-  ur: 'Urdu',
-  sa: 'Sanskrit',
-  kok: 'Konkani',
-  mai: 'Maithili',
-  mni: 'Manipuri',
-  ne: 'Nepali',
-  brx: 'Bodo',
-  doi: 'Dogri',
-  ks: 'Kashmiri',
-  sat: 'Santali',
-  sd: 'Sindhi',
-};
-
-function getLanguageName(langCode: string): string {
-  return SCHEDULED_LANG_NAMES[langCode] || 'English';
-}
-
-function getGuardrailRefusal(language: string, type: 'safety' | 'offtopic'): string {
-  if (language === 'hi') {
-    return type === 'safety'
-      ? 'क्षमा करें, मैं केवल कक्षा 10 पाठ्यक्रम के प्रश्नों में सहायता कर सकता हूँ। कृपया अपना गणितीय संदेह पूछें।'
-      : 'हम अभी कक्षा 10 गणित का अध्ययन कर रहे हैं। कृपया अपने विषय से संबंधित संदेह पूछें।';
-  }
-  if (language === 'te') {
-    return type === 'safety'
-      ? 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.'
-      : 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.';
-  }
-  // Default English / other languages
-  return type === 'safety'
-    ? 'I can only assist with academic syllabus questions. Please ask your mathematics doubt.'
-    : 'We are studying Class 10 Mathematics. Please ask a question related to your current syllabus topic.';
-}
-
-function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mistakeTag: unknown, requestedLang?: string): string {
-  const targetLang = requestedLang || pack.language || 'en';
-  const langName = getLanguageName(targetLang);
+function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mistakeTag: unknown): string {
   const lines = [
-    `You are an empathetic, world-class educational AI tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, speaking in ${langName} (language code: ${targetLang}).`,
+    `You are a tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, language code ${pack.language}.`,
   ];
   if (topicTitle) lines.push(`Current topic: ${topicTitle}.`);
   if (typeof mistakeTag === 'string' && mistakeTag.trim()) {
@@ -275,13 +204,13 @@ function buildTutorSystemPrompt(pack: any, topicTitle: string | undefined, mista
   }
   lines.push(
     'Rules:',
-    `- Reply only in simple, warm, conversational spoken-style ${langName}.`,
-    '- Use short, encouraging sentences suitable for high school learners.',
-    '- Give a gentle nudge or conceptual hint first. Never give away the final numerical answer directly on first inquiry.',
-    '- If the learner has made a mistake, explain the core misconception kindly without shame.',
+    '- Reply only in simple spoken-style Telugu.',
+    '- Use short sentences.',
+    '- Give a hint first. Never give the final answer first.',
+    '- Give the final answer only if the learner asks again.',
     '- Reply in at most 120 words.',
-    `- If the question is off-topic, unsafe, or asks for personal data, refuse kindly in ${langName} and steer back to the ${pack.subject} syllabus.`,
-    '- Rely on rigorous curriculum concepts. Never invent mathematical facts. Do not score the student.'
+    '- If the question is off-topic, unsafe, or asks for personal data, refuse kindly in Telugu and steer back to the lesson.',
+    '- Use only content from this pack. Do not invent facts. Do not judge whether a learner answer is correct.'
   );
   return lines.join('\n');
 }
@@ -325,7 +254,7 @@ async function askTutorModel(systemPrompt: string, question: string): Promise<st
 
 // 2. AI Tutor Endpoint (/api/tutor/ask)
 app.post('/api/tutor/ask', async (req: Request, res: Response) => {
-  const { packId, learnerId, doubt, topicId, mistakeTag, language } = req.body;
+  const { packId, learnerId, doubt, topicId, mistakeTag } = req.body;
   if (packId && !isSafePackId(packId)) {
     return res.status(400).json({ answer: 'Invalid pack id' });
   }
@@ -335,45 +264,32 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   const lower = doubtText.toLowerCase();
 
   // Guardrail 1: Personal info / unsafe
-  const unsafePatterns = ['phone', 'ఫోన్', 'పాస్‌వర్డ్', 'డబ్బు', 'hack', 'password', 'पैसे', 'पासवर्ड'];
+  const unsafePatterns = ['phone', 'ఫోన్', 'పాస్‌వర్డ్', 'డబ్బు', 'hack', 'password'];
   if (unsafePatterns.some((p) => lower.includes(p))) {
     return res.json({
       source: 'fallback',
-      answer: getGuardrailRefusal(language || pack?.language || 'te', 'safety'),
+      answer: 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.'
     });
   }
 
   // Guardrail 2: Off-topic general conversation
-  if (lower.includes('సినిమా') || lower.includes('cricket') || lower.includes('రాజకీయాలు') || lower.includes('movie') || lower.includes('फिल्म')) {
+  if (lower.includes('సినిమా') || lower.includes('cricket') || lower.includes('రాజకీయాలు')) {
     return res.json({
       source: 'fallback',
-      answer: getGuardrailRefusal(language || pack?.language || 'te', 'offtopic'),
+      answer: 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.'
     });
   }
 
-  // Model answer: checks Groq first, then generic OpenAI-compatible TUTOR_API_BASE_URL.
+  // Model answer: only when TUTOR_API_BASE_URL, TUTOR_MODEL and TUTOR_API_KEY are all set.
   // Any failure, empty reply, or timeout falls through to the offline answers below.
   if (doubtText && pack) {
     const resolvedPackId = packId || 'te-10-maths-ap';
-    const cacheKey = `${resolvedPackId}|${language || ''}|${topicId || ''}|${lower}`;
+    const cacheKey = `${resolvedPackId}|${topicId || ''}|${lower}`;
     const cached = tutorCache.get(cacheKey);
     if (cached) return res.json({ source: 'model', answer: cached });
-
-    const topic = Array.isArray(pack.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
-    const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag, language);
-
-    // 1. Check Groq API if configured
-    if (isGroqConfigured()) {
-      const groqReply = await askGroqTutor(doubtText, systemPrompt);
-      if (groqReply) {
-        const trimmed = trimToWords(groqReply, TUTOR_MAX_WORDS);
-        tutorCache.set(cacheKey, trimmed);
-        return res.json({ source: 'groq', answer: trimmed });
-      }
-    }
-
-    // 2. Check generic OpenAI-compatible config
     if (getTutorConfig()) {
+      const topic = Array.isArray(pack.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
+      const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag);
       const reply = trimToWords(await askTutorModel(systemPrompt, doubtText), TUTOR_MAX_WORDS);
       if (reply) {
         tutorCache.set(cacheKey, reply);
@@ -409,229 +325,6 @@ app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   }
 
   return res.json({ source: 'fallback', answer: tutorAnswer });
-});
-
-// 2b. Photo doubt text extraction (/api/tutor/extract). Returns only the problem text for the
-// learner to confirm. Never grades or checks answers. Key is never logged.
-app.post('/api/tutor/extract', async (req: Request, res: Response) => {
-  const { packId, imageDataUrl } = req.body || {};
-  if (!isSafePackId(packId)) return res.status(400).json({ error: 'Invalid pack id' });
-  if (
-    typeof imageDataUrl !== 'string' ||
-    !(imageDataUrl.startsWith('data:image/jpeg') || imageDataUrl.startsWith('data:image/png')) ||
-    imageDataUrl.length > 300000
-  ) {
-    return res.status(400).json({ error: 'Invalid image' });
-  }
-
-  const config = getTutorConfig();
-  if (!config) return res.json({ source: 'fallback', problemText: '' });
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TUTOR_TIMEOUT_MS);
-  try {
-    const response = await fetch(`${config.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Read the maths problem in this photo. Reply with only the problem text, in the original language, no solution.',
-              },
-              { type: 'image_url', image_url: { url: imageDataUrl } },
-            ],
-          },
-        ],
-        max_tokens: 300,
-      }),
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      console.error(`Photo extraction request failed with status ${response.status}`);
-      return res.json({ source: 'fallback', problemText: '' });
-    }
-    const data: any = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
-    const problemText = typeof content === 'string' ? content.trim().slice(0, 600) : '';
-    if (!problemText) return res.json({ source: 'fallback', problemText: '' });
-    return res.json({ source: 'model', problemText });
-  } catch (err: any) {
-    console.error('Photo extraction failed:', err?.name === 'AbortError' ? 'timeout' : 'network or parse error');
-    return res.json({ source: 'fallback', problemText: '' });
-  } finally {
-    clearTimeout(timer);
-  }
-});
-
-// 2c. Voice Query Assistant (/api/tutor/voice)
-// Transcribes voice via Groq Whisper, answers via Groq LLM, and synthesizes speech via ElevenLabs.
-app.post('/api/tutor/voice', async (req: Request, res: Response) => {
-  const { audioBase64, mimeType, packId, topicId } = req.body;
-  if (!audioBase64 || typeof audioBase64 !== 'string') {
-    return res.status(400).json({ error: 'Missing audio base64 data' });
-  }
-
-  try {
-    const audioBuffer = Buffer.from(audioBase64, 'base64');
-    let transcript = '';
-
-    // 1. STT with Groq Whisper
-    if (isGroqConfigured()) {
-      transcript = (await transcribeGroqWhisper(audioBuffer, mimeType || 'audio/webm')) || '';
-    }
-
-    if (!transcript) {
-      transcript = 'యూక్లిడ్ శేష న్యాయం మరియు గ.సా.భా సూత్రాన్ని వివరించండి.';
-    }
-
-    // 2. LLM response with Groq
-    const pack = getPack(packId || 'te-10-maths-ap');
-    const topic = Array.isArray(pack?.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
-    const systemPrompt = pack ? buildTutorSystemPrompt(pack, topic?.title, undefined) : '';
-
-    let answer = '';
-    if (isGroqConfigured()) {
-      answer = (await askGroqTutor(transcript, systemPrompt)) || '';
-    }
-
-    if (!answer) {
-      answer = 'యూక్లిడ్ భాగహార సూత్రం: a = bq + r (0 ≤ r < b). పెద్ద సంఖ్యను విభాజ్యంగా, చిన్న సంఖ్యను విభాజకంగా తీసుకుని శేషం 0 వచ్చేవరకు విభాజకాన్ని కొనసాగించండి.';
-    }
-
-    // 3. Audio synthesis with ElevenLabs
-    let audioUrl: string | null = null;
-    if (isElevenLabsConfigured()) {
-      const speechBuf = await synthesizeElevenLabsVoice(answer);
-      if (speechBuf) {
-        audioUrl = await uploadToStorage(`speech_${Date.now()}.mp3`, speechBuf, 'audio/mpeg');
-      }
-    }
-
-    return res.json({
-      transcript,
-      answer,
-      audioUrl,
-      source: isGroqConfigured() ? 'groq_whisper' : 'fallback',
-    });
-  } catch (err: any) {
-    console.error('Voice assistant error:', err);
-    return res.status(500).json({ error: 'Voice processing error: ' + err.message });
-  }
-});
-
-// 2d. ElevenLabs Speech Audio Streaming (/api/tutor/speak)
-app.post('/api/tutor/speak', async (req: Request, res: Response) => {
-  const { text } = req.body;
-  if (!text || typeof text !== 'string') {
-    return res.status(400).json({ error: 'Missing text parameter' });
-  }
-
-  const audioBuf = await synthesizeElevenLabsVoice(text);
-  if (!audioBuf) {
-    return res.status(503).json({ error: 'ElevenLabs not configured or unavailable' });
-  }
-
-  res.setHeader('Content-Type', 'audio/mpeg');
-  res.setHeader('Content-Length', audioBuf.length);
-  return res.send(audioBuf);
-});
-
-// 2e. Automated Study Summary (/api/tutor/summary)
-app.post('/api/tutor/summary', async (req: Request, res: Response) => {
-  const { nickname, accuracyPercent, strongSkills = [], weakSkills = [] } = req.body;
-  const name = String(nickname || 'విద్యార్థి');
-  const accuracy = Number(accuracyPercent) || 80;
-
-  let summary = '';
-  if (isGroqConfigured()) {
-    summary = (await generateGroqStudySummary(name, accuracy, strongSkills, weakSkills)) || '';
-  }
-
-  if (!summary) {
-    summary = `${name} ఈ వారం గణితంలో ${accuracy}% ఖచ్చితత్వంతో చక్కని ప్రగతి కనబరిచారు. ముఖ్యంగా ప్రధాన కారణాంకాలు మరియు సమ్మేళనం బాగా అర్థం చేసుకున్నారు. సమితుల భేదంపై ఇంట్లో కాసేపు కలిసి సాధన చేయించడం మంచిది.`;
-  }
-
-  return res.json({ summary });
-});
-
-// 2f. Cloudflare R2 Object Storage Upload (/api/storage/upload)
-app.post('/api/storage/upload', async (req: Request, res: Response) => {
-  const { dataBase64, fileName, contentType } = req.body;
-  if (!dataBase64 || !fileName) {
-    return res.status(400).json({ error: 'Missing dataBase64 or fileName' });
-  }
-
-  try {
-    const buffer = Buffer.from(dataBase64, 'base64');
-    const url = await uploadToStorage(fileName, buffer, contentType || 'application/octet-stream');
-    return res.json({ success: true, url, r2Configured: isR2Configured() });
-  } catch (err: any) {
-    return res.status(500).json({ error: 'Upload failed: ' + err.message });
-  }
-});
-
-// 2g. In-App GitHub Releases Auto-Update Check (/api/app/check-update)
-app.get('/api/app/check-update', async (req: Request, res: Response) => {
-  const currentVersion = String(req.query.currentVersion || '1.0.0');
-
-  // Support either GITHUB_RELEASE_REPO="owner/repo" or GITHUB_REPO_OWNER + GITHUB_REPO_NAME
-  const releaseRepoEnv = process.env.GITHUB_RELEASE_REPO;
-  let owner = process.env.GITHUB_REPO_OWNER || 'yynvr1408';
-  let repo = process.env.GITHUB_REPO_NAME || 'vidhyapath';
-
-  if (releaseRepoEnv && releaseRepoEnv.includes('/')) {
-    const parts = releaseRepoEnv.trim().split('/');
-    owner = parts[0];
-    repo = parts[1];
-  }
-
-  const pat = process.env.GITHUB_PAT_TOKEN;
-
-  try {
-    const headers: Record<string, string> = {
-      'User-Agent': 'Vidyapath-App',
-      'Accept': 'application/vnd.github.v3+json',
-    };
-    if (pat) headers['Authorization'] = `token ${pat}`;
-
-    const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, { headers });
-    if (!ghRes.ok) {
-      return res.json({ hasUpdate: false, currentVersion, repo: `${owner}/${repo}` });
-    }
-
-    const release = await ghRes.json();
-    const latestVersion = (release.tag_name || '').replace(/^v/, '') || currentVersion;
-
-    // Semver comparison: only flag update if latest > current
-    const parseVer = (v: string) => v.replace(/^[^0-9]*/, '').split('.').map((n) => parseInt(n, 10) || 0);
-    const [lMaj = 0, lMin = 0, lPatch = 0] = parseVer(latestVersion);
-    const [cMaj = 0, cMin = 0, cPatch = 0] = parseVer(currentVersion);
-    const hasUpdate = lMaj > cMaj || (lMaj === cMaj && lMin > cMin) || (lMaj === cMaj && lMin === cMin && lPatch > cPatch);
-
-    const apkAsset = release.assets?.find((a: any) => typeof a.name === 'string' && a.name.endsWith('.apk'));
-
-    return res.json({
-      hasUpdate,
-      currentVersion,
-      latestVersion,
-      tag: release.tag_name,
-      repo: `${owner}/${repo}`,
-      releaseNotes: release.body || '',
-      downloadUrl: apkAsset ? apkAsset.browser_download_url : release.html_url,
-      apkSizeMb: apkAsset?.size ? (apkAsset.size / (1024 * 1024)).toFixed(1) + ' MB' : undefined,
-      publishedAt: release.published_at,
-    });
-  } catch (err: any) {
-    return res.json({ hasUpdate: false, currentVersion, error: err.message });
-  }
 });
 
 // 3. Guardian View-Only Token Endpoint (/api/guardian/:token)
@@ -675,7 +368,31 @@ app.get('/api/sponsor/:cohort', (req: Request, res: Response) => {
   return res.json(data);
 });
 
-// 5. Admin Pack Management Endpoints (/api/admin/packs)
+// 5. Pack Management Endpoints (/api/packs & /api/admin/packs)
+app.get('/api/packs', (req: Request, res: Response) => {
+  try {
+    const files = fs.readdirSync(packsDir).filter((f) => f.endsWith('.json'));
+    const packs = files.map((f) => {
+      const content = JSON.parse(fs.readFileSync(path.join(packsDir, f), 'utf-8'));
+      return {
+        id: content.id,
+        version: content.version,
+        language: content.language,
+        languageName: content.languageName,
+        class: content.class,
+        subject: content.subject,
+        board: content.board,
+        isStub: !!content.isStub,
+        topicsCount: content.topics ? content.topics.length : 0,
+        questionsCount: content.questions ? content.questions.length : 0,
+      };
+    });
+    return res.json(packs);
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to read packs' });
+  }
+});
+
 app.get('/api/admin/packs', (req: Request, res: Response) => {
   try {
     const files = fs.readdirSync(packsDir).filter((f) => f.endsWith('.json'));
@@ -793,8 +510,14 @@ if (fs.existsSync(distDir)) {
 export { app };
 
 if (process.env.NODE_ENV !== 'test') {
-  initNeonDb().catch((err) => console.warn('[Neon DB] Startup check:', err.message));
-  app.listen(PORT, () => {
+  const s = app.listen(PORT, () => {
     console.log(`Vidyapath API server running on port ${PORT}`);
+  });
+  s.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${PORT} is already in use by active instance.`);
+    } else {
+      throw err;
+    }
   });
 }

@@ -108,54 +108,8 @@ async function testApi() {
   console.assert(syncData.answeredDoubts.length === 1, 'Queued doubt should be resolved');
   console.log('[PASS] /api/sync processed attempts & answered queued doubts successfully');
 
-  // 8. Test /api/app/check-update (GitHub Releases)
-  const updateRes = await fetch(`${baseUrl}/api/app/check-update?currentVersion=1.0.0`);
-  const updateData = await updateRes.json();
-  console.assert(typeof updateData.hasUpdate === 'boolean', 'hasUpdate boolean expected');
-  console.log('[PASS] /api/app/check-update returned release status:', updateData.hasUpdate ? 'Update available' : 'Current version matches');
-
-  // 9. Test /api/tutor/summary (AI Study Digest)
-  const summaryRes = await fetch(`${baseUrl}/api/tutor/summary`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      nickname: 'చిరుత',
-      accuracyPercent: 85,
-      strongSkills: ['యూక్లిడ్ న్యాయం', 'ప్రధాన కారణాంకాలు'],
-      weakSkills: ['సమితుల భేదం'],
-    }),
-  });
-  const summaryData = await summaryRes.json();
-  console.assert(summaryData.summary && summaryData.summary.length > 0, 'Summary text expected');
-  console.log('[PASS] /api/tutor/summary returned study digest:');
-  console.log(`       "${summaryData.summary.substring(0, 80)}..."`);
-
-  // 10. Test /api/storage/upload (R2 / Local storage)
-  const testBase64 = Buffer.from('test audio or material content').toString('base64');
-  const uploadRes = await fetch(`${baseUrl}/api/storage/upload`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      dataBase64: testBase64,
-      fileName: 'unit_test_upload.txt',
-      contentType: 'text/plain',
-    }),
-  });
-  const uploadData = await uploadRes.json();
-  console.assert(uploadData.success === true, 'Upload should succeed');
-  console.assert(typeof uploadData.url === 'string' && uploadData.url.length > 0, 'Public URL expected');
-  console.log('[PASS] /api/storage/upload returned asset URL:', uploadData.url);
-
-  // 11. Test /api/health (Deployment health check)
-  const healthRes = await fetch(`${baseUrl}/api/health`);
-  const healthData = await healthRes.json();
-  console.assert(healthData.status === 'ok', 'Health status should be ok');
-  console.assert(healthData.services !== undefined, 'Services object should be present');
-  console.log('[PASS] /api/health responded ok with services:', healthData.services);
-
   server.close();
   console.log('\n=== ALL API ENDPOINTS VERIFIED AND WORKING 100%! ===');
-  process.exit(0);
 }
 
 testApi();

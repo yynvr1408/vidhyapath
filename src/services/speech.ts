@@ -42,39 +42,16 @@ export class SpeechService {
       this.stopSpeaking();
 
       // Clean markdown or bracket symbols before speech
-      let cleanText = text
+      const cleanText = text
         .replace(/[*_#`[\]()]/g, '')
-        .replace(/\$/g, '');
-
-      if (locale.startsWith('en')) {
-        cleanText = cleanText
-          .replace(/∪/g, ' union ')
-          .replace(/∩/g, ' intersection ')
-          .replace(/∅/g, ' null set ')
-          .replace(/≤/g, ' less than or equal to ')
-          .replace(/≥/g, ' greater than or equal to ')
-          .replace(/≠/g, ' not equal to ')
-          .replace(/⊂/g, ' subset of ');
-      } else if (locale.startsWith('hi')) {
-        cleanText = cleanText
-          .replace(/∪/g, ' सम्मिलन ')
-          .replace(/∩/g, ' सर्वनिष्ठ ')
-          .replace(/∅/g, ' रिक्त समुच्चय ')
-          .replace(/≤/g, ' से छोटा या बराबर ')
-          .replace(/≥/g, ' से बड़ा या बराबर ')
-          .replace(/≠/g, ' बराबर नहीं ')
-          .replace(/⊂/g, ' उपसमुच्चय ');
-      } else {
-        // Telugu
-        cleanText = cleanText
-          .replace(/∪/g, ' సమ్మేళనం ')
-          .replace(/∩/g, ' ఛేదనం ')
-          .replace(/∅/g, ' శూన్య సమితి ')
-          .replace(/≤/g, ' తక్కువ లేదా సమానం ')
-          .replace(/≥/g, ' ఎక్కువ లేదా సమానం ')
-          .replace(/≠/g, ' సమానం కాదు ')
-          .replace(/⊂/g, ' ఉపసమితి ');
-      }
+        .replace(/\$/g, '')
+        .replace(/∪/g, ' సమ్మేళనం ')
+        .replace(/∩/g, ' ఛేదనం ')
+        .replace(/∅/g, ' శూన్య సమితి ')
+        .replace(/≤/g, ' తక్కువ లేదా సమానం ')
+        .replace(/≥/g, ' ఎక్కువ లేదా సమానం ')
+        .replace(/≠/g, ' సమానం కాదు ')
+        .replace(/⊂/g, ' ఉపసమితి ');
 
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = locale;

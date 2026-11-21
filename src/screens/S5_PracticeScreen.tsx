@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Lightbulb, Flame, CheckCircle, ShieldCheck, Trophy, Sparkles, Home, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Lightbulb, Flame, Trophy, Home, RotateCcw, ShieldCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../context/AppContext';
 import { Question, AttemptEvent } from '../types';
@@ -24,7 +24,7 @@ export const S5_PracticeScreen: React.FC = () => {
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [hintLevel, setHintLevel] = useState<number>(0); // 0 = no hint, 1 = nudge, 2 = method, 3 = worked step
+  const [hintLevel, setHintLevel] = useState<number>(0);
   const [activeFeedback, setActiveFeedback] = useState<AnswerCheckResult | null>(null);
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [sessionResults, setSessionResults] = useState<{ correct: boolean; hintsUsed: number }[]>([]);
@@ -45,8 +45,8 @@ export const S5_PracticeScreen: React.FC = () => {
 
   if (!pack || questions.length === 0) {
     return (
-      <div className="min-h-screen bg-cream-100 flex items-center justify-center p-4">
-        <div className="text-center font-bold text-indigo-brand">
+      <div className="min-h-screen bg-[#F4F9F6] flex items-center justify-center p-4">
+        <div className="text-center font-bold text-[#15803D]">
           ప్రశ్నలు లోడ్ అవుతున్నాయి...
         </div>
       </div>
@@ -62,7 +62,7 @@ export const S5_PracticeScreen: React.FC = () => {
     }
   };
 
-  // Process chosen answer (either via button tap or voice input)
+  // Process chosen answer
   const handleSelectAnswer = async (inputStr: string, inputMode: 'tap' | 'voice' = 'tap') => {
     if (!activeLearner || !currentQ || activeFeedback) return;
 
@@ -112,7 +112,7 @@ export const S5_PracticeScreen: React.FC = () => {
         particleCount: 80,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#F2A33A', '#2B2D6E', '#2E8B57'],
+        colors: ['#15803D', '#16A34A', '#FACC15'],
       });
 
       // Background sync outbox
@@ -127,31 +127,31 @@ export const S5_PracticeScreen: React.FC = () => {
     const accuracy = Math.round((correctCount / total) * 100);
 
     return (
-      <div className="min-h-screen bg-cream-100 flex flex-col justify-between p-4 max-w-md mx-auto">
+      <div className="min-h-screen bg-[#F4F9F6] text-[#0F172A] flex flex-col justify-between p-4 max-w-md mx-auto">
         <div className="text-center pt-8">
-          <div className="w-24 h-24 rounded-full bg-linear-to-tr from-amber-400 to-amber-200 text-indigo-dark mx-auto flex items-center justify-center shadow-lg border-4 border-white mb-4 animate-bounce">
-            <Trophy className="w-12 h-12 text-indigo-brand" />
+          <div className="w-24 h-24 rounded-full bg-[#15803D] text-white mx-auto flex items-center justify-center shadow-lg shadow-emerald-700/20 border-4 border-white mb-4 animate-bounce">
+            <Trophy className="w-12 h-12 stroke-[2.5]" />
           </div>
 
-          <h1 className="text-2xl font-bold text-indigo-brand mb-1">
+          <h1 className="text-2xl font-black text-[#0F172A] mb-1">
             {pack.uiStrings.sessionComplete || 'అభినందనలు! సెషన్ పూర్తయింది'}
           </h1>
-          <p className="text-sm text-slate-600 mb-6">
+          <p className="text-xs text-[#475569] mb-6 font-medium">
             మీరు 5 ప్రశ్నల సాధన విజయవంతంగా పూర్తి చేశారు!
           </p>
 
           {/* Stats Card */}
-          <div className="bg-white rounded-3xl p-5 border-2 border-indigo-100 shadow-md mb-6">
-            <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-100">
+          <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-[#D1E7DD] shadow-xs mb-6">
+            <div className="grid grid-cols-2 gap-4 pb-4 border-b border-[#D1E7DD]">
               <div className="text-center">
-                <div className="text-xs text-slate-500 font-medium">ఖచ్చితత్వం</div>
-                <div className="text-3xl font-extrabold text-indigo-brand mt-0.5">
+                <div className="text-xs text-[#475569] font-medium">ఖచ్చితత్వం</div>
+                <div className="text-3xl font-black text-[#0F172A] mt-0.5">
                   {accuracy}%
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-xs text-slate-500 font-medium">సరైన జవాబులు</div>
-                <div className="text-3xl font-extrabold text-emerald-600 mt-0.5">
+                <div className="text-xs text-[#475569] font-medium">సరైన జవాబులు</div>
+                <div className="text-3xl font-black text-[#059669] mt-0.5">
                   {correctCount} / {total}
                 </div>
               </div>
@@ -159,14 +159,14 @@ export const S5_PracticeScreen: React.FC = () => {
 
             {/* Lantern Glow Increase Notice */}
             <div className="flex items-center gap-3 pt-4 text-left">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-lantern flex items-center justify-center shrink-0">
-                <Flame className="w-7 h-7 fill-lantern" />
+              <div className="w-12 h-12 rounded-2xl bg-[#DCFCE7] border border-[#86EFAC] text-[#16A34A] flex items-center justify-center shrink-0">
+                <Flame className="w-7 h-7 fill-[#16A34A]" />
               </div>
               <div>
-                <div className="font-bold text-sm text-indigo-brand">
+                <div className="font-bold text-sm text-[#0F172A]">
                   {pack.uiStrings.lanternGlowIncreased || 'మీ లాంతరు ప్రకాశం పెరిగింది!'}
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-[#475569]">
                   పల్లె దీపాలు మరింత దేదీప్యమానంగా వెలుగుతున్నాయి.
                 </div>
               </div>
@@ -174,18 +174,17 @@ export const S5_PracticeScreen: React.FC = () => {
           </div>
 
           {/* Saved Status Indicator */}
-          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 text-xs font-semibold px-4 py-2 rounded-full border border-emerald-200">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <div className="inline-flex items-center gap-2 bg-[#DCFCE7] text-[#059669] text-xs font-semibold px-4 py-2 rounded-full border border-[#86EFAC]">
+            <ShieldCheck className="w-4 h-4 text-[#059669]" />
             <span>{pack.uiStrings.progressSaved || 'మీ ప్రోగ్రెస్ స్థానికంగా సేవ్ అయింది'}</span>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="space-y-3 pt-6">
+        <div className="space-y-3 pt-6 pb-2">
           <button
             type="button"
             onClick={() => {
-              // Restart another 5 question session
               const selected = PracticeEngine.selectSessionQuestions(pack, skillStates, selectedTopicId || undefined);
               setQuestions(selected);
               setCurrentIndex(0);
@@ -193,16 +192,16 @@ export const S5_PracticeScreen: React.FC = () => {
               setSessionResults([]);
               setIsSessionFinished(false);
             }}
-            className="w-full py-4 rounded-2xl bg-indigo-brand hover:bg-indigo-dark text-white font-bold text-base shadow-md flex items-center justify-center gap-2 active:scale-98 min-h-[56px]"
+            className="w-full py-4 rounded-2xl bg-[#15803D] hover:bg-[#166534] text-white font-bold text-base shadow-md flex items-center justify-center gap-2 active:scale-98 min-h-[56px]"
           >
-            <RotateCcw className="w-5 h-5 text-lantern" />
+            <RotateCcw className="w-5 h-5 stroke-[2.5]" />
             <span>మరో 5 ప్రశ్నల సాధన చేయి</span>
           </button>
 
           <button
             type="button"
             onClick={() => setScreen('S3_HOME')}
-            className="w-full py-3.5 rounded-2xl bg-white hover:bg-slate-50 text-indigo-brand font-bold text-sm border border-slate-200 flex items-center justify-center gap-2 min-h-[50px]"
+            className="w-full py-3.5 rounded-2xl bg-[#FFFFFF] hover:bg-[#F0FDF4] text-[#0F172A] font-bold text-sm border border-[#D1E7DD] flex items-center justify-center gap-2 min-h-[50px] hover:border-[#15803D] shadow-xs"
           >
             <Home className="w-4 h-4" />
             <span>హోమ్‌కు వెళ్ళు</span>
@@ -217,29 +216,29 @@ export const S5_PracticeScreen: React.FC = () => {
   const currentHintText = hintLevel > 0 ? hintTexts[hintLevel - 1] : null;
 
   return (
-    <div className="min-h-screen bg-cream-100 flex flex-col justify-between pb-4">
+    <div className="min-h-screen bg-[#F4F9F6] text-[#0F172A] flex flex-col justify-between pb-4">
       {/* Top Header / Progress Tracker */}
-      <header className="bg-indigo-brand text-white px-4 py-3 shadow-md sticky top-0 z-30">
+      <header className="bg-[#FFFFFF] text-[#0F172A] px-4 py-3 shadow-xs border-b border-[#D1E7DD] sticky top-0 z-30">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <button
             type="button"
             onClick={() => setScreen('S3_HOME')}
-            className="p-2 rounded-xl bg-indigo-light hover:bg-indigo-dark text-white active:scale-95"
+            className="p-2 rounded-xl bg-[#F4F9F6] hover:bg-[#DCFCE7] text-[#0F172A] active:scale-95 border border-[#D1E7DD]"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
           {/* Question Stepper Indicator (3/5) */}
-          <div className="flex items-center gap-2 bg-indigo-950/70 px-3 py-1.5 rounded-xl border border-indigo-400/30">
-            <Flame className="w-4 h-4 text-lantern fill-lantern" />
-            <span className="font-bold text-sm text-cream-100">
+          <div className="flex items-center gap-2 bg-[#DCFCE7] px-3.5 py-1.5 rounded-xl border border-[#86EFAC]">
+            <Flame className="w-4 h-4 text-[#16A34A] fill-[#16A34A]" />
+            <span className="font-bold text-sm text-[#14532D]">
               ప్రశ్న {currentIndex + 1} / {questions.length}
             </span>
           </div>
 
           {/* Saved Status & Audio */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-emerald-300 font-medium hidden sm:inline">
+            <span className="text-[11px] text-[#059669] font-bold hidden sm:inline">
               సేవ్ అయింది ✓
             </span>
             <AudioButton
@@ -255,20 +254,20 @@ export const S5_PracticeScreen: React.FC = () => {
 
       <main className="flex-1 max-w-md w-full mx-auto px-4 pt-4 flex flex-col justify-between">
         {/* Question Card */}
-        <div className="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm mb-4">
+        <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-[#D1E7DD] shadow-xs mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-50 text-indigo-brand border border-indigo-200">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded bg-[#DCFCE7] text-[#14532D] border border-[#86EFAC]">
               {currentQ.difficulty === 1 ? 'సులభం' : currentQ.difficulty === 2 ? 'మధ్యస్థం' : 'క్లిష్టమైనది'}
             </span>
-            <span className="text-xs text-slate-500 font-medium">గణితం · 10వ తరగతి</span>
+            <span className="text-xs text-[#475569] font-medium">గణితం · 10వ తరగతి</span>
           </div>
 
-          <h2 className="text-lg font-bold text-slate-900 leading-snug mt-1">
+          <h2 className="text-lg font-bold text-[#0F172A] leading-snug mt-1">
             {currentQ.text}
           </h2>
         </div>
 
-        {/* 4 Large Options Grid (Section 10 wireframe: 56px minimum touch target) */}
+        {/* 4 Large Options Grid (56px+ touch target) */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {(['A', 'B', 'C', 'D'] as const).map((optKey, idx) => {
             const optText = currentQ.options[idx];
@@ -277,12 +276,12 @@ export const S5_PracticeScreen: React.FC = () => {
                 key={optKey}
                 type="button"
                 onClick={() => handleSelectAnswer(optKey, 'tap')}
-                className="bg-white hover:bg-amber-50/70 border-2 border-slate-200 hover:border-lantern active:border-indigo-brand rounded-2xl p-4 flex flex-col justify-between text-left transition-all active:scale-95 shadow-xs min-h-[72px]"
+                className="bg-[#FFFFFF] hover:bg-[#F0FDF4] border-2 border-[#D1E7DD] hover:border-[#15803D] active:border-[#15803D] rounded-2xl p-4 flex flex-col justify-between text-left transition-all active:scale-95 shadow-xs min-h-[72px]"
               >
-                <span className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-brand font-extrabold text-sm flex items-center justify-center mb-1">
+                <span className="w-8 h-8 rounded-lg bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC] font-extrabold text-sm flex items-center justify-center mb-1">
                   {optKey}
                 </span>
-                <span className="font-semibold text-slate-900 text-sm leading-tight">
+                <span className="font-semibold text-[#0F172A] text-sm leading-tight">
                   {optText}
                 </span>
               </button>
@@ -292,21 +291,21 @@ export const S5_PracticeScreen: React.FC = () => {
 
         {/* Hint Ladder Card if opened */}
         {hintLevel > 0 && currentHintText && (
-          <div className="bg-hint-light border-2 border-hint-brand/40 rounded-2xl p-4 mb-4 animate-fadeIn">
+          <div className="bg-[#CCFBF1] border-2 border-[#14B8A6]/40 rounded-2xl p-4 mb-4 animate-fadeIn shadow-xs">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-bold text-hint-brand flex items-center gap-1.5 uppercase">
-                <Lightbulb className="w-4 h-4 text-hint-brand" />
+              <span className="text-xs font-bold text-[#0D9488] flex items-center gap-1.5 uppercase">
+                <Lightbulb className="w-4 h-4 text-[#0D9488]" />
                 సూచన దశ {hintLevel} / 3: {hintLevel === 1 ? 'గుర్తుచేయడం' : hintLevel === 2 ? 'పద్ధతి' : 'సాధించిన దశ'}
               </span>
               <AudioButton text={currentHintText} label="" size="sm" />
             </div>
-            <p className="text-sm text-slate-800 leading-relaxed font-medium">
+            <p className="text-sm text-[#0F172A] leading-relaxed font-semibold">
               {currentHintText}
             </p>
           </div>
         )}
 
-        {/* Bottom Action Row: [ mic: say answer ] + [ hint button ] */}
+        {/* Bottom Action Row: [ hint button ] + [ voice answer ] */}
         <div className="flex items-center justify-between gap-3 pt-2">
           {/* Hint Ladder Button */}
           <button
@@ -315,11 +314,11 @@ export const S5_PracticeScreen: React.FC = () => {
             disabled={hintLevel >= 3}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 font-bold text-sm min-h-[56px] transition-all active:scale-95 ${
               hintLevel >= 3
-                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                : 'bg-white text-hint-brand border-hint-brand/40 hover:bg-hint-light shadow-xs'
+                ? 'bg-[#F1F5F9] text-[#94A3B8] border-[#D1E7DD] cursor-not-allowed opacity-50'
+                : 'bg-[#FFFFFF] text-[#0D9488] border-[#0D9488]/50 hover:bg-[#F0FDFA] shadow-xs'
             }`}
           >
-            <Lightbulb className="w-5 h-5 text-hint-brand" />
+            <Lightbulb className="w-5 h-5 text-[#0D9488]" />
             <span>
               {hintLevel === 0 ? 'సూచన కావాలా?' : hintLevel < 3 ? 'తదుపరి సూచన' : 'అన్ని సూచనలు చూశారు'}
             </span>

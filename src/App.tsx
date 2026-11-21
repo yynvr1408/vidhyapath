@@ -1,64 +1,62 @@
 import React, { useEffect } from 'react';
 import { useApp } from './context/AppContext';
-import { S1_ProfilePicker } from './screens/S1_ProfilePicker';
-import { S2_CreateProfile } from './screens/S2_CreateProfile';
-import { S3_HomeScreen } from './screens/S3_HomeScreen';
-import { S4_LessonScreen } from './screens/S4_LessonScreen';
-import { S5_PracticeScreen } from './screens/S5_PracticeScreen';
-import { S7_AskDoubtScreen } from './screens/S7_AskDoubtScreen';
-import { S8_ProgressScreen } from './screens/S8_ProgressScreen';
-import { S9_SettingsScreen } from './screens/S9_SettingsScreen';
-import { S10_GuardianScreen } from './screens/S10_GuardianScreen';
-import { S11_ImpactScreen } from './screens/S11_ImpactScreen';
-import { S12_PackEditorScreen } from './screens/S12_PackEditorScreen';
-import { S13_CohortScreen } from './screens/S13_CohortScreen';
+import { AppShell } from './components/AppShell';
+import { ProfileSelectorScreen } from './screens/ProfileSelectorScreen';
+import { MySyllabusScreen } from './screens/MySyllabusScreen';
+import { AiTutorScreen } from './screens/AiTutorScreen';
+import { PracticeWeakTopicsScreen } from './screens/PracticeWeakTopicsScreen';
+import { MyProgressScreen } from './screens/MyProgressScreen';
+import { ParentTeacherViewScreen } from './screens/ParentTeacherViewScreen';
 
 export const AppContent: React.FC = () => {
   const { currentScreen, setScreen, activeLearner } = useApp();
 
-  // Support direct route hashes: #guardian, #impact, #admin, #practice
+  // Support direct route hashes: #guardian, etc.
   useEffect(() => {
     const hash = window.location.hash.toLowerCase();
     const path = window.location.pathname.toLowerCase();
 
     if (hash.includes('guardian') || path.includes('guardian')) {
-      setScreen('S10_GUARDIAN');
-    } else if (hash.includes('impact') || path.includes('impact')) {
-      setScreen('S11_IMPACT');
-    } else if (hash.includes('admin') || path.includes('admin')) {
-      setScreen('S12_PACK_EDITOR');
+      setScreen('PARENT_VIEW');
     }
   }, [setScreen]);
 
-  // Route screen rendering
-  switch (currentScreen) {
-    case 'S1_PICKER':
-      return <S1_ProfilePicker />;
-    case 'S2_CREATE':
-      return <S2_CreateProfile />;
-    case 'S3_HOME':
-      return activeLearner ? <S3_HomeScreen /> : <S1_ProfilePicker />;
-    case 'S4_LESSON':
-      return <S4_LessonScreen />;
-    case 'S5_PRACTICE':
-      return <S5_PracticeScreen />;
-    case 'S7_DOUBT':
-      return <S7_AskDoubtScreen />;
-    case 'S8_PROGRESS':
-      return <S8_ProgressScreen />;
-    case 'S9_SETTINGS':
-      return <S9_SettingsScreen />;
-    case 'S10_GUARDIAN':
-      return <S10_GuardianScreen />;
-    case 'S11_IMPACT':
-      return <S11_ImpactScreen />;
-    case 'S12_PACK_EDITOR':
-      return <S12_PackEditorScreen />;
-    case 'S13_COHORT':
-      return <S13_CohortScreen />;
-    default:
-      return <S1_ProfilePicker />;
+  // If no learner profile is unlocked and not on Parent/Teacher view, show Screen 1
+  if (!activeLearner && currentScreen !== 'PARENT_VIEW') {
+    return <ProfileSelectorScreen />;
   }
+
+  // When S1_PICKER is explicitly selected (e.g. switch profile)
+  if (currentScreen === 'S1_PICKER') {
+    return <ProfileSelectorScreen />;
+  }
+
+  // Render the core 5 pages inside responsive AppShell
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'MY_SYLLABUS':
+      case 'LESSON_DETAIL':
+      case 'S3_HOME':
+      case 'S4_LESSON':
+        return <MySyllabusScreen />;
+      case 'AI_TUTOR':
+      case 'S7_DOUBT':
+        return <AiTutorScreen />;
+      case 'PRACTICE':
+      case 'S5_PRACTICE':
+        return <PracticeWeakTopicsScreen />;
+      case 'PROGRESS':
+      case 'S8_PROGRESS':
+        return <MyProgressScreen />;
+      case 'PARENT_VIEW':
+      case 'S10_GUARDIAN':
+        return <ParentTeacherViewScreen />;
+      default:
+        return <MySyllabusScreen />;
+    }
+  };
+
+  return <AppShell>{renderScreen()}</AppShell>;
 };
 
 export const App: React.FC = () => {
