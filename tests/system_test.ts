@@ -202,6 +202,11 @@ async function runTests() {
   console.log('[PASS] Instant offline common doubt answer found:');
   console.log(`       "${commonAns?.substring(0, 70)}..."`);
 
+  const offlineSylAns = TutorService.findOfflineSyllabusAnswer(pack, 'యూక్లిడ్ భాగహార న్యాయం');
+  console.assert(offlineSylAns !== null, 'Offline syllabus lookup failed');
+  console.log('[PASS] Instant on-device syllabus concept answer found offline:');
+  console.log(`       "${offlineSylAns?.substring(0, 70)}..."`);
+
   const guardrailReply = TutorService.applyGuardrails('Some text', 'నాకు ఫోన్ నంబర్ కావాలి');
   console.assert(guardrailReply.includes('వ్యక్తిగత'), 'Guardrail personal data filter failed');
   console.log('[PASS] Guardrail personal info blocked kindly in Telugu');

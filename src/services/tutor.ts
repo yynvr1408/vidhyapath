@@ -111,6 +111,54 @@ Learner doubt: "${doubtText}"`;
   }
 
   /**
+   * Searches packed syllabus concepts, lesson cards, and explanations for instant offline answering
+   */
+  public static findOfflineSyllabusAnswer(
+    pack: ContentPack,
+    query: string,
+    topicId?: string
+  ): string | null {
+    const qLower = query.toLowerCase();
+    const queryTokens = qLower.split(/[\s,?.!+]+/).filter((w) => w.length > 2);
+    if (queryTokens.length === 0) return null;
+
+    // 1. Search lesson cards in pack topics
+    for (const topic of pack.topics) {
+      if (topic.cards) {
+        for (const card of topic.cards) {
+          const cardText = `${card.heading} ${card.conceptText} ${card.keyTakeaway || ''}`.toLowerCase();
+          const matches = queryTokens.filter((token) => cardText.includes(token));
+          if (matches.length >= 2 || (queryTokens.length === 1 && matches.length === 1)) {
+            const prefix = pack.language === 'en' ? '💡 Offline Concept Note:\n' : pack.language === 'hi' ? '💡 ऑफ़लाइन संकल्पना:\n' : '💡 ఆఫ్‌లైన్ సూత్రం:\n';
+            let res = `${prefix}**${card.heading}**\n${card.conceptText}`;
+            if (card.workedExample) {
+              const egLabel = pack.language === 'en' ? '\n\nWorked Example: ' : pack.language === 'hi' ? '\n\nहल किया गया उदाहरण: ' : '\n\nసాధించిన ఉదాహరణ: ';
+              res += `${egLabel}${card.workedExample.problem}\n-> ${card.workedExample.finalAnswer}`;
+            }
+            if (card.keyTakeaway) {
+              const keyLabel = pack.language === 'en' ? '\n\n📌 Remember: ' : pack.language === 'hi' ? '\n\n📌 याद रखें: ' : '\n\n📌 గుర్తుంచుకోండి: ';
+              res += `${keyLabel}${card.keyTakeaway}`;
+            }
+            return res;
+          }
+        }
+      }
+    }
+
+    // 2. Search question explanations
+    for (const q of pack.questions) {
+      const qText = `${q.text} ${q.explanation || ''}`.toLowerCase();
+      const matches = queryTokens.filter((token) => qText.includes(token));
+      if (matches.length >= 2 && q.explanation) {
+        const prefix = pack.language === 'en' ? '💡 Concept Explanation:\n' : pack.language === 'hi' ? '💡 अवधारणा व्याख्या:\n' : '💡 గణిత వివరణ:\n';
+        return `${prefix}${q.explanation}\n\n-> ${q.hintLadder[0]}`;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Full AI Tutor Resolution Pipeline
    */
   public static async askDoubt(
@@ -144,7 +192,24 @@ Learner doubt: "${doubtText}"`;
       return { answer: commonAnswer, source: 'common_doubts' };
     }
 
-    // 2. Check local tutor cache in IndexedDB
+    // 2. Search on-device pre-packaged syllabus knowledge base (works 100% offline)
+    const syllabusAnswer = this.findOfflineSyllabusAnswer(pack, queryTrimmed, topicId);
+    if (syllabusAnswer) {
+      const doubtRecord: DoubtItem = {
+        id: 'doubt_syl_' + Date.now(),
+        learnerId,
+        topicId: topicId || 'ch1_real_numbers',
+        inputMode: 'text',
+        status: 'answered',
+        question: queryTrimmed,
+        answer: syllabusAnswer,
+        ts: Date.now(),
+      };
+      await localDb.saveDoubt(doubtRecord);
+      return { answer: syllabusAnswer, source: 'common_doubts' };
+    }
+
+    // 3. Check local tutor cache in IndexedDB
     const cacheKey = `${pack.id}_${queryTrimmed.toLowerCase()}`;
     const cachedReply = await localDb.getTutorCachedReply(cacheKey);
     if (cachedReply) {
