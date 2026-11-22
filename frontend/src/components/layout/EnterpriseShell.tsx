@@ -32,7 +32,6 @@ import { VidyapathLogo } from '../VidyapathLogo';
 import { LanguageSelector } from '../LanguageSelector';
 import { SCHEDULED_LANGUAGES } from '../../config/languages';
 import { SupportedLang, getTranslations } from '../../utils/translations';
-import { navigationManager } from '../../services/navigationManager';
 
 export type EnterpriseScreenId =
   | 'DASHBOARD'
@@ -92,22 +91,6 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
   }, [user?.id]);
 
   
-  // Hardware back button integration to close mobile drawer or notifications popover
-  useEffect(() => {
-    if (!mobileDrawerOpen && !notificationsOpen) return;
-    return navigationManager.registerBackHandler(() => {
-      if (notificationsOpen) {
-        setNotificationsOpen(false);
-        return true;
-      }
-      if (mobileDrawerOpen) {
-        setMobileDrawerOpen(false);
-        return true;
-      }
-      return false;
-    }, 100);
-  }, [mobileDrawerOpen, notificationsOpen]);
-
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const t = getTranslations(currentLanguage);

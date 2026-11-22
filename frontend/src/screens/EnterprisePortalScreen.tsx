@@ -30,7 +30,6 @@ import {
   ChevronRight,
   Lock,
 } from 'lucide-react';
-import { navigationManager } from '../services/navigationManager';
 
 interface EnterprisePortalScreenProps {
   onSignOut?: () => void;
@@ -118,24 +117,6 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
     setCurrentScreen('DASHBOARD');
     if (window.location.pathname !== '/portal') window.history.pushState({ screen: 'DASHBOARD' }, '', '/portal');
   };
-
-  // Register hierarchical back-button handler inside Enterprise Portal
-  useEffect(() => {
-    const unregister = navigationManager.registerBackHandler(() => {
-      // If in deep portal screen, navigate back to DASHBOARD
-      if (currentScreen !== 'DASHBOARD') {
-        setCurrentScreen('DASHBOARD');
-        window.history.pushState({ screen: 'DASHBOARD' }, '', '/portal');
-        return true;
-      }
-
-      // If at root DASHBOARD, return to student learning loop
-      handleReturn();
-      return true;
-    }, 45);
-
-    return () => unregister();
-  }, [currentScreen]);
 
   // GATING 1: Loading state during session restoration
   if (loading) {

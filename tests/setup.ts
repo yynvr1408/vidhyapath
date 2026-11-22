@@ -1,19 +1,25 @@
-// Global test setup for Vitest (jsdom).
-// jest-dom is imported from its vitest entry so its matchers extend Vitest's expect
-// (the bare entry expects a global `expect`, which this config does not provide).
-import '@testing-library/jest-dom/vitest';
-// In-memory IndexedDB so LocalDatabase (frontend/src/db/indexedDb.ts) works under jsdom.
-import 'fake-indexeddb/auto';
+// Test-only network boundary for backend unit tests. Never contact external services.
 import { afterEach, beforeEach, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
-import { installFetchMock } from './helpers/harness';
+const nativeFetch = globalThis.fetch;
 
 beforeEach(() => {
-  installFetchMock();
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (url.startsWith('https://api.emailjs.com/')) {
+      return new Response(JSON.stringify({ status: 200, text: 'test-only delivery stub' }), { status: 200 });
+    }
+    if (url.startsWith('http://127.0.0.1:') || url.startsWith('http://localhost:')) {
+      try {
+        return await nativeFetch(input, init);
+      } catch (error) {
+        return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'connection failed' }), { status: 502 });
+      }
+    }
+    return new Response(JSON.stringify({ error: 'not mocked' }), { status: 404 });
+  }));
 });
 
 afterEach(() => {
-  cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });

@@ -11,8 +11,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.json" />
-    <title>Vidyapath · The Last-Mile Tutor</title>
+    <title>Vidyapath · Educational Management &amp; LMS</title>
     <!-- Preload Regional and Latin Google Fonts for crisp typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,40 +20,5 @@
   <body class="bg-[#F8FAFC] text-[#0F172A] font-telugu min-h-screen selection:bg-[#0F766E] selection:text-white antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Register Service Worker for offline PWA capabilities & auto-update detection
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then((reg) => {
-            console.log('Vidyapath PWA ServiceWorker registered with scope:', reg.scope);
-
-            // Check if there is already a waiting service worker
-            if (reg.waiting) {
-              window.dispatchEvent(new CustomEvent('vidyapath-pwa-update-available'));
-            }
-
-            reg.addEventListener('updatefound', () => {
-              const newWorker = reg.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    window.dispatchEvent(new CustomEvent('vidyapath-pwa-update-available'));
-                  }
-                });
-              }
-            });
-          }).catch((err) => console.log('ServiceWorker registration failed:', err));
-
-          // Periodically check for updates every 15 minutes when online
-          setInterval(() => {
-            if (navigator.onLine) {
-              navigator.serviceWorker.getRegistration().then((reg) => {
-                if (reg) reg.update().catch(() => {});
-              });
-            }
-          }, 15 * 60 * 1000);
-        });
-      }
-    </script>
   </body>
 </html>

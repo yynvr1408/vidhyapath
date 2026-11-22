@@ -16,5 +16,5 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["frontend/src", "backend/server"]
+  "include": ["tests/**/*.ts", "frontend/src", "backend/server"]
 }
