@@ -54,6 +54,8 @@ The Netlify redirects proxy `/api/*` and `/uploads/*` to the Render API and rout
 - Start command: `npm start`
 - Health check: `/readyz`
 
+If an existing Render service is configured with the Docker runtime at the repository root, the root `Dockerfile` builds the workspace and runs the API from `backend/`; the frontend remains deployed independently to Netlify. For the Node runtime described by `render.yaml`, set Render's Root Directory to `backend`.
+
 Configure these required production values in Render:
 
 - `DATABASE_URL` — Neon or another compatible PostgreSQL connection string.
@@ -69,7 +71,6 @@ AI tutoring, voice, and object storage also require their corresponding optional
 ```sh
 npm test
 npm run test:unit
-npm run test:ui
 npm run build
 ```
 
