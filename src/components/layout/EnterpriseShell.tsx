@@ -263,7 +263,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         {/* Language Selection in Sidebar */}
         <div className="mb-4">
           <div className="text-[10px] font-extrabold uppercase text-[#64748B] tracking-wider mb-1">
-            Interface Language (తెలుగు / हिन्दी / English)
+            Interface Language (22 Scheduled Languages)
           </div>
           <LanguageSelector className="w-full" />
         </div>
@@ -291,12 +291,8 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         </nav>
       </div>
 
-      {/* Footer Area: Demo Switcher, App Update & Logout */}
+      {/* Footer Area: App Update & Logout */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2 mt-4">
-        {/* Universal 22 Scheduled Language Selector (Pure Native Names) */}
-        <div className="w-full">
-          <LanguageSelector className="w-full" showLabel={true} />
-        </div>
         <AppUpdateButton />
 
         <button

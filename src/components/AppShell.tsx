@@ -294,9 +294,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
       {/* Bottom: Settings, Offline Demo Toggle, Language & Switch Profile */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2.5">
-        {/* Universal 22-Language Native Selector */}
+        {/* Universal 22-Language Native Selector (Upward Dropdown for Sidebar Bottom) */}
         <div className="w-full">
-          <LanguageSelector showLabel={true} className="w-full" />
+          <LanguageSelector showLabel={true} className="w-full" dropDirection="up" />
         </div>
 
         {/* Real Network Status */}

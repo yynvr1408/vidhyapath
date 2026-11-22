@@ -43,6 +43,18 @@ interface EnterprisePortalScreenProps {
   onReturnToStudentApp?: () => void;
 }
 
+const PORTAL_SCREENS: EnterpriseScreenId[] = [
+  'DASHBOARD', 'SUBJECT_VIEW', 'AI_TUTOR', 'SYLLABUS_MANAGER',
+  'OFFLINE_CENTER', 'FOUNDATION_MASCOTS', 'PRACTICE_ENGINE', 'MY_PROGRESS',
+  'GUARDIAN_DIGEST', 'INSTITUTIONS_QUEUE', 'USERS_DIRECTORY', 'AUDIT_LOGS',
+  'ASSIGNMENTS', 'ANNOUNCEMENTS',
+];
+
+const screenFromHash = (): EnterpriseScreenId => {
+  const candidate = window.location.hash.replace(/^#portal\//, '').toUpperCase() as EnterpriseScreenId;
+  return PORTAL_SCREENS.includes(candidate) ? candidate : 'DASHBOARD';
+};
+
 export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
   onReturnToStudentApp,
 }) => {
@@ -50,7 +62,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
   const { setScreen: setAppScreen } = useApp();
   const { subjects } = useAcademic();
 
-  const [currentScreen, setCurrentScreen] = useState<EnterpriseScreenId>('DASHBOARD');
+  const [currentScreen, setCurrentScreen] = useState<EnterpriseScreenId>(screenFromHash);
   const [activeSubject, setActiveSubject] = useState<Subject | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
@@ -68,6 +80,17 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
       window.location.hash = `#portal/${currentScreen.toLowerCase()}`;
     }
   }, [currentScreen, user]);
+
+  // Keep browser back/forward and direct portal links in sync with the selected tab.
+  useEffect(() => {
+    const syncPortalRoute = () => {
+      if (window.location.hash.startsWith('#portal/')) {
+        setCurrentScreen(screenFromHash());
+      }
+    };
+    window.addEventListener('hashchange', syncPortalRoute);
+    return () => window.removeEventListener('hashchange', syncPortalRoute);
+  }, []);
 
   // Register hierarchical back-button handler inside Enterprise Portal
   useEffect(() => {

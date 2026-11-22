@@ -124,6 +124,50 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
     setErrorMsg(null);
   };
 
+  // Physical Keyboard & Numpad listener for Desktop / Chromebook users
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInputFocused =
+        activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (mode !== 'enter_pin') {
+          setMode('enter_pin');
+          setEnteredPin('');
+          setErrorMsg(null);
+        } else {
+          onClose();
+        }
+        return;
+      }
+
+      if (isInputFocused) return;
+
+      if (mode === 'enter_pin' || mode === 'enter_new_pin') {
+        if (/^[0-9]$/.test(e.key)) {
+          e.preventDefault();
+          handleDigit(e.key);
+        } else if (e.code && e.code.startsWith('Numpad') && /^Numpad[0-9]$/.test(e.code)) {
+          e.preventDefault();
+          handleDigit(e.key);
+        } else if (e.key === 'Backspace') {
+          e.preventDefault();
+          handleBackspace();
+        } else if (e.key === 'Delete' || e.key.toLowerCase() === 'c') {
+          e.preventDefault();
+          handleClear();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, mode, enteredPin, expectedPin, onClose]);
+
   // Student Safety Question Verification (Case-insensitive, zero-email, zero-OTP)
   const handleVerifySafetyAnswer = (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,14 +270,14 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
               </div>
             )}
 
-            {/* 3x4 Numeric Keypad with touch targets */}
+            {/* 3x4 Numeric Keypad with touch targets & keyboard focus rings */}
             <div className="grid grid-cols-3 gap-2.5 w-full">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
                 <button
                   key={digit}
                   type="button"
                   onClick={() => handleDigit(digit)}
-                  className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] text-xl font-bold text-[#0F172A] active:scale-95 transition-all flex items-center justify-center min-h-[52px]"
+                  className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] text-xl font-bold text-[#0F172A] active:scale-95 transition-all flex items-center justify-center min-h-[52px] focus:outline-hidden focus:ring-2 focus:ring-[#0F766E] cursor-pointer"
                 >
                   {digit}
                 </button>
@@ -241,21 +285,21 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
               <button
                 type="button"
                 onClick={handleClear}
-                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#FEE2E2] hover:text-[#DC2626] border border-[#E2E8F0] text-xs font-bold text-[#475569] active:scale-95 transition-all flex items-center justify-center min-h-[52px]"
+                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#FEE2E2] hover:text-[#DC2626] border border-[#E2E8F0] text-xs font-bold text-[#475569] active:scale-95 transition-all flex items-center justify-center min-h-[52px] focus:outline-hidden focus:ring-2 focus:ring-[#0F766E] cursor-pointer"
               >
                 {t.cancel}
               </button>
               <button
                 type="button"
                 onClick={() => handleDigit('0')}
-                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] text-xl font-bold text-[#0F172A] active:scale-95 transition-all flex items-center justify-center min-h-[52px]"
+                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] text-xl font-bold text-[#0F172A] active:scale-95 transition-all flex items-center justify-center min-h-[52px] focus:outline-hidden focus:ring-2 focus:ring-[#0F766E] cursor-pointer"
               >
                 0
               </button>
               <button
                 type="button"
                 onClick={handleBackspace}
-                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#FEF3C7] hover:text-[#D97706] border border-[#E2E8F0] active:scale-95 transition-all flex items-center justify-center text-[#475569] min-h-[52px]"
+                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#FEF3C7] hover:text-[#D97706] border border-[#E2E8F0] active:scale-95 transition-all flex items-center justify-center text-[#475569] min-h-[52px] focus:outline-hidden focus:ring-2 focus:ring-[#0F766E] cursor-pointer"
               >
                 <Delete className="w-5 h-5" />
               </button>
@@ -360,7 +404,7 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
                   key={digit}
                   type="button"
                   onClick={() => handleDigit(digit)}
-                  className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] text-xl font-bold text-[#0F172A] active:scale-95 transition-all flex items-center justify-center min-h-[52px]"
+                  className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] text-xl font-bold text-[#0F172A] active:scale-95 transition-all flex items-center justify-center min-h-[52px] focus:outline-hidden focus:ring-2 focus:ring-[#0F766E] cursor-pointer"
                 >
                   {digit}
                 </button>
@@ -368,21 +412,21 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
               <button
                 type="button"
                 onClick={handleClear}
-                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#FEE2E2] hover:text-[#DC2626] border border-[#E2E8F0] text-xs font-bold text-[#475569] active:scale-95 transition-all flex items-center justify-center min-h-[52px]"
+                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#FEE2E2] hover:text-[#DC2626] border border-[#E2E8F0] text-xs font-bold text-[#475569] active:scale-95 transition-all flex items-center justify-center min-h-[52px] focus:outline-hidden focus:ring-2 focus:ring-[#0F766E] cursor-pointer"
               >
                 {t.cancel}
               </button>
               <button
                 type="button"
                 onClick={() => handleDigit('0')}
-                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] text-xl font-bold text-[#0F172A] active:scale-95 transition-all flex items-center justify-center min-h-[52px]"
+                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] text-xl font-bold text-[#0F172A] active:scale-95 transition-all flex items-center justify-center min-h-[52px] focus:outline-hidden focus:ring-2 focus:ring-[#0F766E] cursor-pointer"
               >
                 0
               </button>
               <button
                 type="button"
                 onClick={handleBackspace}
-                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#FEF3C7] hover:text-[#D97706] border border-[#E2E8F0] active:scale-95 transition-all flex items-center justify-center text-[#475569] min-h-[52px]"
+                className="h-14 rounded-[12px] bg-[#F8FAFC] hover:bg-[#FEF3C7] hover:text-[#D97706] border border-[#E2E8F0] active:scale-95 transition-all flex items-center justify-center text-[#475569] min-h-[52px] focus:outline-hidden focus:ring-2 focus:ring-[#0F766E] cursor-pointer"
               >
                 <Delete className="w-5 h-5" />
               </button>

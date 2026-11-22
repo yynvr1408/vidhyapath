@@ -182,52 +182,36 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onOpenSubjec
         </div>
       </div>
 
-      {/* RECENT STUDENT SUBMISSIONS READY FOR GRADING */}
+      {/* STUDENT SUBMISSIONS READY FOR GRADING */}
       <div className="bg-white rounded-[12px] border border-[#E2E8F0] shadow-xs p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="font-extrabold text-sm text-[#0F172A] flex items-center gap-2">
             <Award className="w-4 h-4 text-[#D97706]" />
-            <span>Recent Student Assignment Submissions</span>
+            <span>Student Assignment Submissions</span>
           </h4>
-          <span className="text-xs text-[#0F766E] font-bold">1 New Submission</span>
+          <span className="text-xs text-[#0F766E] font-bold">
+            {sampleGraded ? 'All Graded' : 'Queue Empty'}
+          </span>
         </div>
 
-        <div className="p-3.5 rounded-[8px] bg-[#F8FAFC] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div>
-            <div className="font-extrabold text-[#0F172A]">Aditya Verma (23CS042)</div>
-            <div className="text-[11px] text-[#475569] mt-0.5">
-              Assignment 1: CPU Scheduling Simulator &amp; Gantt Charts
-            </div>
-            <div className="text-[10px] text-[#64748B] mt-0.5">
-              Submitted: Yesterday at 4:15 PM • Status: Submitted
+        {sampleGraded ? (
+          <div className="p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-[#16A34A] shrink-0" />
+            <div className="text-xs text-[#15803D] font-bold">
+              All student assignment submissions have been graded and synced with cloud records.
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            {sampleGraded ? (
-              <span className="px-3 py-1.5 rounded-[6px] bg-[#DCFCE7] text-[#15803D] font-bold text-xs border border-[#86EFAC]">
-                ✓ Graded (19/20) · Synced
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await fetch('/api/lms/assignments/asgn_sample/grade', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                      body: JSON.stringify({ submissionId: 'sub_sample', marksObtained: 19, feedback: 'Excellent accuracy!' }),
-                    });
-                  } catch (_) {}
-                  setSampleGraded(true);
-                }}
-                className="px-3.5 py-1.5 rounded-[6px] bg-[#16A34A] hover:bg-[#15803D] text-white font-bold text-xs shadow-2xs active:scale-95 transition-all cursor-pointer"
-              >
-                Grade (19/20)
-              </button>
-            )}
+        ) : (
+          <div className="p-6 rounded-xl bg-[#F8FAFC] border border-dashed border-[#CBD5E1] text-center space-y-1.5">
+            <Award className="w-8 h-8 text-[#94A3B8] mx-auto opacity-60" />
+            <p className="text-xs font-bold text-[#475569]">
+              No pending student submissions to grade.
+            </p>
+            <p className="text-[11px] text-[#64748B]">
+              When students complete assignments from their syllabus, their submissions appear here for review and grading.
+            </p>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ADD RESOURCE MODAL */}

@@ -28,10 +28,24 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
 
   React.useEffect(() => {
     if (!isOpen) return;
-    return navigationManager.registerBackHandler(() => {
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    const unreg = navigationManager.registerBackHandler(() => {
       onClose();
       return true;
     }, 100);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      unreg();
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -69,7 +83,7 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
         <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] mb-4">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-[#0F766E]" />
-            <h3 className="font-bold text-base text-[#0F172A]">{currentLanguage === 'te' ? '+ విద్యార్థి ప్రొఫైల్ నమోదు' : currentLanguage === 'hi' ? '+ छात्र प्रोफ़ाइल पंजीकरण' : '+ Register Student Profile'}</h3>
+            <h3 className="font-bold text-base text-[#0F172A]">{currentLanguage === 'te' ? 'విద్యార్థి ప్రొఫైల్ నమోదు' : currentLanguage === 'hi' ? 'छात्र प्रोफ़ाइल पंजीकरण' : 'Register Student Profile'}</h3>
           </div>
           <button
             type="button"
@@ -96,21 +110,29 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
             />
           </div>
 
-          {/* Class Selector (Class 9 or Class 10) */}
+          {/* Class Selector (Classes 1 through 12) */}
           <div>
-            <label className="block text-xs font-bold text-[#0F172A] mb-1.5">
-              {t.classLabel}:
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {[9, 10].map((c) => (
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-[#0F172A]">
+                {t.classLabel}:
+              </label>
+              <span className="text-[10px] font-black text-[#0F766E] uppercase">
+                {classGrade <= 5 ? (currentLanguage === 'te' ? 'ప్రాథమిక (ఉచితం)' : currentLanguage === 'hi' ? 'प्राथमिक (निःशुल्क)' : 'Primary (Free)')
+                  : classGrade <= 8 ? (currentLanguage === 'te' ? 'మిడిల్ స్కూల్ (ఉచితం)' : currentLanguage === 'hi' ? 'माध्यमिक पूर्व (निःशुल्क)' : 'Middle School (Free)')
+                  : classGrade <= 10 ? (currentLanguage === 'te' ? 'సెకండరీ బోర్డు (ఉచితం)' : currentLanguage === 'hi' ? 'माध्यमिक बोर्ड (निःशुल्क)' : 'Secondary Board (Free)')
+                  : (currentLanguage === 'te' ? 'ఇంటర్మీడియట్' : currentLanguage === 'hi' ? 'उच्च माध्यमिक' : 'Higher Secondary')}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-32 overflow-y-auto p-1.5 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setClassGrade(c)}
-                  className={`py-2.5 px-3 rounded-[12px] text-xs font-bold border transition-all ${
+                  className={`py-2 px-1.5 rounded-[10px] text-xs font-bold border transition-all text-center cursor-pointer ${
                     classGrade === c
-                      ? 'bg-[#0F766E] text-white border-[#0F766E] shadow-sm'
-                      : 'bg-[#F8FAFC] text-[#475569] border-[#E2E8F0]'
+                      ? 'bg-[#0F766E] text-white border-[#0F766E] shadow-xs'
+                      : 'bg-white text-[#475569] border-[#CBD5E1] hover:border-[#0F766E]'
                   }`}
                 >
                   {c} {t.classText}

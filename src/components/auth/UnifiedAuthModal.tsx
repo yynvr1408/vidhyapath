@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   UserCheck,
@@ -7,15 +7,29 @@ import {
   Building2,
   Lock,
   ArrowRight,
+  ArrowLeft,
   HelpCircle,
   CheckCircle2,
   AlertCircle,
   Sparkles,
+  Mail,
+  Smartphone,
+  GraduationCap,
+  Award,
+  KeyRound,
+  RefreshCw,
 } from 'lucide-react';
 import { useEnterpriseAuth } from '../../context/EnterpriseAuthContext';
 import { useApp } from '../../context/AppContext';
 import { SAFETY_QUESTIONS } from '../../config/safetyQuestions';
 import { LanguageSelector } from '../LanguageSelector';
+import {
+  ACADEMIC_GRADES,
+  HIGHER_SECONDARY_STREAMS,
+  EDUCATIONAL_BOARDS,
+  INDIAN_STATES_AND_UTS,
+} from '../../config/academic';
+import { LearnerProfile } from '../../types';
 
 export type AuthRoleTab = 'student' | 'guardian' | 'teacher' | 'admin';
 
@@ -25,26 +39,54 @@ interface UnifiedAuthModalProps {
   initialRole?: AuthRoleTab;
 }
 
+const STUDENT_MASCOTS = [
+  { emoji: '🐆', label: 'Cheetah (చిరుత / चीता)' },
+  { emoji: '🐘', label: 'Elephant (ఏనుగు / हाथी)' },
+  { emoji: '🦁', label: 'Lion (సింహం / शेर)' },
+  { emoji: '🧑‍🎓', label: 'Scholar (విద్వాంసుడు / विद्वान)' },
+  { emoji: '👧', label: 'Girl Student (విద్యార్థిని / छात्रा)' },
+  { emoji: '👦', label: 'Boy Student (విద్యార్థి / छात्र)' },
+];
+
 export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
   isOpen,
   onClose,
   initialRole = 'student',
 }) => {
   const { login } = useEnterpriseAuth();
-  const { setScreen, learners, selectLearner } = useApp();
+  const { setScreen, learners, selectLearner, createLearner, currentLanguage } = useApp();
 
   const [activeTab, setActiveTab] = useState<AuthRoleTab>(initialRole);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot_pin'>('login');
+
+  // Student 5-step registration state
+  const [registrationStep, setRegistrationStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // Form states
   const [identifier, setIdentifier] = useState(''); // Email or RollNumber / LoginCode
   const [credential, setCredential] = useState(''); // Password or 4-digit PIN
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [classGrade, setClassGrade] = useState('10');
+  const [email, setEmail] = useState('');
+  const [classGrade, setClassGrade] = useState<number>(10);
   const [board, setBoard] = useState('State SSC');
   const [stateName, setStateName] = useState('Andhra Pradesh');
+  const [stream, setStream] = useState('MPC');
+  const [selectedMascot, setSelectedMascot] = useState('🐆');
   const [isIndependent, setIsIndependent] = useState(true);
+
+  // EmailJS OTP verification states
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+
+  // Final registered student profile info for Step 5
+  const [registeredStudentInfo, setRegisteredStudentInfo] = useState<{
+    rollNumber: string;
+    fullName: string;
+    grade: number;
+  } | null>(null);
 
   // Safety question PIN recovery
   const [safetyQuestion, setSafetyQuestion] = useState('');
@@ -57,6 +99,28 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Keyboard Escape listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // OTP cooldown timer
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
+
   if (!isOpen) return null;
 
   const resetForm = () => {
@@ -67,6 +131,10 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
     setSafetyAnswer('');
     setNewPin('');
     setSafetyQuestionFetched(false);
+    setRegistrationStep(1);
+    setOtpSent(false);
+    setOtpVerified(false);
+    setRegisteredStudentInfo(null);
   };
 
   // 1. Handle Login (Role-Agnostic: Handles both Students & Staff)
@@ -97,7 +165,6 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
 
       // Route based on role
       if (activeTab === 'student') {
-        // If matches a local learner profile, select it
         const matched = learners.find(
           (l) =>
             l.nickname.toUpperCase() === identifier.trim().toUpperCase() ||
@@ -115,14 +182,165 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
 
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your details.');
+      setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 2. Handle Registration
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  // 2. Dispatch EmailJS OTP for Verification
+  const handleSendOtp = async () => {
+    if (!email || !email.includes('@')) {
+      setError('Please enter a valid email address for verification.');
+      return;
+    }
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          purpose: 'student_registration',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to dispatch verification code.');
+      }
+
+      setOtpSent(true);
+      setOtpCooldown(60);
+      setSuccessMessage(data.message || 'Verification code dispatched to your email.');
+
+      // In local dev/simulated mode without EmailJS keys, auto-fill dev OTP for instant convenience
+      if (data.devOtp) {
+        setOtpCode(data.devOtp);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Could not send verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3. Verify OTP
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.trim().length < 4) {
+      setError('Please enter the 6-digit verification code.');
+      return;
+    }
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          code: otpCode.trim(),
+          purpose: 'student_registration',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Verification code invalid or expired.');
+      }
+
+      setOtpVerified(true);
+      setSuccessMessage('Email verified successfully! Proceeding to PIN setup...');
+      setTimeout(() => {
+        setSuccessMessage(null);
+        setRegistrationStep(4);
+      }, 700);
+    } catch (err: any) {
+      setError(err.message || 'Verification failed. Please double check the code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 4. Handle Student Registration Step 4 -> Complete Account Creation
+  const handleCompleteStudentRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!credential || credential.length !== 4) {
+      setError('Please set a secure 4-digit PIN for your student profile.');
+      return;
+    }
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/register/student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          phone,
+          email: email.trim().toLowerCase(),
+          pin: credential.trim(),
+          classGrade,
+          board,
+          state: stateName,
+          stream: classGrade >= 11 ? stream : undefined,
+          isIndependent,
+          securityQuestionId: 'subject',
+          securityQuestion: 'What is your favorite school subject?',
+          securityAnswer: safetyAnswer || 'Maths',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to complete student enrollment.');
+      }
+
+      localStorage.setItem('vidyapath_token', data.token);
+
+      const generatedRoll = data.user?.studentProfile?.rollNumber || `STU-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // Save to client-side local database so profile selector immediately reflects this student
+      const localProfile: LearnerProfile = {
+        id: data.user?.id || 'learner_' + Date.now(),
+        nickname: `${fullName} / ${fullName}`,
+        loginCode: generatedRoll,
+        pin: credential.trim(),
+        pinHash: credential.trim(),
+        avatarEmoji: selectedMascot,
+        avatarColor: '#0F766E',
+        classGrade,
+        packId: board === 'CBSE' ? 'en-10-maths-cbse' : 'te-10-maths-ap',
+        securityQuestionId: 'subject',
+        securityQuestion: 'What is your favorite school subject?',
+        securityAnswer: safetyAnswer || 'Maths',
+        createdAt: Date.now(),
+      };
+
+      await createLearner(localProfile);
+      selectLearner(localProfile);
+
+      setRegisteredStudentInfo({
+        rollNumber: generatedRoll,
+        fullName,
+        grade: classGrade,
+      });
+
+      // Move to Step 5: Onboarding Walkthrough
+      setRegistrationStep(5);
+    } catch (err: any) {
+      setError(err.message || 'Student registration encountered an error.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Guardian or Institution Admin Registration
+  const handleStaffRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -151,34 +369,6 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
           setScreen('PARENT_VIEW');
           onClose();
         }, 1200);
-      } else if (activeTab === 'student') {
-        const res = await fetch('/api/auth/register/student', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fullName,
-            pin: credential.trim(),
-            classGrade: parseInt(classGrade, 10),
-            board,
-            state: stateName,
-            isIndependent,
-            securityQuestionId: 'subject',
-            securityQuestion: 'What is your favorite school subject?',
-            securityAnswer: safetyAnswer || 'Maths',
-          }),
-        });
-
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Failed to enroll student.');
-        }
-
-        localStorage.setItem('vidyapath_token', data.token);
-        setSuccessMessage(`Welcome, ${fullName}! Your Login Code is ${data.user?.studentProfile?.rollNumber}.`);
-        setTimeout(() => {
-          setScreen('MY_SYLLABUS');
-          onClose();
-        }, 1500);
       } else if (activeTab === 'admin') {
         const res = await fetch('/api/auth/register/institution', {
           method: 'POST',
@@ -189,7 +379,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
             type: 'school',
             contactEmail: identifier.trim().toLowerCase(),
             contactPhone: phone,
-            adminFullName: 'Institution Head',
+            adminFullName: 'Institution Administrator',
             adminPassword: credential,
           }),
         });
@@ -199,11 +389,10 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
           throw new Error(data.error || 'Failed to submit institution registration.');
         }
 
-        setSuccessMessage('Institution registration submitted! Sent to Platform Super Administrator for review.');
+        setSuccessMessage('Institution registration submitted for Super Admin review!');
         setTimeout(() => {
           setAuthMode('login');
-          setSuccessMessage(null);
-        }, 2200);
+        }, 1500);
       }
     } catch (err: any) {
       setError(err.message || 'Registration failed.');
@@ -212,29 +401,27 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
     }
   };
 
-  // 3. Handle Student Safety Question PIN Reset
+  // Zero-Email PIN Reset
   const handleFetchSafetyQuestion = async () => {
     if (!identifier.trim()) {
-      setError('Please enter your Student Login Code or Roll Number first.');
+      setError('Please provide your Student Login Code.');
       return;
     }
     setError(null);
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/student/safety-question', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loginCode: identifier.trim().toUpperCase() }),
-      });
+      const res = await fetch(
+        `/api/auth/student/safety-question?loginCode=${encodeURIComponent(identifier.trim().toUpperCase())}`
+      );
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Student account not found.');
+        throw new Error(data.error || 'Student code not recognized.');
       }
-      setSafetyQuestion(data.securityQuestion);
+      setSafetyQuestion(data.question);
       setSafetyQuestionFetched(true);
     } catch (err: any) {
-      setError(err.message || 'Could not find safety question for this code.');
+      setError(err.message || 'Could not retrieve safety question.');
     } finally {
       setLoading(false);
     }
@@ -242,6 +429,10 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
 
   const handleResetPinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!safetyAnswer.trim() || newPin.length !== 4) {
+      setError('Please provide your answer and a new 4-digit PIN.');
+      return;
+    }
     setError(null);
     setLoading(true);
 
@@ -251,147 +442,127 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           loginCode: identifier.trim().toUpperCase(),
-          securityAnswer: safetyAnswer.trim(),
+          answer: safetyAnswer.trim(),
           newPin: newPin.trim(),
         }),
       });
+
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to reset PIN.');
+        throw new Error(data.error || 'Incorrect safety answer. Try again.');
       }
 
-      setSuccessMessage('PIN reset successfully! You can now log in.');
+      setSuccessMessage('PIN reset successfully! You may now sign in.');
       setTimeout(() => {
         setAuthMode('login');
         setCredential(newPin);
+        setError(null);
         setSuccessMessage(null);
-      }, 1500);
+      }, 1200);
     } catch (err: any) {
-      setError(err.message || 'Incorrect answer or invalid PIN.');
+      setError(err.message || 'PIN reset failed.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] overflow-hidden flex flex-col max-h-[90vh]">
-        {/* Header with Vidyapath Teal Branding */}
-        <div className="bg-[#0F766E] text-white p-5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center font-bold text-lg">
-              🎓
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-[#CBD5E1] overflow-hidden flex flex-col max-h-[92vh] animate-scaleUp">
+        {/* Top Header */}
+        <div className="p-4 sm:p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-linear-to-r from-[#F8FAFC] to-[#FFFFFF]">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#0F766E] text-white flex items-center justify-center font-black">
+              🏮
             </div>
             <div>
-              <h2 className="font-extrabold text-lg leading-tight">Vidyapath Portal Login</h2>
-              <p className="text-xs text-[#CCFBF1]">Unified Multi-Role Authentication</p>
+              <h2 className="font-extrabold text-base text-[#0F172A] leading-tight">
+                Vidyapath Portal • విద్యాపథ్
+              </h2>
+              <p className="text-xs text-[#64748B] font-medium">
+                Unified RBAC Authentication &amp; Class 1–12 Registration
+              </p>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
-            <LanguageSelector variant="pill" />
+            <LanguageSelector variant="compact" />
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+              className="w-8 h-8 rounded-lg hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A] flex items-center justify-center transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* 4 Role Navigation Tabs */}
-        <div className="grid grid-cols-4 bg-[#F8FAFC] border-b border-[#E2E8F0] p-1 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('student');
-              setAuthMode('login');
-              resetForm();
-            }}
-            className={`py-2 px-1 rounded-lg flex flex-col items-center gap-1 transition-all ${
-              activeTab === 'student'
-                ? 'bg-white text-[#0F766E] shadow-2xs font-extrabold border border-[#E2E8F0]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>Student</span>
-          </button>
+        {/* Role Tabs */}
+        {authMode !== 'forgot_pin' && !(authMode === 'register' && activeTab === 'student' && registrationStep === 5) && (
+          <div className="flex border-b border-[#E2E8F0] bg-[#F8FAFC] px-3 pt-2 gap-1 overflow-x-auto scrollbar-none">
+            {(['student', 'guardian', 'teacher', 'admin'] as AuthRoleTab[]).map((tab) => {
+              const active = activeTab === tab;
+              const labels: Record<AuthRoleTab, { label: string; icon: any }> = {
+                student: { label: 'Student', icon: GraduationCap },
+                guardian: { label: 'Parent / Guardian', icon: ShieldCheck },
+                teacher: { label: 'Teacher', icon: BookOpen },
+                admin: { label: 'Institution Admin', icon: Building2 },
+              };
+              const { label, icon: Icon } = labels[tab];
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('guardian');
-              setAuthMode('login');
-              resetForm();
-            }}
-            className={`py-2 px-1 rounded-lg flex flex-col items-center gap-1 transition-all ${
-              activeTab === 'guardian'
-                ? 'bg-white text-[#0F766E] shadow-2xs font-extrabold border border-[#E2E8F0]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>Parent</span>
-          </button>
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab);
+                    resetForm();
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-t-xl transition-all border-b-2 whitespace-nowrap cursor-pointer ${
+                    active
+                      ? 'border-[#0F766E] text-[#0F766E] bg-white shadow-2xs font-black'
+                      : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('teacher');
-              setAuthMode('login');
-              resetForm();
-            }}
-            className={`py-2 px-1 rounded-lg flex flex-col items-center gap-1 transition-all ${
-              activeTab === 'teacher'
-                ? 'bg-white text-[#0F766E] shadow-2xs font-extrabold border border-[#E2E8F0]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            <UserCheck className="w-4 h-4" />
-            <span>Teacher</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('admin');
-              setAuthMode('login');
-              resetForm();
-            }}
-            className={`py-2 px-1 rounded-lg flex flex-col items-center gap-1 transition-all ${
-              activeTab === 'admin'
-                ? 'bg-white text-[#0F766E] shadow-2xs font-extrabold border border-[#E2E8F0]'
-                : 'text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            <span>Admin</span>
-          </button>
-        </div>
-
-        {/* Modal Scrollable Content */}
-        <div className="p-6 overflow-y-auto space-y-4">
+        {/* Modal Body */}
+        <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
           {error && (
-            <div className="flex items-start gap-2 bg-[#FEF2F2] border border-[#FECACA] text-[#991B1B] p-3 rounded-xl text-xs font-semibold animate-in fade-in">
+            <div className="flex items-start gap-2 bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] p-3 rounded-xl text-xs font-medium animate-shake">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="flex items-start gap-2 bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] p-3 rounded-xl text-xs font-semibold animate-in fade-in">
+            <div className="flex items-start gap-2 bg-[#F0FDF4] border border-[#BBF7D0] text-[#166534] p-3 rounded-xl text-xs font-semibold animate-fadeIn">
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{successMessage}</span>
             </div>
           )}
 
-          {/* MODE: FORGOT PIN VIA SAFETY QUESTION */}
+          {/* MODE 1: FORGOT PIN VIA ZERO-EMAIL SAFETY QUESTION */}
           {authMode === 'forgot_pin' ? (
-            <form onSubmit={handleResetPinSubmit} className="space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b border-[#E2E8F0]">
-                <HelpCircle className="w-4 h-4 text-[#0F766E]" />
-                <h3 className="text-sm font-bold text-[#0F172A]">Zero-PII Student PIN Reset</h3>
+            <form onSubmit={handleResetPinSubmit} className="space-y-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4 text-[#0F766E]" />
+                  <h3 className="text-sm font-bold text-[#0F172A]">Zero-Email Student PIN Reset</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('login')}
+                  className="text-xs font-bold text-[#0F766E] hover:underline cursor-pointer"
+                >
+                  Back to Sign In
+                </button>
               </div>
 
               <div>
@@ -404,14 +575,14 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value.toUpperCase())}
-                    placeholder="e.g. RAVI-10"
-                    className="flex-1 px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-bold uppercase focus:border-[#0F766E] focus:outline-hidden"
+                    placeholder="e.g. 24SSC-001"
+                    className="flex-1 px-3 py-2 border border-[#CBD5E1] rounded-xl text-sm font-bold uppercase focus:border-[#0F766E] focus:outline-hidden"
                   />
                   <button
                     type="button"
                     onClick={handleFetchSafetyQuestion}
                     disabled={loading}
-                    className="px-3 py-2 bg-[#F1F5F9] text-[#0F766E] font-bold text-xs rounded-xl hover:bg-[#E2E8F0] transition-colors shrink-0"
+                    className="px-3 py-2 bg-[#F1F5F9] text-[#0F766E] font-bold text-xs rounded-xl hover:bg-[#E2E8F0] transition-colors shrink-0 cursor-pointer"
                   >
                     Find Question
                   </button>
@@ -421,7 +592,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
               {safetyQuestionFetched && (
                 <>
                   <div className="bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0]">
-                    <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">
+                    <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block mb-1">
                       Your Security Question
                     </span>
                     <p className="text-sm font-extrabold text-[#0F172A]">{safetyQuestion}</p>
@@ -429,7 +600,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Your Security Answer
+                      Security Answer
                     </label>
                     <input
                       type="text"
@@ -437,7 +608,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                       value={safetyAnswer}
                       onChange={(e) => setSafetyAnswer(e.target.value)}
                       placeholder="e.g. Maths (or లెక్కలు)"
-                      className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+                      className="w-full px-3 py-2 border border-[#CBD5E1] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
                     />
                   </div>
 
@@ -452,32 +623,41 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                       value={newPin}
                       onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
                       placeholder="••••"
-                      className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-center text-lg font-black tracking-widest focus:border-[#0F766E] focus:outline-hidden"
+                      className="w-full px-3 py-2 border border-[#CBD5E1] rounded-xl text-center text-lg font-black tracking-widest focus:border-[#0F766E] focus:outline-hidden"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-2.5 bg-[#0F766E] text-white font-bold text-sm rounded-xl hover:bg-[#0D655E] transition-all shadow-xs flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-[#0F766E] text-white font-bold text-sm rounded-xl hover:bg-[#115E59] transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>Reset PIN &amp; Unlock</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>{loading ? 'Resetting...' : 'Set New PIN'}</span>
                   </button>
                 </>
               )}
-
-              <button
-                type="button"
-                onClick={() => setAuthMode('login')}
-                className="w-full text-center text-xs font-bold text-[#64748B] hover:text-[#0F172A] pt-2"
-              >
-                Back to Login
-              </button>
             </form>
           ) : authMode === 'login' ? (
-            /* MODE: LOGIN */
+            /* MODE 2: ROLE-BASED LOGIN */
             <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+                <h3 className="text-sm font-bold text-[#0F172A]">
+                  Sign In as {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                </h3>
+                {activeTab !== 'teacher' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('register');
+                      resetForm();
+                    }}
+                    className="text-xs font-bold text-[#0F766E] hover:underline cursor-pointer"
+                  >
+                    + Create New Account
+                  </button>
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-[#475569] mb-1">
                   {activeTab === 'student' ? 'Student Login Code or Roll Number' : 'Email Address'}
@@ -488,26 +668,25 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder={
-                    activeTab === 'student'
-                      ? 'e.g. RAVI-10 or Roll No.'
-                      : activeTab === 'guardian'
-                      ? 'parent@example.com'
-                      : 'staff@institution.edu'
+                    activeTab === 'student' ? 'e.g. 24SSC-001 or RAVI' : 'user@example.com'
                   }
-                  className="w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+                  className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-sm font-semibold focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/20 focus:outline-hidden"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-bold text-[#475569]">
-                    {activeTab === 'student' ? '4-Digit Student PIN' : 'Password'}
+                    {activeTab === 'student' ? '4-Digit Confidential PIN' : 'Password'}
                   </label>
                   {activeTab === 'student' && (
                     <button
                       type="button"
-                      onClick={() => setAuthMode('forgot_pin')}
-                      className="text-[11px] font-bold text-[#0F766E] hover:underline"
+                      onClick={() => {
+                        setAuthMode('forgot_pin');
+                        setError(null);
+                      }}
+                      className="text-xs font-bold text-[#0F766E] hover:underline cursor-pointer"
                     >
                       Forgot PIN?
                     </button>
@@ -515,13 +694,17 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                 </div>
                 <input
                   type="password"
-                  maxLength={activeTab === 'student' ? 4 : undefined}
+                  maxLength={activeTab === 'student' ? 4 : 64}
                   required
                   value={credential}
-                  onChange={(e) => setCredential(e.target.value)}
+                  onChange={(e) =>
+                    setCredential(
+                      activeTab === 'student' ? e.target.value.replace(/\D/g, '') : e.target.value
+                    )
+                  }
                   placeholder={activeTab === 'student' ? '••••' : '••••••••'}
-                  className={`w-full px-3.5 py-2.5 border border-[#E2E8F0] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden ${
-                    activeTab === 'student' ? 'text-center font-black tracking-widest text-base' : ''
+                  className={`w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-sm font-semibold focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/20 focus:outline-hidden ${
+                    activeTab === 'student' ? 'text-center text-lg font-mono tracking-widest' : ''
                   }`}
                 />
               </div>
@@ -529,139 +712,330 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-[#0F766E] text-white font-bold text-sm rounded-xl hover:bg-[#0D655E] transition-all shadow-xs flex items-center justify-center gap-2 active:scale-98"
+                className="w-full py-3 bg-[#0F766E] text-white font-extrabold text-sm rounded-xl hover:bg-[#115E59] transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
-                <span>{loading ? 'Authenticating...' : `Sign In as ${activeTab.toUpperCase()}`}</span>
+                <Lock className="w-4 h-4" />
+                <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-
-              {/* Registration Toggle for All Roles */}
-              <div className="pt-2 text-center text-xs text-[#64748B]">
-                <span>New to Vidyapath? </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode('register');
-                    resetForm();
-                  }}
-                  className="font-bold text-[#0F766E] hover:underline"
-                >
-                  {activeTab === 'student'
-                    ? 'Enroll as Student (Free)'
-                    : activeTab === 'guardian'
-                    ? 'Create Parent Account'
-                    : 'Register Institution'}
-                </button>
-              </div>
             </form>
-          ) : (
-            /* MODE: REGISTRATION */
-            <form onSubmit={handleRegisterSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Priya Reddy"
-                  className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
-                />
-              </div>
-
-              {activeTab === 'guardian' ? (
-                <>
-                  <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="parent@example.com"
-                      className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+          ) : activeTab === 'student' ? (
+            /* MODE 3: 5-STEP STRUCTURED STUDENT REGISTRATION */
+            <div className="space-y-4">
+              {/* Step Progression Bar */}
+              {registrationStep <= 4 && (
+                <div>
+                  <div className="flex items-center justify-between text-xs font-extrabold text-[#0F766E] mb-1.5">
+                    <span>Step {registrationStep} of 5</span>
+                    <span className="text-[#64748B] font-medium">
+                      {registrationStep === 1
+                        ? 'Personal Information'
+                        : registrationStep === 2
+                        ? 'Academic Level & Board'
+                        : registrationStep === 3
+                        ? 'EmailJS OTP Verification'
+                        : 'Security PIN & Avatar'}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-[#F1F5F9] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#0F766E] transition-all duration-300"
+                      style={{ width: `${(registrationStep / 5) * 100}%` }}
                     />
                   </div>
+                </div>
+              )}
+
+              {/* STEP 1: Personal Information */}
+              {registrationStep === 1 && (
+                <div className="space-y-3.5">
+                  <h3 className="font-extrabold text-sm text-[#0F172A] flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-[#0F766E]" />
+                    <span>Personal Information</span>
+                  </h3>
+
                   <div>
                     <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Phone Number (Optional)
+                      Student Full Name <span className="text-[#DC2626]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="e.g. Ramesh Kumar / రమేష్"
+                      className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-sm font-semibold focus:border-[#0F766E] focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">
+                      Parent / Guardian Contact Phone (Optional)
                     </label>
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+91 98765 43210"
-                      className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+                      className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
                     />
                   </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      disabled={!fullName.trim()}
+                      onClick={() => setRegistrationStep(2)}
+                      className="w-full py-3 bg-[#0F766E] text-white font-bold text-sm rounded-xl hover:bg-[#115E59] disabled:opacity-50 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>Continue to Academic Info</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: Academic Info (Classes 1–12 & Streams) */}
+              {registrationStep === 2 && (
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-sm text-[#0F172A] flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-[#0F766E]" />
+                      <span>Academic Grade &amp; Board Selection</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setRegistrationStep(1)}
+                      className="text-xs font-bold text-[#64748B] hover:text-[#0F172A] flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back</span>
+                    </button>
+                  </div>
+
+                  {/* Class 1 to 12 Spectrum */}
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">Password</label>
-                    <input
-                      type="password"
-                      required
-                      value={credential}
-                      onChange={(e) => setCredential(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
-                    />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-[#475569]">
+                        Class / Grade <span className="text-[#DC2626]">*</span>
+                      </label>
+                      <span className="text-[10px] font-black uppercase text-[#0F766E] bg-[#F0FDFA] px-2 py-0.5 rounded-full border border-[#CCFBF1]">
+                        {classGrade <= 10 ? '100% Free Tier' : 'Senior Secondary'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 p-1.5 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0] max-h-36 overflow-y-auto">
+                      {ACADEMIC_GRADES.map((g) => (
+                        <button
+                          key={g.grade}
+                          type="button"
+                          onClick={() => setClassGrade(g.grade)}
+                          className={`py-2 px-1 text-xs font-bold rounded-lg border text-center transition-all cursor-pointer ${
+                            classGrade === g.grade
+                              ? 'bg-[#0F766E] text-white border-[#0F766E] shadow-2xs font-black'
+                              : 'bg-white text-[#475569] border-[#CBD5E1] hover:border-[#0F766E]'
+                          }`}
+                        >
+                          Class {g.grade}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </>
-              ) : (
-                /* Student Registration (Classes 1–10 100% Free) */
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-bold text-[#475569] mb-1">
-                        Class / Grade
+
+                  {/* Conditional Stream Selection for Classes 11 and 12 */}
+                  {classGrade >= 11 && (
+                    <div className="p-3 bg-[#FAF5FF] border border-[#E9D5FF] rounded-xl space-y-2 animate-fadeIn">
+                      <label className="block text-xs font-black text-[#7E22CE]">
+                        Specialized Stream (Class {classGrade}):
                       </label>
                       <select
-                        value={classGrade}
-                        onChange={(e) => setClassGrade(e.target.value)}
-                        className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-bold focus:border-[#0F766E] focus:outline-hidden"
+                        value={stream}
+                        onChange={(e) => setStream(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-[#D8B4FE] rounded-lg text-xs font-bold text-[#0F172A] focus:border-[#7E22CE] focus:outline-hidden"
                       >
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((g) => (
-                          <option key={g} value={g}>
-                            Class {g} (FREE)
+                        {HIGHER_SECONDARY_STREAMS.map((s) => (
+                          <option key={s.id} value={s.code}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-[#6B21A8]">
+                        Curriculum mapped to higher examination standards with Socratic problem guidance.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Board Selection */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-[#475569] mb-1">Board</label>
+                      <select
+                        value={board}
+                        onChange={(e) => setBoard(e.target.value)}
+                        className="w-full px-3 py-2 border border-[#CBD5E1] rounded-xl text-xs font-bold focus:border-[#0F766E] focus:outline-hidden"
+                      >
+                        {EDUCATIONAL_BOARDS.map((b) => (
+                          <option key={b.id} value={b.code}>
+                            {b.label}
                           </option>
                         ))}
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-[#475569] mb-1">Board</label>
+                      <label className="block text-xs font-bold text-[#475569] mb-1">State / UT</label>
                       <select
-                        value={board}
-                        onChange={(e) => setBoard(e.target.value)}
-                        className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-bold focus:border-[#0F766E] focus:outline-hidden"
+                        value={stateName}
+                        onChange={(e) => setStateName(e.target.value)}
+                        className="w-full px-3 py-2 border border-[#CBD5E1] rounded-xl text-xs font-medium focus:border-[#0F766E] focus:outline-hidden"
                       >
-                        <option value="State SSC">State Board (SSC)</option>
-                        <option value="CBSE">CBSE Pan-India</option>
+                        {INDIAN_STATES_AND_UTS.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">State</label>
-                    <select
-                      value={stateName}
-                      onChange={(e) => setStateName(e.target.value)}
-                      className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setRegistrationStep(3)}
+                      className="w-full py-3 bg-[#0F766E] text-white font-bold text-sm rounded-xl hover:bg-[#115E59] transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <option value="Andhra Pradesh">Andhra Pradesh</option>
-                      <option value="Telangana">Telangana</option>
-                      <option value="Maharashtra">Maharashtra</option>
-                      <option value="Uttar Pradesh">Uttar Pradesh</option>
-                      <option value="Karnataka">Karnataka</option>
-                      <option value="Tamil Nadu">Tamil Nadu</option>
-                      <option value="Delhi">Delhi (NCR)</option>
-                    </select>
+                      <span>Continue to Verification</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: EmailJS OTP Verification */}
+              {registrationStep === 3 && (
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-sm text-[#0F172A] flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-[#0F766E]" />
+                      <span>EmailJS OTP Verification</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setRegistrationStep(2)}
+                      className="text-xs font-bold text-[#64748B] hover:text-[#0F172A] flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back</span>
+                    </button>
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Set 4-Digit Student PIN
+                      Student / Parent Email Address <span className="text-[#DC2626]">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="student@example.com"
+                        className="flex-1 px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={loading || otpCooldown > 0}
+                        className="px-3.5 py-2.5 bg-[#0F766E] hover:bg-[#115E59] disabled:opacity-60 text-white font-bold text-xs rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer"
+                      >
+                        {otpCooldown > 0 ? `${otpCooldown}s` : otpSent ? 'Resend' : 'Send OTP'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {otpSent && (
+                    <div className="p-3 bg-[#F0FDFA] rounded-xl border border-[#CCFBF1] space-y-2">
+                      <label className="block text-xs font-bold text-[#0F766E]">
+                        Enter 6-Digit Verification Code
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="••••••"
+                          className="w-full text-center text-lg font-mono font-bold tracking-widest px-3 py-2 border border-[#CBD5E1] rounded-xl bg-white focus:border-[#0F766E] focus:outline-hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleVerifyOtp}
+                          disabled={loading || otpCode.length < 4}
+                          className="px-4 py-2 bg-[#16A34A] hover:bg-[#15803D] disabled:opacity-60 text-white font-bold text-xs rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer"
+                        >
+                          Verify
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      disabled={!email || !email.includes('@')}
+                      onClick={() => setRegistrationStep(4)}
+                      className="w-full py-3 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F766E] font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>Proceed to Security Setup</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: Account Creation & Security PIN Setup */}
+              {registrationStep === 4 && (
+                <form onSubmit={handleCompleteStudentRegistration} className="space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-sm text-[#0F172A] flex items-center gap-2">
+                      <KeyRound className="w-4 h-4 text-[#0F766E]" />
+                      <span>Set Student PIN &amp; Safety Question</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setRegistrationStep(3)}
+                      className="text-xs font-bold text-[#64748B] hover:text-[#0F172A] flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back</span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">
+                      Choose Your Student Mascot
+                    </label>
+                    <div className="grid grid-cols-6 gap-2">
+                      {STUDENT_MASCOTS.map((m) => (
+                        <button
+                          key={m.emoji}
+                          type="button"
+                          onClick={() => setSelectedMascot(m.emoji)}
+                          className={`h-11 rounded-xl text-2xl flex items-center justify-center border transition-all cursor-pointer ${
+                            selectedMascot === m.emoji
+                              ? 'border-[#0F766E] bg-[#F0FDFA] ring-2 ring-[#0F766E]'
+                              : 'border-[#E2E8F0] bg-white hover:border-[#0F766E]'
+                          }`}
+                        >
+                          {m.emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#475569] mb-1">
+                      Set 4-Digit Student Confidential PIN <span className="text-[#DC2626]">*</span>
                     </label>
                     <input
                       type="password"
@@ -670,41 +1044,176 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                       value={credential}
                       onChange={(e) => setCredential(e.target.value.replace(/\D/g, ''))}
                       placeholder="••••"
-                      className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-center text-lg font-black tracking-widest focus:border-[#0F766E] focus:outline-hidden"
+                      className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-center text-xl font-mono font-black tracking-widest focus:border-[#0F766E] focus:outline-hidden"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1">
-                      Security Answer for PIN Reset (What is your favorite subject?)
-                    </label>
+                  <div className="p-3 bg-[#F0FDFA] rounded-xl border border-[#CCFBF1] space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#0F766E]">
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Zero-Email PIN Recovery Question:</span>
+                    </div>
+                    <p className="text-[11px] text-[#475569] font-medium">
+                      What is your favorite school subject?
+                    </p>
                     <input
                       type="text"
                       required
                       value={safetyAnswer}
                       onChange={(e) => setSafetyAnswer(e.target.value)}
-                      placeholder="e.g. Maths"
-                      className="w-full px-3 py-2 border border-[#E2E8F0] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+                      placeholder="e.g. Maths (or లెక్కలు)"
+                      className="w-full px-3 py-2 bg-white border border-[#CBD5E1] rounded-lg text-xs font-medium focus:border-[#0F766E] focus:outline-hidden"
                     />
                   </div>
-                </>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={loading || credential.length !== 4}
+                      className="w-full py-3 bg-[#0F766E] text-white font-extrabold text-sm rounded-xl hover:bg-[#115E59] disabled:opacity-50 transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>{loading ? 'Creating Account...' : 'Complete Enrollment & Launch'}</span>
+                    </button>
+                  </div>
+                </form>
               )}
+
+              {/* STEP 5: First-Time Student Onboarding Walkthrough */}
+              {registrationStep === 5 && (
+                <div className="space-y-4 py-2 text-center animate-fadeIn">
+                  <div className="w-16 h-16 rounded-full bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D]">
+                      Enrolled Successfully
+                    </span>
+                    <h3 className="text-xl font-black text-[#0F172A] mt-2 tracking-tight">
+                      Welcome, {registeredStudentInfo?.fullName || fullName}!
+                    </h3>
+                    <p className="text-xs text-[#64748B] mt-1 font-medium">
+                      Your confidential Student Login Code has been assigned:
+                    </p>
+                    <div className="mt-2 inline-block px-4 py-1.5 bg-[#F8FAFC] border-2 border-dashed border-[#0F766E] rounded-xl font-mono text-base font-black text-[#0F766E]">
+                      {registeredStudentInfo?.rollNumber || 'STU-1001'}
+                    </div>
+                  </div>
+
+                  {/* Features Walkthrough Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left pt-2">
+                    <div className="p-3 bg-[#F0FDFA] rounded-xl border border-[#CCFBF1]">
+                      <div className="text-base mb-1">🏮</div>
+                      <div className="text-xs font-black text-[#0F766E]">Socratic AI Tutor</div>
+                      <p className="text-[10px] text-[#475569] mt-0.5 leading-snug">
+                        Guides your doubts step-by-step in Telugu, Hindi &amp; English.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+                      <div className="text-base mb-1">📶</div>
+                      <div className="text-xs font-black text-[#0F172A]">100% Offline Mode</div>
+                      <p className="text-[10px] text-[#475569] mt-0.5 leading-snug">
+                        Practice and learn on shared phones even with no internet signal.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-[#FEF3C7] rounded-xl border border-[#FDE68A]">
+                      <div className="text-base mb-1">🎯</div>
+                      <div className="text-xs font-black text-[#B45309]">Weak Topic Coaching</div>
+                      <p className="text-[10px] text-[#78350F] mt-0.5 leading-snug">
+                        Instant remedial hints turn mistakes into genuine understanding.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScreen('MY_SYLLABUS');
+                        onClose();
+                      }}
+                      className="w-full py-3.5 bg-[#0F766E] hover:bg-[#115E59] text-white font-black text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                    >
+                      <span>Enter My Classroom · చదువు ప్రారంభిద్దాం</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Staff (Guardian or Admin) Registration Form */
+            <form onSubmit={handleStaffRegisterSubmit} className="space-y-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+                <h3 className="text-sm font-bold text-[#0F172A]">
+                  Register as {activeTab === 'guardian' ? 'Parent / Guardian' : 'Institution Head'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('login')}
+                  className="text-xs font-bold text-[#0F766E] hover:underline cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#475569] mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Dr. Ramesh Rao"
+                  className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-sm font-semibold focus:border-[#0F766E] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#475569] mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="email@example.com"
+                  className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#475569] mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#475569] mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={credential}
+                  onChange={(e) => setCredential(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 border border-[#CBD5E1] rounded-xl text-sm font-medium focus:border-[#0F766E] focus:outline-hidden"
+                />
+              </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 bg-[#0F766E] text-white font-bold text-sm rounded-xl hover:bg-[#0D655E] transition-all shadow-xs flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#0F766E] text-white font-bold text-sm rounded-xl hover:bg-[#115E59] transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
-                <span>{loading ? 'Creating...' : 'Complete Registration'}</span>
+                <span>{loading ? 'Submitting...' : 'Complete Registration'}</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAuthMode('login')}
-                className="w-full text-center text-xs font-bold text-[#64748B] hover:text-[#0F172A] pt-2"
-              >
-                Already registered? Sign In
               </button>
             </form>
           )}

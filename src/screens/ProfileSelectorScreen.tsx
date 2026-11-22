@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Plus,
+  UserPlus,
   Shield,
   ShieldCheck,
   Lock,
@@ -133,12 +134,12 @@ export const ProfileSelectorScreen: React.FC = () => {
               className="w-full bg-white hover:bg-[#F0FDFA] p-4 sm:p-5 rounded-2xl border-2 border-[#0F766E]/40 hover:border-[#0F766E] shadow-xs hover:shadow-md transition-all text-left flex items-start gap-3.5 active:scale-98 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-xl bg-[#0F766E] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                <Plus className="w-6 h-6 stroke-[2.5]" />
+                <UserPlus className="w-6 h-6 stroke-[2.2]" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
                   <h3 className="font-extrabold text-base text-[#0F172A] group-hover:text-[#0F766E] transition-colors leading-tight">
-                    {currentLanguage === 'te' ? '+ విద్యార్థి ప్రొఫైల్ నమోదు' : currentLanguage === 'hi' ? '+ छात्र प्रोफ़ाइल पंजीकरण' : '+ Register Student Profile'}
+                    {currentLanguage === 'te' ? 'విద్యార్థి ప్రొఫైల్ నమోదు' : currentLanguage === 'hi' ? 'छात्र प्रोफ़ाइल पंजीकरण' : 'Register Student Profile'}
                   </h3>
                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D]">
                     {currentLanguage === 'te' ? 'ఉచితం' : currentLanguage === 'hi' ? 'निःशुल्क' : 'Free'}
@@ -225,35 +226,34 @@ export const ProfileSelectorScreen: React.FC = () => {
               );
             })}
 
-            {/* Add Sibling Profile Card */}
+            {/* Add Sibling Profile Card - Clean, Elegant Visual Hierarchy */}
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
               className="bg-[#FFFFFF] hover:bg-[#F0FDFA] p-3.5 rounded-[12px] border-2 border-dashed border-[#CBD5E1] hover:border-[#0F766E] transition-all flex flex-col items-center text-center shadow-xs hover:shadow-sm active:scale-98 group h-[192px] justify-between relative cursor-pointer"
             >
-              {/* Top Slot: Matching circular icon */}
+              {/* Top Slot: Distinctive UserPlus icon */}
               <div className="w-full flex justify-center items-center h-[56px] pt-1">
                 <div className="w-12 h-12 rounded-full bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1] flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <Plus className="w-6 h-6 stroke-[2.5]" />
+                  <UserPlus className="w-5 h-5 stroke-[2.2]" />
                 </div>
               </div>
 
-              {/* Middle Slot: Matching Title & Badge */}
+              {/* Middle Slot: Clean Title & Descriptive Subtitle (Zero redundant '+' badges) */}
               <div className="w-full flex flex-col items-center justify-center min-h-[50px] px-1">
                 <div className="font-extrabold text-base text-[#0F172A] group-hover:text-[#0F766E] transition-colors truncate w-full leading-tight">
-                  {t.newStudentLabel}
+                  {currentLanguage === 'te' ? 'విద్యార్థి ప్రొఫైల్' : currentLanguage === 'hi' ? 'छात्र प्रोफ़ाइल' : 'Student Profile'}
                 </div>
-                <div className="h-[16px]" />
-                <div className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]">
-                  {currentLanguage === 'te' ? '+ ప్రొఫైల్' : currentLanguage === 'hi' ? '+ प्रोफ़ाइल' : '+ Profile'}
+                <div className="text-xs text-[#64748B] font-medium truncate w-full mt-1">
+                  {currentLanguage === 'te' ? 'సహోదరుడిని చేర్చండి' : currentLanguage === 'hi' ? 'सहोदर को जोड़ें' : 'Add Sibling Profile'}
                 </div>
               </div>
 
               {/* Bottom Slot: Action Button */}
               <div className="w-full pt-1">
-                <div className="w-full py-2 px-2.5 rounded-[8px] bg-[#F8FAFC] group-hover:bg-[#0F766E] border border-[#E2E8F0] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1.5 text-xs font-bold text-[#475569] group-hover:text-white min-h-[38px]">
-                  <Plus className="w-3.5 h-3.5 text-[#0F766E] group-hover:text-white shrink-0" />
-                  <span className="truncate">{currentLanguage === 'te' ? '+ విద్యార్థి ప్రొఫైల్' : currentLanguage === 'hi' ? '+ छात्र प्रोफ़ाइल' : '+ Add Sibling Profile'}</span>
+                <div className="w-full py-2 px-2.5 rounded-[8px] bg-[#F0FDFA] group-hover:bg-[#0F766E] border border-[#CCFBF1] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1.5 text-xs font-bold text-[#0F766E] group-hover:text-white min-h-[38px]">
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span className="truncate">{currentLanguage === 'te' ? 'ప్రొఫైల్ నమోదు' : currentLanguage === 'hi' ? 'प्रोफ़ाइल जोड़ें' : 'Add Profile'}</span>
                 </div>
               </div>
             </button>

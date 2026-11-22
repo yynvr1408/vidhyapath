@@ -6,6 +6,7 @@ import { PinModal } from '../components/PinModal';
 import { StudentAvatar } from '../components/StudentAvatar';
 import { EditProfileModal } from '../components/EditProfileModal';
 import { VidyapathLogo } from '../components/VidyapathLogo';
+import { LanguageSelector } from '../components/LanguageSelector';
 
 export const S1_ProfilePicker: React.FC = () => {
   const { learners, selectLearner, setScreen, pack, loginWithCode, switchPack } = useApp();
@@ -71,17 +72,7 @@ export const S1_ProfilePicker: React.FC = () => {
           </span>
         </div>
         <div className="relative flex items-center">
-          <BookOpen className="w-3.5 h-3.5 text-[#15803D] absolute left-2.5 pointer-events-none" />
-          <select
-            value={pack?.id || 'te-10-maths-ap'}
-            onChange={(e) => switchPack(e.target.value)}
-            title="Switch Language Pack / భాష మార్చు"
-            className="text-xs bg-[#FFFFFF] hover:bg-[#DCFCE7] text-[#0F172A] font-bold pl-7 pr-2.5 py-1.5 rounded-xl border border-[#D1E7DD] focus:border-[#15803D] focus:outline-hidden min-h-[38px] transition-all cursor-pointer shadow-2xs"
-          >
-            <option value="te-10-maths-ap">తెలుగు</option>
-            <option value="en-10-maths-cbse">English</option>
-            <option value="hi-10-maths-cbse">हिन्दी</option>
-          </select>
+          <LanguageSelector variant="compact" />
         </div>
       </div>
 

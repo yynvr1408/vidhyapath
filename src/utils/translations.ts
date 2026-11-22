@@ -74,7 +74,6 @@ export interface TranslationDictionary {
   whoIsLearning: string;
   selectProfileSubtitle: string;
   enterPinPrompt: string;
-  demoPinHint: string;
   incorrectPin: string;
   addSampleProfile: string;
   nicknameLabel: string;
@@ -176,7 +175,6 @@ export interface TranslationDictionary {
   audioStop: string;
   audioUnavailable: string;
   signOut: string;
-  demoRoleSwitcher: string;
   stopAudio: string;
   completedSessions: string;
   averageAccuracy: string;
@@ -190,6 +188,8 @@ export interface TranslationDictionary {
   checkingUpdates: string;
   currentVersionLabel: string;
   latestVersionLabel: string;
+  appUpdate: string;
+  done: string;
   changelog: string;
   reloadApp: string;
   updateCheckFailed: string;
@@ -273,7 +273,6 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     whoIsLearning: 'ఎవరు చదువుకుంటున్నారు?',
     selectProfileSubtitle: 'కుటుంబ ఫోన్‌లో మీ ప్రొఫైల్‌ను ఎంచుకోండి',
     enterPinPrompt: '4 అంకెల పిన్ నమోదు చేయండి',
-    demoPinHint: 'డెమో పిన్: 1234',
     incorrectPin: 'తప్పు పిన్! దయచేసి 1234 ను ప్రయత్నించండి.',
     addSampleProfile: '+ కొత్త ప్రొఫైల్ చేర్చండి',
     nicknameLabel: 'విద్యార్థి పేరు',
@@ -368,7 +367,6 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     audioStop: 'ఆపు',
     audioUnavailable: 'ఆడియో అందుబాటులో లేదు',
     signOut: 'లాగ్ అవుట్',
-    demoRoleSwitcher: 'డెమో రోల్ మార్చండి',
     stopAudio: 'ఆపు',
     completedSessions: 'పూర్తయిన సెషన్లు',
     averageAccuracy: 'సగటు ఖచ్చితత్వం',
@@ -382,6 +380,8 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     checkingUpdates: 'తనిఖీ చేస్తున్నాము...',
     currentVersionLabel: 'ప్రస్తుత వెర్షన్',
     latestVersionLabel: 'తాజా వెర్షన్',
+    appUpdate: 'యాప్ అప్‌డేట్',
+    done: 'పూర్తయింది',
     changelog: 'కొత్త మార్పులు',
     reloadApp: 'తాజా వెర్షన్‌ను లోడ్ చేయి',
     updateCheckFailed: 'అప్‌డేట్ తనిఖీ విఫలమైంది. ఇంటర్నెట్ సరిచూసుకోండి.',
@@ -461,7 +461,6 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     whoIsLearning: 'Who is learning today?',
     selectProfileSubtitle: 'Select your student profile on this family phone',
     enterPinPrompt: 'Enter 4-Digit Student PIN',
-    demoPinHint: 'Demo PIN: 1234',
     incorrectPin: 'Incorrect PIN! Try entering 1234.',
     addSampleProfile: '+ Add Sample Profile',
     nicknameLabel: 'Student Name / Nickname',
@@ -556,7 +555,6 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     audioStop: 'Stop',
     audioUnavailable: 'Audio unavailable',
     signOut: 'Sign Out',
-    demoRoleSwitcher: 'Demo Role Switcher',
     stopAudio: 'Stop',
     completedSessions: 'Sessions Completed',
     averageAccuracy: 'Average Accuracy',
@@ -570,6 +568,8 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     checkingUpdates: 'Checking for updates...',
     currentVersionLabel: 'Current Version',
     latestVersionLabel: 'Latest Version',
+    appUpdate: 'App Update',
+    done: 'Done',
     changelog: "What's New",
     reloadApp: 'Reload to Update',
     updateCheckFailed: 'Update check failed. Check your internet connection.',
@@ -649,7 +649,6 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     whoIsLearning: 'आज कौन पढ़ाई कर रहा है?',
     selectProfileSubtitle: 'साझा फोन पर अपना छात्र प्रोफ़ाइल चुनें',
     enterPinPrompt: '4 अंकों का पिन दर्ज करें',
-    demoPinHint: 'डेमो पिन: 1234',
     incorrectPin: 'गलत पिन! कृपया 1234 दर्ज करके देखें।',
     addSampleProfile: '+ नया प्रोफ़ाइल जोड़ें',
     nicknameLabel: 'छात्र का नाम',
@@ -744,7 +743,6 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     audioStop: 'रोकें',
     audioUnavailable: 'ऑडियो उपलब्ध नहीं है',
     signOut: 'साइन आउट',
-    demoRoleSwitcher: 'डेमो भूमिका बदलें',
     stopAudio: 'रोकें',
     completedSessions: 'पूर्ण सत्र',
     averageAccuracy: 'औसत सटीकता',
@@ -758,6 +756,8 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     checkingUpdates: 'जाँच हो रही है...',
     currentVersionLabel: 'वर्तमान वर्शन',
     latestVersionLabel: 'नवीनतम वर्शन',
+    appUpdate: 'ऐप अपडेट',
+    done: 'हो गया',
     changelog: 'क्या नया है',
     reloadApp: 'रीलोड करके अपडेट करें',
     updateCheckFailed: 'अपडेट जाँच विफल रही। कृपया इंटरनेट कनेक्शन जांचें।',

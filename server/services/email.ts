@@ -15,8 +15,11 @@ export interface EmailOptions {
 }
 
 export class EmailService {
-  private static serviceId = process.env.EMAILJS_SERVICE_ID || '';
-  private static serviceIdVerification = process.env.EMAILJS_SERVICE_ID_VERIFICATION || process.env.EMAILJS_SERVICE_ID || '';
+  // Service ID mapping:
+  // service_92ab4cb -> Primary service for 1st email (Student & User Registration Verification OTP)
+  // service_w1gbm99 -> Secondary service for 2nd and 3rd emails (Admin Password Reset & Guardian Notifications)
+  private static serviceId = process.env.EMAILJS_SERVICE_ID || 'service_w1gbm99';
+  private static serviceIdVerification = process.env.EMAILJS_SERVICE_ID_VERIFICATION || process.env.EMAILJS_SERVICE_ID || 'service_92ab4cb';
   private static defaultTemplateId = process.env.EMAILJS_TEMPLATE_ID || '';
   private static templateVerification = process.env.EMAILJS_TEMPLATE_VERIFICATION || process.env.EMAILJS_TEMPLATE_ID || '';
   private static templatePasswordReset = process.env.EMAILJS_TEMPLATE_PASSWORD_RESET || process.env.EMAILJS_TEMPLATE_ID || '';
