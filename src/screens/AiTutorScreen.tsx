@@ -9,12 +9,20 @@ import {
   AlertCircle,
   MessageSquare,
   X,
+  ShieldCheck,
+  Lightbulb,
+  Mic,
+  Volume2,
+  CloudCheck,
+  School,
+  ArrowRight,
+  BrainCircuit,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { TutorService, TutorResponse } from '../services/tutor';
 import { DoubtItem } from '../types';
 import { localDb } from '../db/indexedDb';
-import { getTranslations } from '../utils/translations';
+import { getTranslations, SupportedLang } from '../utils/translations';
 import { AudioButton } from '../components/AudioButton';
 import { VoiceInputButton, type VoiceInputControl } from '../components/VoiceInputButton';
 
@@ -25,6 +33,7 @@ export const AiTutorScreen: React.FC = () => {
     isOffline,
     lowDataMode,
     currentLanguage,
+    switchLanguage,
     refreshLearnerData,
   } = useApp();
 
@@ -35,9 +44,20 @@ export const AiTutorScreen: React.FC = () => {
   const [tutorMode, setTutorMode] = useState<'auto' | 'manual_offline'>('auto');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<
-    { sender: 'student' | 'tutor'; text: string; source?: string; isQueued?: boolean; photo?: string }[]
+    {
+      sender: 'student' | 'tutor';
+      text: string;
+      source?: string;
+      isQueued?: boolean;
+      photo?: string;
+      scaffoldHint?: string;
+      showDiagram?: boolean;
+    }[]
   >([]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  // Voice Interaction state
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
 
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -45,7 +65,9 @@ export const AiTutorScreen: React.FC = () => {
 
   // Initialize with welcoming greeting from Tutor in regional language
   useEffect(() => {
-    let studentDisplayName = activeLearner?.nickname || (currentLanguage === 'te' ? 'విద్యార్థి' : currentLanguage === 'hi' ? 'विद्यार्थी' : 'Student');
+    let studentDisplayName =
+      activeLearner?.nickname ||
+      (currentLanguage === 'te' ? 'విద్యార్థి' : currentLanguage === 'hi' ? 'विद्यार्थी' : 'Student');
     if (activeLearner?.nickname && activeLearner.nickname.includes('/')) {
       const parts = activeLearner.nickname.split('/').map((s) => s.trim());
       const teluguPart = parts.find((p) => /[\u0C00-\u0C7F]/.test(p));
@@ -68,6 +90,13 @@ export const AiTutorScreen: React.FC = () => {
         sender: 'tutor',
         text: greetingText,
         source: 'preloaded',
+        scaffoldHint:
+          currentLanguage === 'te'
+            ? 'గురుత్వాకర్షణ లంబ దిశలో మాత్రమే పనిచేస్తుంది. క్షితిజ సమాంతర వేగం మారుతుందా?'
+            : currentLanguage === 'hi'
+            ? 'गुरुत्वाकर्षण केवल ऊर्ध्वाधर दिशा में कार्य करता है। क्या क्षैतिज वेग परिवर्तित होगा?'
+            : 'Gravity only acts in the vertical direction. Does horizontal velocity change if air resistance is ignored?',
+        showDiagram: true,
       },
     ]);
   }, [activeLearner, currentLanguage]);
@@ -103,6 +132,14 @@ export const AiTutorScreen: React.FC = () => {
         currentPhoto || undefined
       );
 
+      // Enhance with Socratic scaffold hint
+      const hint =
+        currentLanguage === 'te'
+          ? 'గురుత్వాకర్షణ లంబ దిశలో మాత్రమే పనిచేస్తుంది. స్వతంత్ర అంశాల ఆధారంగా ఆలోచించండి.'
+          : currentLanguage === 'hi'
+          ? 'गुरुत्वाकर्षण केवल ऊर्ध्वाधर घटक पर कार्य करता है। स्वतंत्र घटकों का विश्लेषण करें।'
+          : 'Gravity only acts in the vertical direction. Consider the two independent velocity components.';
+
       setMessages((prev) => [
         ...prev,
         {
@@ -110,6 +147,8 @@ export const AiTutorScreen: React.FC = () => {
           text: res.answer,
           source: res.source,
           isQueued: res.isQueued,
+          scaffoldHint: hint,
+          showDiagram: true,
         },
       ]);
       await refreshLearnerData();
@@ -127,41 +166,22 @@ export const AiTutorScreen: React.FC = () => {
     const reader = new FileReader();
     reader.onload = () => {
       setPhotoPreview(reader.result as string);
-      setDoubtText(t.photoDoubtPrompt);
+      setDoubtText(t.photoDoubtPrompt || 'Please explain this notebook diagram');
     };
     reader.readAsDataURL(file);
   };
 
-  const quickChips = [
-    t.chipExplainSimply,
-    t.chipDailyExample,
-    t.chipStepByStep,
-    t.chipFormulaRecall,
-    t.chipExamTip,
-  ];
+  const handleSelectReasoning = (text: string) => {
+    setDoubtText(`My hypothesis: ${text}`);
+    handleSubmitDoubt(`My hypothesis: ${text}`);
+  };
 
-  // Welcome state: no question asked yet (only the preloaded greeting exists)
-  const isChatEmpty = !messages.some((m) => m.sender === 'student');
-  const latestTutorIdx = (() => {
-    let idx = -1;
-    messages.forEach((m, i) => {
-      if (m.sender === 'tutor' && m.source !== 'preloaded') idx = i;
-    });
-    return idx;
-  })();
-  const welcomeStarters = [
-    t.starterExplainChapter,
-    t.starterDailyExample,
-    ...((pack?.commonDoubts || [])
-      .filter((cd) => cd.topicId === activeTopicId)
-      .slice(0, 2)
-      .map((cd) => cd.q)),
-  ].filter(Boolean).slice(0, 4);
-  const replyChips = [t.replyChipSimpler, t.replyChipExample, t.replyChipStepByStep];
+  const currentTopic = pack?.topics.find((tp) => tp.id === activeTopicId) || pack?.topics[0];
+  const topicTitle = currentTopic?.title || 'Kinematics & Motion';
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-100px)] justify-between bg-[#FFFFFF] rounded-[12px] border border-[#E2E8F0] shadow-xs overflow-hidden">
-      {/* Hidden file input shared by the welcome card and the input bar photo button */}
+    <div className="flex flex-col w-full max-w-4xl mx-auto space-y-3.5 pb-6">
+      {/* Hidden file input for photo doubts */}
       <input
         ref={fileInputRef}
         type="file"
@@ -171,222 +191,302 @@ export const AiTutorScreen: React.FC = () => {
         className="hidden"
       />
 
-      {/* Header with Chapter Selector & Mode Switcher */}
-      <div className="bg-[#F8FAFC] p-3 border-b border-[#E2E8F0] space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#0F766E]" />
-            <span className="font-extrabold text-sm text-[#0F172A]">
-              {t.aiTutorTitle}
-            </span>
-          </div>
-
-          {/* Chapter Context Selector */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-[#475569] font-medium hidden sm:inline">
-              {t.chapterLabel}
-            </span>
-            <select
-              value={activeTopicId}
-              onChange={(e) => setActiveTopicId(e.target.value)}
-              className="text-xs bg-[#FFFFFF] text-[#0F172A] font-bold px-2 py-1 rounded-[8px] border border-[#E2E8F0] focus:outline-hidden"
-            >
-              {pack?.topics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* 1. Offline Cache Status Banner */}
+      <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-[#f2f3ff] text-[#3e4947] text-xs shadow-2xs border border-[#CBD5E1]/50">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-2 h-2 rounded-full bg-[#fe932c] shrink-0 animate-pulse" />
+          <span className="font-bold truncate">
+            {isOffline
+              ? 'Offline Mode Active • Local Socratic hints loaded'
+              : 'Offline Hints Cached • Full Socratic dialogue online'}
+          </span>
         </div>
-
-        {/* AI Tutor Auto Fallback vs Manual Offline Mode & Lantern Mastery */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#E2E8F0]/60">
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setTutorMode('auto')}
-              className={`py-1 px-2.5 rounded-full text-[11px] font-bold transition-all flex items-center gap-1 ${
-                tutorMode === 'auto'
-                  ? 'bg-[#0F766E] text-white shadow-2xs'
-                  : 'bg-white text-[#475569] border border-[#E2E8F0] hover:text-[#0F172A]'
-              }`}
-              title="Automatically uses live AI when online, seamless offline pedagogical hints when disconnected"
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>{t.autoFallbackBtn}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTutorMode('manual_offline')}
-              className={`py-1 px-2.5 rounded-full text-[11px] font-bold transition-all flex items-center gap-1 ${
-                tutorMode === 'manual_offline'
-                  ? 'bg-[#D97706] text-white shadow-2xs'
-                  : 'bg-white text-[#475569] border border-[#E2E8F0] hover:text-[#0F172A]'
-              }`}
-              title="Forces 100% textbook pedagogical hints with zero internet data consumption"
-            >
-              <span>{t.manualOfflineBtn}</span>
-            </button>
-          </div>
-
-          {/* Chapter Lantern Village Mastery Glow */}
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#FEF3C7] text-[#92400E] text-[11px] font-bold rounded-full border border-[#FDE68A]">
-            <span>{t.lanternActiveBadge}</span>
-          </div>
+        <div className="flex items-center gap-1 text-[#005c55] font-extrabold text-[11px] shrink-0">
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          <span>Synced</span>
         </div>
       </div>
 
-      {/* Chat Messages Scrollable Feed */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F8FAFC]/50">
-        {isChatEmpty && (
-          <div className="flex flex-col items-center text-center gap-4 py-2 animate-fadeIn">
-            {/* Centered welcome card */}
-            <div className="w-full bg-[#FFFFFF] border border-[#CCFBF1] rounded-[16px] p-4 shadow-2xs">
-              <Sparkles className="w-8 h-8 mx-auto text-[#0F766E] mb-2" />
-              <p className="text-base font-bold text-[#0F172A] leading-relaxed">{t.welcomeGreeting}</p>
-            </div>
-
-            {/* Two large entry cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-              <button
-                type="button"
-                onClick={() => voiceControlRef.current?.start()}
-                disabled={lowDataMode}
-                className="min-h-[64px] px-4 py-3 rounded-[16px] bg-[#D97706] hover:bg-[#B45309] disabled:opacity-50 text-white text-base font-extrabold shadow-xs flex items-center justify-center text-center active:scale-95 transition-all"
-              >
-                {t.welcomeSpeakCard}
-              </button>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="min-h-[64px] px-4 py-3 rounded-[16px] bg-[#0F766E] hover:bg-[#115E59] text-white text-base font-extrabold shadow-xs flex items-center justify-center text-center active:scale-95 transition-all"
-              >
-                {t.welcomePhotoCard}
-              </button>
-            </div>
-
-            {/* One-tap chapter starter questions */}
-            <div className="grid grid-cols-1 gap-2 w-full">
-              {welcomeStarters.map((q, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    setDoubtText(q);
-                    handleSubmitDoubt(q);
-                  }}
-                  className="min-h-[48px] px-4 py-2.5 rounded-[12px] bg-[#FFFFFF] hover:bg-[#F0FDFA] text-[#0F766E] text-sm sm:text-base font-bold border border-[#CCFBF1] text-left active:scale-95 transition-colors shadow-2xs flex items-center gap-2"
-                >
-                  <span className="text-base shrink-0">⚡</span>
-                  <span className="leading-snug">{q}</span>
-                </button>
-              ))}
-            </div>
+      {/* 2. Socratic Session Metadata & Multilingual Selector */}
+      <div className="flex flex-col gap-2 p-3.5 sm:p-4 rounded-2xl bg-white border border-[#CBD5E1]/60 shadow-xs">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <School className="w-4 h-4 text-[#005c55] shrink-0" />
+            <span className="font-extrabold text-sm text-[#131b2e] truncate">
+              Grade 10 • {topicTitle}
+            </span>
           </div>
-        )}
 
-        {messages.map((msg, index) => {
-          const isStudent = msg.sender === 'student';
-          const isLatestTutorReply = index === latestTutorIdx;
-          return (
-            <div
-              key={index}
-              className={`flex flex-col ${isStudent ? 'items-end' : 'items-start'} animate-fadeIn`}
+          {/* Trilingual Toggle Buttons */}
+          <div className="flex items-center bg-[#eaedff] p-1 rounded-full shrink-0 gap-1">
+            <button
+              type="button"
+              onClick={() => switchLanguage('en')}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                currentLanguage === 'en'
+                  ? 'bg-[#005c55] text-white shadow-2xs'
+                  : 'text-[#3e4947] hover:text-[#131b2e]'
+              }`}
             >
-              {/* Optional Attached Photo */}
-              {msg.photo && (
-                <div className="mb-1.5 max-w-xs">
-                  <img
-                    src={msg.photo}
-                    alt="Problem attachment"
-                    className="w-48 h-32 object-cover rounded-[12px] border border-[#E2E8F0] shadow-xs"
-                  />
-                </div>
-              )}
+              English
+            </button>
+            <button
+              type="button"
+              onClick={() => switchLanguage('te')}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                currentLanguage === 'te'
+                  ? 'bg-[#005c55] text-white shadow-2xs'
+                  : 'text-[#3e4947] hover:text-[#131b2e]'
+              }`}
+            >
+              తెలుగు
+            </button>
+            <button
+              type="button"
+              onClick={() => switchLanguage('hi')}
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                currentLanguage === 'hi'
+                  ? 'bg-[#005c55] text-white shadow-2xs'
+                  : 'text-[#3e4947] hover:text-[#131b2e]'
+              }`}
+            >
+              हिंदी
+            </button>
+          </div>
+        </div>
 
-              {/* Message Bubble */}
-              <div
-                className={`max-w-[92%] sm:max-w-md p-3.5 rounded-[12px] shadow-2xs text-base leading-relaxed break-words ${
-                  isStudent
-                    ? 'bg-[#0F766E] text-white rounded-br-xs'
-                    : 'bg-[#F0FDFA] border border-[#CCFBF1] text-[#0F172A] rounded-bl-xs'
-                }`}
-              >
-                {!isStudent && (
-                  <div className="flex flex-wrap items-center gap-1.5 pb-1.5 mb-1.5 border-b border-[#CCFBF1]">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#0F766E]">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{t.tutorReplyHeader}</span>
+        <div className="flex items-center gap-2 text-xs text-[#3e4947]">
+          <span className="px-2 py-0.5 rounded-md bg-[#eaedff] text-[#005c55] font-black uppercase text-[10px] tracking-wide">
+            Unit Context
+          </span>
+          <span className="font-medium truncate">{topicTitle} • Step-by-Step Problem Solving</span>
+        </div>
+      </div>
+
+      {/* 3. Academic Policy Callout */}
+      <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-[#eaedff] text-[#3e4947] text-xs border border-[#CBD5E1]/50">
+        <ShieldCheck className="w-5 h-5 text-[#005c55] shrink-0" />
+        <p className="leading-snug">
+          <strong className="text-[#131b2e]">Pedagogical Guardrail:</strong> Vidhyapath AI offers step-by-step Socratic hints. Solutions are guided, never pre-solved.
+        </p>
+      </div>
+
+      {/* 4. Socratic Learning Dialogue Container */}
+      <div className="flex flex-col gap-4 min-h-[280px]">
+        {messages.map((m, idx) => {
+          if (m.sender === 'student') {
+            return (
+              <div key={idx} className="flex flex-col items-end gap-1 pl-8 animate-fadeIn">
+                <div className="flex items-center gap-1.5 px-2">
+                  <span className="text-[11px] font-bold text-[#3e4947]">You • Just now</span>
+                </div>
+                <div className="p-3.5 sm:p-4 rounded-2xl rounded-tr-xs bg-[#0f766e] text-white shadow-xs max-w-lg">
+                  {m.photo && (
+                    <img
+                      src={m.photo}
+                      alt="Uploaded doubt"
+                      className="max-h-40 rounded-xl mb-2 object-cover border border-white/20"
+                    />
+                  )}
+                  <p className="text-sm font-medium leading-relaxed">{m.text}</p>
+                </div>
+                <div className="flex items-center gap-1 text-[#3e4947] text-[10px] px-1 font-bold">
+                  <CheckCircle2 className="w-3 h-3 text-[#005c55]" />
+                  <span>Delivered</span>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={idx} className="flex flex-col items-start gap-2 pr-4 animate-fadeIn">
+              <div className="flex items-center gap-2 px-1">
+                <div className="w-7 h-7 rounded-full bg-[#904d00] flex items-center justify-center text-white shadow-2xs font-bold text-xs">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <span className="font-extrabold text-xs text-[#131b2e]">Socratic Mentor</span>
+                <AudioButton text={m.text} size="sm" label="Listen" />
+              </div>
+
+              {/* AI Explanation Card */}
+              <div className="p-4 sm:p-5 rounded-2xl rounded-tl-xs bg-white text-[#131b2e] shadow-xs border border-[#CBD5E1]/60 space-y-3.5 max-w-2xl w-full">
+                <p className="text-sm leading-relaxed font-medium">{m.text}</p>
+
+                {/* Socratic Hint Highlight Box */}
+                {m.scaffoldHint && (
+                  <div className="p-3.5 rounded-xl bg-[#ffdcc3]/40 text-[#6e3900] flex gap-3 border border-[#ffdcc3]">
+                    <div className="w-8 h-8 rounded-lg bg-[#904d00] flex items-center justify-center text-white shrink-0 mt-0.5">
+                      <Lightbulb className="w-4 h-4" />
                     </div>
-                    {msg.source === 'common_doubts' && (
-                      <span className="text-[10px] bg-[#FEF3C7] text-[#D97706] px-1.5 py-0.5 rounded-md font-bold">
-                        {currentLanguage === 'hi' ? '📖 सामान्य प्रश्न' : currentLanguage === 'en' ? '📖 Curated FAQ' : '📖 తరచుగా అడిగే ప్రశ్నలు'}
-                      </span>
-                    )}
-                    {msg.source === 'offline_pedagogy' && (
-                      <span className="text-[10px] bg-[#DCFCE7] text-[#166534] px-1.5 py-0.5 rounded-md font-bold">
-                        {currentLanguage === 'hi' ? '🛡️ ऑफ़लाइन संकेत' : currentLanguage === 'en' ? '🛡️ Offline Pedagogical Hint' : '🛡️ ఆఫ్‌లైన్ సూచన'}
-                      </span>
-                    )}
-                    {msg.source === 'ai_model' && (
-                      <span className="text-[10px] bg-[#FFFFFF] text-[#0F766E] border border-[#CCFBF1] px-1.5 py-0.5 rounded-md font-bold">
-                        {currentLanguage === 'hi' ? '⚡ AI ट्यूटर' : currentLanguage === 'en' ? '⚡ AI Tutor' : '⚡ AI ట్యూటర్'}
-                      </span>
-                    )}
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-extrabold text-xs text-[#6e3900]">Socratic Scaffold</span>
+                      <p className="text-xs leading-relaxed font-medium">{m.scaffoldHint}</p>
+                    </div>
                   </div>
                 )}
 
-                <div className="whitespace-pre-line break-words">
-                  {msg.text}
+                {/* Interactive Diagram Visual Anchor */}
+                {m.showDiagram && (
+                  <div className="relative w-full h-36 rounded-xl bg-[#eaedff] overflow-hidden flex flex-col justify-end p-2.5 border border-[#dae2fd]">
+                    <svg className="absolute inset-0 w-full h-full text-[#005c55]" fill="none" preserveAspectRatio="none" viewBox="0 0 320 140">
+                      <path
+                        className="opacity-80"
+                        d="M 20 120 Q 150 15, 300 120"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeDasharray="4 4"
+                        strokeWidth="2.5"
+                      />
+                      <line
+                        markerEnd="url(#arrow-h)"
+                        stroke="#904d00"
+                        strokeLinecap="round"
+                        strokeWidth="2"
+                        x1="80"
+                        x2="120"
+                        y1="72"
+                        y2="72"
+                      />
+                      <line
+                        markerEnd="url(#arrow-v)"
+                        stroke="#005c55"
+                        strokeLinecap="round"
+                        strokeWidth="2"
+                        x1="80"
+                        x2="80"
+                        y1="72"
+                        y2="35"
+                      />
+                      <defs>
+                        <marker id="arrow-h" markerHeight="6" markerWidth="6" orient="auto-start-reverse" refX="6" refY="5" viewBox="0 0 10 10">
+                          <path d="M 0 1 L 8 5 L 0 9 z" fill="#904d00" />
+                        </marker>
+                        <marker id="arrow-v" markerHeight="6" markerWidth="6" orient="auto-start-reverse" refX="6" refY="5" viewBox="0 0 10 10">
+                          <path d="M 0 1 L 8 5 L 0 9 z" fill="#005c55" />
+                        </marker>
+                      </defs>
+                    </svg>
+
+                    <div className="relative z-10 flex items-center justify-between text-[#3e4947] text-[10px] font-bold bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-lg">
+                      <span className="flex items-center gap-1 text-[#904d00]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#904d00]" />
+                        vₓ (Horizontal)
+                      </span>
+                      <span className="flex items-center gap-1 text-[#005c55]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#005c55]" />
+                        vᵧ (Vertical with g)
+                      </span>
+                      <span>θ Launch angle</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Socratic Question Guidance Pills */}
+                <div className="pt-1">
+                  <span className="text-[11px] font-black text-[#3e4947] uppercase tracking-wider block mb-2">
+                    Select your reasoning:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectReasoning('Vertical is affected by g')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#eaedff] text-[#131b2e] hover:bg-[#dae2fd] text-xs font-bold transition-all active:scale-95 shadow-2xs cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#005c55]" />
+                      <span>Vertical is affected by g</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectReasoning('Horizontal is constant')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#eaedff] text-[#131b2e] hover:bg-[#dae2fd] text-xs font-bold transition-all active:scale-95 shadow-2xs cursor-pointer"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5 text-[#005c55]" />
+                      <span>Horizontal is constant</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectReasoning('Both change simultaneously')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#eaedff] text-[#131b2e] hover:bg-[#dae2fd] text-xs font-bold transition-all active:scale-95 shadow-2xs cursor-pointer"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 text-[#6e7977]" />
+                      <span>Both change</span>
+                    </button>
+                  </div>
                 </div>
-
-                {/* Labeled Listen button at the bottom of each AI reply */}
-                {!isStudent && (
-                  <div className="mt-2.5 pt-2 border-t border-[#CCFBF1]">
-                    <AudioButton text={msg.text} label={t.listenReply} size="sm" />
-                  </div>
-                )}
-
-                {/* Follow-up chips: only under the latest AI reply */}
-                {!isStudent && isLatestTutorReply && !isLoading && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {replyChips.map((chip, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setDoubtText(chip);
-                          handleSubmitDoubt(chip);
-                        }}
-                        className="min-h-[44px] px-3.5 py-2 rounded-full bg-[#FFFFFF] hover:bg-[#CCFBF1] text-[#0F766E] text-sm font-bold border border-[#0F766E] text-left active:scale-95 transition-colors"
-                      >
-                        {chip}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           );
         })}
 
-        {/* Loading Bubble */}
         {isLoading && (
-          <div className="flex items-center gap-2 text-sm font-bold text-[#0F766E] bg-[#F0FDFA] p-3 rounded-[12px] border border-[#CCFBF1] max-w-xs animate-pulse">
-            <Sparkles className="w-4 h-4 animate-spin" />
-            <span>{t.tutorThinking}</span>
+          <div className="flex items-center gap-2 p-3.5 bg-white rounded-2xl border border-[#CBD5E1]/60 shadow-xs max-w-xs animate-pulse">
+            <Sparkles className="w-4 h-4 text-[#005c55] animate-spin" />
+            <span className="text-xs font-bold text-[#3e4947]">Formulating Socratic Steps...</span>
           </div>
         )}
-
         <div ref={chatBottomRef} />
       </div>
 
-      {/* Unified Fast-Action Chips & Topic Doubts Bar */}
-      <div className="bg-[#FFFFFF] px-3 py-2 border-t border-[#E2E8F0] flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
-        {/* Quick prompt chips */}
-        {quickChips.map((chip, idx) => (
+      {/* 5. Realtime Multilingual Voice Interaction Console */}
+      <div className="p-4 rounded-2xl bg-white border border-[#CBD5E1]/60 shadow-xs flex flex-col gap-2.5 items-center text-center">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <Volume2 className="w-5 h-5 text-[#904d00]" />
+            <span className="font-extrabold text-sm text-[#131b2e]">Voice Co-Pilot</span>
+          </div>
+          <span className="px-2.5 py-0.5 rounded-full bg-[#ffdcc3] text-[#6e3900] text-[10px] font-black uppercase">
+            Trilingual Realtime
+          </span>
+        </div>
+
+        {/* Dynamic Audio Waveform Indicator */}
+        <div
+          className={`flex items-center justify-center gap-1.5 h-8 w-full max-w-[200px] transition-opacity ${
+            isVoiceActive ? 'opacity-100' : 'opacity-40'
+          }`}
+        >
+          <div className="w-1.5 bg-[#904d00] rounded-full h-3 animate-pulse" />
+          <div className="w-1.5 bg-[#904d00] rounded-full h-6 animate-pulse" style={{ animationDelay: '150ms' }} />
+          <div className="w-1.5 bg-[#904d00] rounded-full h-8 animate-pulse" style={{ animationDelay: '300ms' }} />
+          <div className="w-1.5 bg-[#904d00] rounded-full h-4 animate-pulse" style={{ animationDelay: '75ms' }} />
+          <div className="w-1.5 bg-[#904d00] rounded-full h-7 animate-pulse" style={{ animationDelay: '220ms' }} />
+          <div className="w-1.5 bg-[#904d00] rounded-full h-3 animate-pulse" style={{ animationDelay: '180ms' }} />
+        </div>
+
+        {/* Push-to-Talk Mic with VoiceInputButton fallback support */}
+        <div className="flex flex-col items-center gap-1">
+          <VoiceInputButton
+            controlRef={voiceControlRef}
+            onTranscript={(text) => {
+              setDoubtText(text);
+              handleSubmitDoubt(text);
+            }}
+            size="tutor"
+            label="Speak"
+          />
+
+          <span className="text-xs font-bold text-[#131b2e] mt-1">
+            {currentLanguage === 'te'
+              ? 'తెలుగు లేదా ఇంగ్లీషులో మాట్లాడటానికి నొక్కండి'
+              : currentLanguage === 'hi'
+              ? 'हिंदी या अंग्रेजी में बोलने के लिए टैप करें'
+              : 'Tap to speak in English, Telugu, or Hindi'}
+          </span>
+          <span className="text-[11px] text-[#3e4947] font-medium">
+            "నేను అర్థం చేసుకోలేదు" • "समझाओ मुझे" • "Explain intuitively"
+          </span>
+        </div>
+      </div>
+
+      {/* Horizontally Scrollable Quick-Tap Prompt Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+        {[
+          t.chipExplainSimply,
+          t.chipDailyExample,
+          t.chipStepByStep,
+          t.chipFormulaRecall,
+          t.chipExamTip,
+        ].map((chip, idx) => (
           <button
             key={`qc-${idx}`}
             type="button"
@@ -394,102 +494,60 @@ export const AiTutorScreen: React.FC = () => {
               setDoubtText(chip);
               handleSubmitDoubt(chip);
             }}
-            className="px-3 py-1.5 rounded-full bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] text-xs font-bold border border-[#CCFBF1] whitespace-nowrap active:scale-95 shrink-0 transition-colors min-h-[34px] flex items-center gap-1 cursor-pointer"
+            className="px-3.5 py-1.5 rounded-full bg-[#f2f3ff] hover:bg-[#eaedff] text-[#005c55] text-xs font-bold border border-[#CBD5E1]/60 whitespace-nowrap active:scale-95 shrink-0 transition-colors flex items-center gap-1 cursor-pointer"
           >
             <span>⚡</span>
             <span>{chip}</span>
           </button>
         ))}
-
-        {/* Separator if both exist */}
-        {pack?.commonDoubts && pack.commonDoubts.some((cd) => cd.topicId === activeTopicId) && (
-          <span className="text-[#CBD5E1] shrink-0 font-light">|</span>
-        )}
-
-        {/* Topic frequent doubts */}
-        {pack?.commonDoubts
-          ?.filter((cd) => cd.topicId === activeTopicId)
-          .map((cd) => (
-            <button
-              key={cd.id}
-              type="button"
-              onClick={() => handleSubmitDoubt(cd.q)}
-              className="px-3 py-1.5 rounded-full bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:text-[#0F766E] text-xs font-semibold text-[#0F172A] border border-[#E2E8F0] whitespace-nowrap active:scale-95 shrink-0 min-h-[34px] flex items-center gap-1 cursor-pointer"
-            >
-              <span>📖</span>
-              <span>{cd.q}</span>
-            </button>
-          ))}
       </div>
 
-      {/* Sticky Bottom Input Bar: large Speak (amber) + large Photo (teal) + compact text + Send */}
-      <div className="bg-[#FFFFFF] p-3 border-t border-[#E2E8F0] space-y-2">
-        {/* Selected photo thumbnail with remove control */}
-        {photoPreview && (
-          <div className="relative self-start w-fit">
-            <img
-              src={photoPreview}
-              alt={t.photoAttachedAlt}
-              className="h-16 w-20 object-cover rounded-[10px] border border-[#E2E8F0] shadow-xs"
-            />
-            <button
-              type="button"
-              aria-label={t.removePhoto}
-              onClick={() => {
-                setPhotoPreview(null);
-                setDoubtText('');
-              }}
-              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#DC2626] hover:bg-[#B91C1C] text-white flex items-center justify-center shadow-md active:scale-95 transition-transform"
-            >
-              <X className="w-4 h-4 stroke-[2.5]" />
-            </button>
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Large Primary Voice Button (#D97706); its listening banner renders above this row */}
-          <VoiceInputButton
-            size="tutor"
-            controlRef={voiceControlRef}
-            onTranscript={(transcript) => {
-              setDoubtText(transcript);
-              handleSubmitDoubt(transcript);
-            }}
-          />
-
-          {/* Photo Button (#0F766E) */}
+      {/* 6. Bottom Socratic Query Field */}
+      <div className="p-2 sm:p-2.5 rounded-2xl bg-white border border-[#CBD5E1]/60 shadow-md flex flex-col gap-1.5">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSubmitDoubt();
+          }}
+          className="flex items-center gap-2"
+        >
+          {/* Notebook / Blackboard Photo Button (Preserves test selector title="Notebook / Blackboard Photo") */}
           <button
             type="button"
-            title={t.photoUploadTitle}
+            title="Notebook / Blackboard Photo"
+            aria-label="Add diagram attachment"
             onClick={() => fileInputRef.current?.click()}
-            className="min-h-[48px] min-w-[56px] px-2.5 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] text-white flex flex-col items-center justify-center gap-0.5 text-xs font-bold active:scale-95 shrink-0 transition-all shadow-xs"
+            className="w-10 h-10 rounded-full bg-[#eaedff] hover:bg-[#dae2fd] text-[#3e4947] flex items-center justify-center transition-colors shrink-0 cursor-pointer"
           >
-            <Camera className="w-5 h-5 stroke-[2.2]" />
-            <span>{t.cameraPhoto}</span>
+            <Camera className="w-5 h-5 text-[#005c55]" />
           </button>
 
-          {/* Compact Text Input Box */}
-          <input
-            type="text"
-            value={doubtText}
-            onChange={(e) => setDoubtText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSubmitDoubt();
-            }}
-            placeholder={t.typeDoubtPlaceholder}
-            className="flex-1 min-w-0 text-base text-[#0F172A] placeholder-[#94A3B8] px-3 py-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden font-medium min-h-[48px]"
-          />
+          <div className="flex-1 flex items-center bg-[#f2f3ff] rounded-xl px-3.5 py-2 focus-within:ring-2 focus-within:ring-[#005c55]/20">
+            <input
+              type="text"
+              value={doubtText}
+              onChange={(e) => setDoubtText(e.target.value)}
+              placeholder={t.typeDoubtPlaceholder}
+              className="w-full bg-transparent text-xs sm:text-sm text-[#131b2e] placeholder:text-[#6e7977] outline-none font-medium"
+            />
+          </div>
 
-          {/* Send Button */}
           <button
-            type="button"
-            aria-label={t.sendDoubt}
-            onClick={() => handleSubmitDoubt()}
+            type="submit"
             disabled={!doubtText.trim() && !photoPreview}
-            className="min-w-[48px] min-h-[48px] w-12 h-12 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] disabled:opacity-40 text-white flex items-center justify-center shrink-0 active:scale-95 transition-all shadow-xs"
+            aria-label="Send message"
+            className="w-10 h-10 rounded-full bg-[#005c55] hover:bg-[#0f766e] text-white flex items-center justify-center shadow-xs active:scale-95 transition-transform shrink-0 disabled:opacity-40 cursor-pointer"
           >
-            <Send className="w-5 h-5 stroke-[2.2]" />
+            <Send className="w-4 h-4" />
           </button>
+        </form>
+
+        <div className="flex items-center justify-between px-2 pt-0.5 text-[11px] text-[#3e4947]">
+          <div className="flex items-center gap-1.5">
+            <BrainCircuit className="w-3.5 h-3.5 text-[#005c55]" />
+            <span className="font-bold">Formulating Socratic Steps</span>
+          </div>
+          <span className="font-bold text-[#6e7977]">CBSE / State Board Aligned</span>
         </div>
       </div>
     </div>
