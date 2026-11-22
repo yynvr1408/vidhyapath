@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import { SpeechService, getSpeechLocale, getSpeechLangFromLocale, SPEECH_ERROR_MESSAGES } from '../services/speech';
+import type { SpeechState } from '../services/speech';
 import { useApp } from '../context/AppContext';
 import { getTranslations } from '../utils/translations';
+
+// Identifies the AudioButton that started the current speech, so only that button shows Loading/Stop.
+let activeAudioOwner: object | null = null;
 
 interface AudioButtonProps {
   text: string;
@@ -31,8 +35,21 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
   const langKey = getSpeechLangFromLocale(effectiveLocale);
   const t = getTranslations(langKey);
 
-  const [isPlaying, setIsPlaying] = useState(false);
   const [fallbackMsg, setFallbackMsg] = useState<string | null>(null);
+  const [speech, setSpeech] = useState<SpeechState>(() => ({
+    isLoading: SpeechService.isLoading,
+    isSpeaking: SpeechService.isSpeaking,
+  }));
+  const ownerRef = useRef<object>({});
+
+  useEffect(() => {
+    return SpeechService.subscribe(setSpeech);
+  }, []);
+
+  const isOwner = activeAudioOwner === ownerRef.current;
+  const isLoading = isOwner && speech.isLoading;
+  const isPlaying = isOwner && speech.isSpeaking;
+  const isBusy = isLoading || isPlaying;
 
   const defaultLabel = propLabel !== undefined ? propLabel : t.listen;
   const stopLabel = t.audioStop || (langKey === 'hi' ? 'रोकें' : langKey === 'en' ? 'Stop' : 'ఆపు');
@@ -41,29 +58,16 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
   const handleTogglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    if (isPlaying) {
+    if (isBusy) {
       SpeechService.stopSpeaking();
-      setIsPlaying(false);
       return;
     }
 
-    if (!SpeechService.isTtsSupported()) {
-      setFallbackMsg(errorMsg);
-      return;
-    }
-
-    setIsPlaying(true);
+    activeAudioOwner = ownerRef.current;
     setFallbackMsg(null);
-    SpeechService.speak(
-      text,
-      effectiveLocale,
-      () => setIsPlaying(true),
-      () => setIsPlaying(false),
-      () => {
-        setIsPlaying(false);
-        setFallbackMsg(errorMsg);
-      }
-    );
+    SpeechService.speak(text, effectiveLocale, undefined, undefined, () => {
+      setFallbackMsg(errorMsg);
+    });
   };
 
   const sizeClasses = {
@@ -72,14 +76,17 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
     lg: 'px-4 py-2.5 text-base min-h-[56px]',
   };
 
+  const displayLabel = isLoading ? '…' : isPlaying ? stopLabel : defaultLabel;
+
   return (
     <div className="inline-flex flex-col items-start gap-1">
       <button
         type="button"
         onClick={handleTogglePlay}
         aria-label={`${defaultLabel}: ${text.substring(0, 30)}`}
+        aria-busy={isLoading}
         className={`inline-flex items-center justify-center gap-2 rounded-xl font-bold transition-all active:scale-95 ${
-          isPlaying
+          isBusy
             ? 'bg-[#DCFCE7] text-[#15803D] border-2 border-[#15803D] shadow-xs'
             : 'bg-[#FFFFFF] text-[#0F172A] hover:bg-[#F0FDF4] border border-[#D1E7DD] hover:border-[#15803D] shadow-xs'
         } ${sizeClasses[size]} ${className}`}
@@ -91,9 +98,9 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
             <span className="w-1 bg-[#15803D] audio-bar-3 rounded-full"></span>
           </div>
         ) : (
-          <Volume2 className="w-4 h-4 text-[#15803D] shrink-0" />
+          <Volume2 className={`w-4 h-4 text-[#15803D] shrink-0 ${isLoading ? 'animate-pulse' : ''}`} />
         )}
-        {defaultLabel && <span>{isPlaying ? stopLabel : defaultLabel}</span>}
+        {displayLabel && <span>{displayLabel}</span>}
       </button>
       {fallbackMsg && (
         <span className="text-xs text-[#DC2626] font-medium" role="status">

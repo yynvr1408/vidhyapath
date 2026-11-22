@@ -11,6 +11,7 @@ import {
 } from '../../src/services/speech';
 import { TutorService } from '../../src/services/tutor';
 import { installFetchMock, loadPack, resetAppState } from '../helpers/harness';
+import { stripMarkdownForSpeech, chunkForSpeech, isSupportedTtsLang } from '../../server/tts';
 
 describe('Strict Language Suite - Unit & Backend E2E', () => {
   // --------------------------------------------------------------------------
@@ -225,4 +226,45 @@ describe('Strict Language Suite - Unit & Backend E2E', () => {
       expect(enRes.answer).toContain('Hint 1:');
     });
   });
+
+  // --------------------------------------------------------------------------
+  // Test 4: Server TTS helpers (server/tts.ts) - pure functions only, no fetch
+  // --------------------------------------------------------------------------
+  describe('Test 4: Server TTS helpers', () => {
+    it('isSupportedTtsLang accepts te, hi, en and rejects fr, empty, undefined and uppercase TE', () => {
+      expect(isSupportedTtsLang('te')).toBe(true);
+      expect(isSupportedTtsLang('hi')).toBe(true);
+      expect(isSupportedTtsLang('en')).toBe(true);
+      expect(isSupportedTtsLang('fr')).toBe(false);
+      expect(isSupportedTtsLang('')).toBe(false);
+      expect(isSupportedTtsLang(undefined)).toBe(false);
+      expect(isSupportedTtsLang('TE')).toBe(false);
+    });
+
+    it('stripMarkdownForSpeech removes ** # * ` and spells out + as plus and = as equals', () => {
+      const out = stripMarkdownForSpeech('## Title **bold** and *it* `code` 2 + 3 = 5');
+      expect(out).not.toMatch(/[*#`]/);
+      expect(out).toContain(' plus ');
+      expect(out).toContain(' equals ');
+      expect(out).toBe('Title bold and it code 2 plus 3 equals 5');
+    });
+
+    it('chunkForSpeech keeps every chunk within 180 chars, preserves all words and never returns empty strings', () => {
+      const input = Array.from(
+        { length: 30 },
+        (_, i) => `Sentence number ${i} explains a concept in some detail.`
+      ).join(' ');
+      const chunks = chunkForSpeech(input);
+
+      expect(chunks.length).toBeGreaterThan(1);
+      for (const chunk of chunks) {
+        expect(chunk.length).toBeLessThanOrEqual(180);
+        expect(chunk.trim().length).toBeGreaterThan(0);
+      }
+      const originalWords = input.split(/\s+/).filter(Boolean);
+      const chunkedWords = chunks.join(' ').split(/\s+/).filter(Boolean);
+      expect(chunkedWords).toEqual(originalWords);
+    });
+  });
+
 });

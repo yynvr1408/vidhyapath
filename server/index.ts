@@ -33,6 +33,8 @@ import { enterpriseApiRouter } from './routes/api.js';
 import { healthRouter } from './routes/health.js';
 import { idempotencyMiddleware } from './middleware/idempotency.js';
 import { generalApiLimiter } from './middleware/rateLimiter.js';
+import { isSupportedTtsLang, synthesizeToBase64Chunks } from './tts.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -767,6 +769,26 @@ app.post('/api/tutor/photo-doubt', uploadMiddleware.single('photo'), async (req:
     return res.status(500).json({ error: 'Photo doubt upload failed: ' + err.message });
   }
 });
+
+// POST /api/tts: Backend TTS (Telugu, Hindi, English). Returns base64 MP3 chunks.
+app.post('/api/tts', async (req: Request, res: Response) => {
+  const { text, language } = req.body ?? {};
+  if (!isSupportedTtsLang(language)) {
+    return res.status(400).json({ error: 'Unsupported language' });
+  }
+  if (typeof text !== 'string' || !text.trim()) {
+    return res.status(400).json({ error: 'text is required' });
+  }
+  const clampedText = text.trim().slice(0, 5000);
+  try {
+    const chunks = await synthesizeToBase64Chunks(clampedText, language);
+    return res.json({ chunks, mimeType: 'audio/mpeg' });
+  } catch (err: any) {
+    console.error('TTS synthesis failed:', err?.message || err);
+    return res.status(502).json({ error: 'TTS provider unavailable' });
+  }
+});
+
 
 // Serve frontend build if exists
 const distDir = path.resolve(__dirname, '../dist');
