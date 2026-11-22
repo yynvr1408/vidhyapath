@@ -624,9 +624,14 @@ app.post('/api/admin/syllabus', syllabusUpload.single('file'), requireAdminCode,
       if (ext === '.txt' || ext === '.md') {
         text = req.file.buffer.toString('utf8');
       } else if (ext === '.pdf') {
-        const { default: pdfParse } = await import('pdf-parse');
-        const parsed = await pdfParse(req.file.buffer);
-        text = parsed.text;
+        try {
+          const pdfParseModule = (await import('pdf-parse' as any)) as any;
+          const pdfParse = pdfParseModule.default || pdfParseModule;
+          const parsed = await pdfParse(req.file.buffer);
+          text = parsed.text;
+        } catch {
+          text = req.file.buffer.toString('utf8');
+        }
       } else {
         return res.status(400).json({ error: 'unsupported_file_type' });
       }
@@ -840,8 +845,8 @@ function buildSyllabusTutorPrompt(opts: {
   return lines.join('\n');
 }
 
-// 2. AI Tutor Endpoint (/api/tutor/ask) - Completely unauthenticated for frictionless student access
-app.post('/api/tutor/ask', async (req: Request, res: Response) => {
+// 2. AI Tutor Endpoint (/api/tutor/ask)
+app.post('/api/tutor/ask', requireAuth, requireRole(['student', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), async (req: AuthenticatedRequest, res: Response) => {
   const { packId, learnerId, doubt, topicId, mistakeTag, language, photoBase64, message, chapterId, conceptId, conceptTitle, subject, mode, intent } = req.body || {};
   if (packId && !isSafePackId(packId)) {
     return res.status(400).json({ answer: 'Invalid pack id' });
@@ -1093,7 +1098,7 @@ app.post('/api/tts', async (req: Request, res: Response) => {
     const { text, language } = req.body || {};
     if (!text) return res.status(400).json({ error: 'text_required' });
     if (isElevenLabsConfigured()) {
-      const audioBuffer = await synthesizeElevenLabsVoice(text, language || 'en');
+      const audioBuffer = await synthesizeElevenLabsVoice(text);
       if (audioBuffer) {
         res.setHeader('Content-Type', 'audio/mpeg');
         return res.send(audioBuffer);

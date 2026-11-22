@@ -66,6 +66,10 @@ export interface TranslationDictionary {
   bottomNavParent: string;
   pressBackAgainToExit: string;
 
+  addNewLearner?: string;
+  saveProfile?: string;
+  checkAnswer?: string;
+
   // Screen 1: Profile Selector & PIN Modal
   landingTitle: string;
   landingSubtitle: string;
