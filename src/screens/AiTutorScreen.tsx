@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Mic,
   Camera,
   Send,
   Sparkles,
   HelpCircle,
-  Volume2,
   Clock,
   CheckCircle2,
   AlertCircle,
   MessageSquare,
+  X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { TutorService, TutorResponse } from '../services/tutor';
@@ -17,7 +16,7 @@ import { DoubtItem } from '../types';
 import { localDb } from '../db/indexedDb';
 import { getTranslations } from '../utils/translations';
 import { AudioButton } from '../components/AudioButton';
-import { VoiceInputButton } from '../components/VoiceInputButton';
+import { VoiceInputButton, type VoiceInputControl } from '../components/VoiceInputButton';
 
 export const AiTutorScreen: React.FC = () => {
   const {
@@ -41,6 +40,8 @@ export const AiTutorScreen: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const voiceControlRef = useRef<VoiceInputControl | null>(null);
 
   // Initialize with welcoming greeting from Tutor in regional language
   useEffect(() => {
@@ -139,8 +140,33 @@ export const AiTutorScreen: React.FC = () => {
     t.chipExamTip,
   ];
 
+  // Welcome state: no question asked yet (only the preloaded greeting exists)
+  const isChatEmpty = !messages.some((m) => m.sender === 'student');
+  const latestTutorIdx = (() => {
+    let idx = -1;
+    messages.forEach((m, i) => {
+      if (m.sender === 'tutor' && m.source !== 'preloaded') idx = i;
+    });
+    return idx;
+  })();
+  const welcomeStarters = (pack?.commonDoubts || [])
+    .filter((cd) => cd.topicId === activeTopicId)
+    .slice(0, 2)
+    .map((cd) => cd.q);
+  const replyChips = [t.replyChipSimpler, t.replyChipExample, t.replyChipStepByStep];
+
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-100px)] justify-between bg-[#FFFFFF] rounded-[12px] border border-[#E2E8F0] shadow-xs overflow-hidden">
+      {/* Hidden file input shared by the welcome card and the input bar photo button */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handlePhotoUpload}
+        className="hidden"
+      />
+
       {/* Header with Chapter Selector & Mode Switcher */}
       <div className="bg-[#F8FAFC] p-3 border-b border-[#E2E8F0] space-y-2">
         <div className="flex items-center justify-between">
@@ -210,8 +236,55 @@ export const AiTutorScreen: React.FC = () => {
 
       {/* Chat Messages Scrollable Feed */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F8FAFC]/50">
+        {isChatEmpty && (
+          <div className="flex flex-col items-center text-center gap-4 py-2 animate-fadeIn">
+            {/* Centered welcome card */}
+            <div className="w-full bg-[#FFFFFF] border border-[#CCFBF1] rounded-[16px] p-4 shadow-2xs">
+              <Sparkles className="w-8 h-8 mx-auto text-[#0F766E] mb-2" />
+              <p className="text-base font-bold text-[#0F172A] leading-relaxed">{t.welcomeGreeting}</p>
+            </div>
+
+            {/* Two large entry cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => voiceControlRef.current?.start()}
+                disabled={lowDataMode}
+                className="min-h-[64px] px-4 py-3 rounded-[16px] bg-[#D97706] hover:bg-[#B45309] disabled:opacity-50 text-white text-base font-extrabold shadow-xs flex items-center justify-center text-center active:scale-95 transition-all"
+              >
+                {t.welcomeSpeakCard}
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="min-h-[64px] px-4 py-3 rounded-[16px] bg-[#0F766E] hover:bg-[#115E59] text-white text-base font-extrabold shadow-xs flex items-center justify-center text-center active:scale-95 transition-all"
+              >
+                {t.welcomePhotoCard}
+              </button>
+            </div>
+
+            {/* One-tap chapter starter questions */}
+            <div className="grid grid-cols-1 gap-2 w-full">
+              {welcomeStarters.map((q, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setDoubtText(q);
+                    handleSubmitDoubt(q);
+                  }}
+                  className="min-h-[48px] px-4 py-2.5 rounded-[12px] bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] text-sm font-bold border border-[#CCFBF1] text-left active:scale-95 transition-colors"
+                >
+                  ⚡ {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {messages.map((msg, index) => {
           const isStudent = msg.sender === 'student';
+          const isLatestTutorReply = index === latestTutorIdx;
           return (
             <div
               key={index}
@@ -230,51 +303,75 @@ export const AiTutorScreen: React.FC = () => {
 
               {/* Message Bubble */}
               <div
-                className={`max-w-[85%] sm:max-w-md p-3.5 rounded-[12px] shadow-2xs ${
+                className={`max-w-[92%] sm:max-w-md p-3.5 rounded-[12px] shadow-2xs text-base leading-relaxed break-words ${
                   isStudent
                     ? 'bg-[#0F766E] text-white rounded-br-xs'
-                    : 'bg-[#FFFFFF] text-[#0F172A] border border-[#E2E8F0] rounded-bl-xs'
+                    : 'bg-[#F0FDFA] border border-[#CCFBF1] text-[#0F172A] rounded-bl-xs'
                 }`}
               >
                 {!isStudent && (
-                  <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#E2E8F0]/60">
+                  <div className="flex flex-wrap items-center gap-1.5 pb-1.5 mb-1.5 border-b border-[#CCFBF1]">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-[#0F766E]">
                       <Sparkles className="w-3.5 h-3.5" />
                       <span>{t.tutorReplyHeader}</span>
-                      {msg.source === 'common_doubts' && (
-                        <span className="text-[10px] bg-[#FEF3C7] text-[#D97706] px-1.5 py-0.5 rounded-md font-bold">
-                          {currentLanguage === 'hi' ? '📖 सामान्य प्रश्न' : currentLanguage === 'en' ? '📖 Curated FAQ' : '📖 తరచుగా అడిగే ప్రశ్నలు'}
-                        </span>
-                      )}
-                      {msg.source === 'offline_pedagogy' && (
-                        <span className="text-[10px] bg-[#DCFCE7] text-[#166534] px-1.5 py-0.5 rounded-md font-bold">
-                          {currentLanguage === 'hi' ? '🛡️ ऑफ़लाइन संकेत' : currentLanguage === 'en' ? '🛡️ Offline Pedagogical Hint' : '🛡️ ఆఫ్‌లైన్ సూచన'}
-                        </span>
-                      )}
-                      {msg.source === 'ai_model' && (
-                        <span className="text-[10px] bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1] px-1.5 py-0.5 rounded-md font-bold">
-                          {currentLanguage === 'hi' ? '⚡ AI ट्यूटर' : currentLanguage === 'en' ? '⚡ AI Tutor' : '⚡ AI ట్యూటర్'}
-                        </span>
-                      )}
                     </div>
-                    {/* TTS Speaker Listen Button */}
-                    <AudioButton text={msg.text} label="" size="sm" />
+                    {msg.source === 'common_doubts' && (
+                      <span className="text-[10px] bg-[#FEF3C7] text-[#D97706] px-1.5 py-0.5 rounded-md font-bold">
+                        {currentLanguage === 'hi' ? '📖 सामान्य प्रश्न' : currentLanguage === 'en' ? '📖 Curated FAQ' : '📖 తరచుగా అడిగే ప్రశ్నలు'}
+                      </span>
+                    )}
+                    {msg.source === 'offline_pedagogy' && (
+                      <span className="text-[10px] bg-[#DCFCE7] text-[#166534] px-1.5 py-0.5 rounded-md font-bold">
+                        {currentLanguage === 'hi' ? '🛡️ ऑफ़लाइन संकेत' : currentLanguage === 'en' ? '🛡️ Offline Pedagogical Hint' : '🛡️ ఆఫ్‌లైన్ సూచన'}
+                      </span>
+                    )}
+                    {msg.source === 'ai_model' && (
+                      <span className="text-[10px] bg-[#FFFFFF] text-[#0F766E] border border-[#CCFBF1] px-1.5 py-0.5 rounded-md font-bold">
+                        {currentLanguage === 'hi' ? '⚡ AI ट्यूटर' : currentLanguage === 'en' ? '⚡ AI Tutor' : '⚡ AI ట్యూటర్'}
+                      </span>
+                    )}
                   </div>
                 )}
 
-                <div className="text-base font-medium leading-relaxed whitespace-pre-line">
+                <div className="whitespace-pre-line break-words">
                   {msg.text}
                 </div>
+
+                {/* Labeled Listen button at the bottom of each AI reply */}
+                {!isStudent && (
+                  <div className="mt-2.5 pt-2 border-t border-[#CCFBF1]">
+                    <AudioButton text={msg.text} label={t.listenReply} size="sm" />
+                  </div>
+                )}
+
+                {/* Follow-up chips: only under the latest AI reply */}
+                {!isStudent && isLatestTutorReply && !isLoading && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {replyChips.map((chip, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setDoubtText(chip);
+                          handleSubmitDoubt(chip);
+                        }}
+                        className="min-h-[44px] px-3.5 py-2 rounded-full bg-[#FFFFFF] hover:bg-[#CCFBF1] text-[#0F766E] text-sm font-bold border border-[#0F766E] text-left active:scale-95 transition-colors"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
 
-        {/* Loading Spinner */}
+        {/* Loading Bubble */}
         {isLoading && (
-          <div className="flex items-center gap-2 text-sm font-bold text-[#0F766E] bg-[#F0FDFA] p-3 rounded-[12px] border border-[#E2E8F0] max-w-xs animate-pulse">
+          <div className="flex items-center gap-2 text-sm font-bold text-[#0F766E] bg-[#F0FDFA] p-3 rounded-[12px] border border-[#CCFBF1] max-w-xs animate-pulse">
             <Sparkles className="w-4 h-4 animate-spin" />
-            <span>{t.thinking}</span>
+            <span>{t.tutorThinking}</span>
           </div>
         )}
 
@@ -322,54 +419,72 @@ export const AiTutorScreen: React.FC = () => {
         ))}
       </div>
 
-      {/* Prominent Bottom Input Bar: Large Mic (#D97706) + Camera + Text */}
-      <div className="bg-[#FFFFFF] p-3 border-t border-[#E2E8F0] flex items-center gap-2">
-        {/* Large Primary Voice Mic Button (#D97706) */}
-        <VoiceInputButton
-          size="md"
-          label=""
-          onTranscript={(transcript) => {
-            setDoubtText(transcript);
-            handleSubmitDoubt(transcript);
-          }}
-        />
+      {/* Sticky Bottom Input Bar: large Speak (amber) + large Photo (teal) + compact text + Send */}
+      <div className="bg-[#FFFFFF] p-3 border-t border-[#E2E8F0] space-y-2">
+        {/* Selected photo thumbnail with remove control */}
+        {photoPreview && (
+          <div className="relative self-start w-fit">
+            <img
+              src={photoPreview}
+              alt={t.photoAttachedAlt}
+              className="h-16 w-20 object-cover rounded-[10px] border border-[#E2E8F0] shadow-xs"
+            />
+            <button
+              type="button"
+              aria-label={t.removePhoto}
+              onClick={() => setPhotoPreview(null)}
+              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#0F172A] text-white flex items-center justify-center shadow-xs active:scale-95"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
-        {/* Camera / Photo Upload Button */}
-        <label
-          title={t.photoUploadTitle}
-          className="w-12 h-12 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] text-[#0F766E] border border-[#E2E8F0] flex items-center justify-center cursor-pointer active:scale-95 shrink-0 transition-all"
-        >
-          <Camera className="w-5 h-5 stroke-[2.2]" />
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handlePhotoUpload}
-            className="hidden"
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Large Primary Voice Button (#D97706); its listening banner renders above this row */}
+          <VoiceInputButton
+            size="tutor"
+            controlRef={voiceControlRef}
+            onTranscript={(transcript) => {
+              setDoubtText(transcript);
+              handleSubmitDoubt(transcript);
+            }}
           />
-        </label>
 
-        {/* Text Input Box */}
-        <input
-          type="text"
-          value={doubtText}
-          onChange={(e) => setDoubtText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSubmitDoubt();
-          }}
-          placeholder={t.typeDoubtPlaceholder}
-          className="flex-1 text-base text-[#0F172A] placeholder-[#94A3B8] p-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden font-medium min-h-[48px]"
-        />
+          {/* Photo Button (#0F766E) */}
+          <button
+            type="button"
+            title={t.photoUploadTitle}
+            onClick={() => fileInputRef.current?.click()}
+            className="min-h-[48px] min-w-[56px] px-2 rounded-[12px] bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] border border-[#CCFBF1] flex flex-col items-center justify-center gap-0.5 text-xs font-bold active:scale-95 shrink-0 transition-all"
+          >
+            <Camera className="w-5 h-5 stroke-[2.2]" />
+            <span>{t.cameraPhoto}</span>
+          </button>
 
-        {/* Send Button */}
-        <button
-          type="button"
-          onClick={() => handleSubmitDoubt()}
-          disabled={!doubtText.trim() && !photoPreview}
-          className="w-12 h-12 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] disabled:opacity-40 text-white flex items-center justify-center shrink-0 active:scale-95 transition-all shadow-xs"
-        >
-          <Send className="w-5 h-5 stroke-[2.2]" />
-        </button>
+          {/* Compact Text Input Box */}
+          <input
+            type="text"
+            value={doubtText}
+            onChange={(e) => setDoubtText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSubmitDoubt();
+            }}
+            placeholder={t.typeDoubtPlaceholder}
+            className="flex-1 min-w-0 text-base text-[#0F172A] placeholder-[#94A3B8] px-3 py-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden font-medium min-h-[48px]"
+          />
+
+          {/* Send Button */}
+          <button
+            type="button"
+            aria-label={t.sendDoubt}
+            onClick={() => handleSubmitDoubt()}
+            disabled={!doubtText.trim() && !photoPreview}
+            className="min-w-[48px] min-h-[48px] w-12 h-12 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] disabled:opacity-40 text-white flex items-center justify-center shrink-0 active:scale-95 transition-all shadow-xs"
+          >
+            <Send className="w-5 h-5 stroke-[2.2]" />
+          </button>
+        </div>
       </div>
     </div>
   );

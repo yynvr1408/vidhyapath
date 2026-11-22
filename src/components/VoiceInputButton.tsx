@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Mic, MicOff, AlertCircle } from 'lucide-react';
 import { SpeechService, getSpeechLocale, getSpeechLangFromLocale, SPEECH_ERROR_MESSAGES } from '../services/speech';
 import { useApp } from '../context/AppContext';
 import { getTranslations } from '../utils/translations';
 
+export interface VoiceInputControl {
+  start: () => void;
+  stop: () => void;
+}
+
 interface VoiceInputButtonProps {
   onTranscript: (text: string) => void;
   locale?: string;
-  size?: 'md' | 'giant';
+  size?: 'md' | 'giant' | 'tutor';
   label?: string;
+  controlRef?: React.MutableRefObject<VoiceInputControl | null>;
 }
 
 export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
@@ -16,6 +22,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   locale: propLocale,
   size = 'giant',
   label: propLabel,
+  controlRef,
 }) => {
   const { lowDataMode, currentLanguage } = useApp();
   const effectiveLocale = propLocale || getSpeechLocale(currentLanguage);
@@ -25,6 +32,8 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
 
   const [isListening, setIsListening] = useState(false);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const stopRef = useRef<(() => void) | null>(null);
+  const stoppingRef = useRef(false);
 
   const isSupported = SpeechService.isSttSupported();
 
@@ -46,14 +55,17 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
 
     setErrorNotice(null);
     setIsListening(true);
+    stoppingRef.current = false;
 
-    SpeechService.startListening(
+    stopRef.current = SpeechService.startListening(
       effectiveLocale,
       (text) => {
         setIsListening(false);
         onTranscript(text);
       },
       (err) => {
+        // Aborting by the student triggers an error event in some browsers; ignore it.
+        if (stoppingRef.current) return;
         setIsListening(false);
         setErrorNotice(err);
       },
@@ -62,6 +74,18 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       }
     );
   };
+
+  const handleStopListening = () => {
+    stoppingRef.current = true;
+    stopRef.current?.();
+    stopRef.current = null;
+    setIsListening(false);
+  };
+
+  // Lets the parent screen start/stop listening (e.g. from the welcome card).
+  if (controlRef) {
+    controlRef.current = { start: handleStartListening, stop: handleStopListening };
+  }
 
   const defaultLabel =
     propLabel !== undefined
@@ -74,10 +98,68 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
 
   if (!isSupported) {
     return (
-      <div className="text-center py-2 text-xs text-[#475569] flex items-center justify-center gap-1.5 bg-[#FFFFFF] p-2.5 rounded-xl border border-[#D1E7DD]">
+      <div
+        className={`text-center py-2 text-xs text-[#475569] flex items-center justify-center gap-1.5 bg-[#FFFFFF] p-2.5 rounded-xl border border-[#D1E7DD] ${
+          size === 'tutor' ? 'basis-full' : ''
+        }`}
+      >
         <MicOff className="w-4 h-4 text-[#94A3B8]" />
         <span>{t.voiceNotSupported}</span>
       </div>
+    );
+  }
+
+  if (size === 'tutor') {
+    // Compact amber mic for the chat input bar (parent row must be flex-wrap).
+    const tutorLabel = propLabel !== undefined ? propLabel : t.speakBtn;
+    return (
+      <>
+        {errorNotice && (
+          <div
+            role="status"
+            className="basis-full flex items-center gap-1.5 text-xs text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] px-3 py-1.5 rounded-xl font-medium"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorNotice}</span>
+          </div>
+        )}
+        {isListening && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="basis-full flex items-center gap-3 bg-[#FEF2F2] border-2 border-[#DC2626] rounded-[12px] p-2.5"
+          >
+            <span className="relative flex h-3.5 w-3.5 shrink-0">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-[#DC2626] opacity-75 animate-ping" />
+              <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-[#DC2626]" />
+            </span>
+            <span className="flex-1 min-w-0 text-sm font-extrabold text-[#991B1B]">{t.listeningNow}</span>
+            <button
+              type="button"
+              onClick={handleStopListening}
+              className="px-3 min-h-[44px] rounded-[10px] bg-[#DC2626] hover:bg-[#B91C1C] text-white text-sm font-bold shrink-0 active:scale-95"
+            >
+              {t.stopListening}
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleStartListening}
+          disabled={lowDataMode}
+          aria-label={tutorLabel}
+          className={`min-h-[48px] min-w-[64px] px-3 rounded-[12px] flex flex-col items-center justify-center gap-0.5 text-xs font-bold shrink-0 transition-all active:scale-95 shadow-xs ${
+            lowDataMode
+              ? 'bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed'
+              : isListening
+              ? 'bg-[#B45309] text-white'
+              : 'bg-[#D97706] hover:bg-[#B45309] text-white'
+          }`}
+        >
+          <Mic className="w-5 h-5 stroke-[2.2]" />
+          <span>{tutorLabel}</span>
+        </button>
+      </>
     );
   }
 
