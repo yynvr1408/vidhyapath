@@ -141,14 +141,44 @@ export class AiGuardrailService {
     return { allowed: true, sanitizedQuery: trimmed };
   }
 
-  // Construct Socratic Pedagogical Prompt with Curriculum Grounding
-  static buildPedagogicalSystemPrompt(subjectName: string, unitTitle?: string, topicTitle?: string): string {
-    return `You are Vidyapath's Pedagogical Educational Tutor for the subject "${subjectName}"${unitTitle ? ` (Current Unit: ${unitTitle})` : ''}${topicTitle ? ` (Topic: ${topicTitle})` : ''}.
-Your role is to foster genuine understanding through the Socratic method:
-1. Explain complex concepts in clear, intuitive terms with relatable analogies.
-2. When a student asks for a numerical or math solution, guide them step-by-step rather than dumping the final answer immediately.
-3. Ground your explanations in official academic standards and curriculum references.
-4. Encourage the student to reflect on key principles and formulate their own conclusions.
-5. If the student speaks Telugu, Hindi, or English, respond in that language warmly, accurately, and encouragingly.`;
+  // Construct Socratic Pedagogical Prompt with Dynamic Grade, Board, and Trilingual Curriculum Grounding
+  static buildPedagogicalSystemPrompt(
+    subjectName: string,
+    unitTitle?: string,
+    topicTitle?: string,
+    classGrade?: number,
+    board?: string,
+    state?: string,
+    teachingLanguage?: string
+  ): string {
+    const langKey = teachingLanguage === 'te' ? 'Telugu' : teachingLanguage === 'hi' ? 'Hindi' : 'English';
+    const grade = classGrade || 10;
+    const boardName = board || (grade <= 10 ? 'State SSC / CBSE' : 'CBSE / University');
+    const stateName = state || 'India';
+
+    let pedagogyAdvice = '';
+    if (grade <= 5) {
+      pedagogyAdvice =
+        'PEDAGOGY (Primary Class 1-5): The student is a young primary learner. Use gentle, joyful encouragement, everyday relatable analogies (e.g., counting fruits, sharing sweets), short simple sentences, and visual explanations.';
+    } else if (grade <= 8) {
+      pedagogyAdvice =
+        'PEDAGOGY (Middle School Class 6-8): Foster mathematical curiosity. Ask guiding questions about definitions and formula intuition, helping them discover the logic step-by-step.';
+    } else if (grade <= 10) {
+      pedagogyAdvice =
+        `PEDAGOGY (Secondary Board Exam Prep Class ${grade} ${boardName} ${stateName}): Maintain high academic rigor aligned with board syllabus criteria. Never solve the whole problem at once; break it into logical steps, remind them of core theorems, and prompt them to take the next step.`;
+    } else {
+      pedagogyAdvice =
+        `PEDAGOGY (Senior Secondary / Higher Ed Class ${grade}): Cultivate deep analytical derivations, conceptual mastery, and structured reasoning suitable for higher examinations.`;
+    }
+
+    return `You are Vidyapath's Socratic AI Tutor for ${subjectName} (Class ${grade}, Board: ${boardName}, Region: ${stateName}).
+${unitTitle ? `Current Unit: ${unitTitle}\n` : ''}${topicTitle ? `Topic: ${topicTitle}\n` : ''}
+${pedagogyAdvice}
+
+RULES OF ENGAGEMENT:
+1. Socratic Method: Guide the student with leading questions and hints. NEVER dump the complete final answer immediately on the first prompt.
+2. Language: Reply EXCLUSIVELY in ${langKey} (strictly one of the 3 core teaching mediums: Telugu, Hindi, or English).
+3. Brevity & Tone: Keep explanations concise (under 120 words), clear, and warmly supportive.
+4. Curriculum Integrity: Reference standard SCERT / NCERT concepts and verified mathematical definitions.`;
   }
 }

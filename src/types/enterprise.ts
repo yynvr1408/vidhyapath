@@ -124,6 +124,14 @@ export interface StudentProfile {
   admissionYear: string; // e.g. "2024"
   semester: number; // e.g. 5
   rollNumber: string; // e.g. "24IT042"
+  classGrade?: number; // 1 to 10 (or 11, 12)
+  board?: string; // 'CBSE' | 'State SSC'
+  state?: string; // e.g. 'Andhra Pradesh', 'Telangana', etc.
+  isIndependent?: boolean; // True for independent home learners
+  guardianId?: string;
+  securityQuestionId?: string;
+  securityQuestion?: string;
+  securityAnswerHash?: string;
   registrationCode?: string;
   guardianEmail?: string;
   guardianPhone?: string;
@@ -308,6 +316,15 @@ export interface Course {
   code: string;
   title: string;
   institutionId: string;
+  scope?: 'global' | 'institution';
+  classGrade?: number; // 1 to 10 (Mandatory Free) or 11+ (Institution Paid Plans)
+  board?: string; // 'CBSE' | 'State SSC'
+  state?: string; // e.g. 'Andhra Pradesh', 'Telangana', 'Maharashtra'
+  subjectName?: string;
+  language?: string; // 'te' | 'hi' | 'en'
+  isFree?: boolean; // Guaranteed true for classGrade <= 10
+  feeAmount?: number; // 0 for classGrade <= 10
+  feeCurrency?: string;
   description?: string;
   syllabus?: any[];
   createdAt: number;
@@ -318,7 +335,9 @@ export interface CourseEnrollment {
   id: string;
   courseId: string;
   studentId: string;
-  status: 'active' | 'completed' | 'dropped';
+  status: 'active' | 'completed' | 'dropped' | 'pending_payment';
+  feePaid?: number;
+  paymentReference?: string;
   enrolledAt: number;
 }
 

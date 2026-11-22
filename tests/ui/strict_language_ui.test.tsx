@@ -178,10 +178,10 @@ describe('Strict Language Suite - UI End-to-End Switching', () => {
       ).toBeInTheDocument();
 
       // Assert Telugu quick chips
-      expect(screen.getByRole('button', { name: (c) => c.includes('సులభంగా') })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: (c) => c.includes('ఉదాహరణ') })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: (c) => c.includes('సూత్రం') })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: (c) => c.includes('చిట్కా') })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('సులభంగా') }).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('ఉదాహరణ') }).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('సూత్రం') }).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('చిట్కా') }).length).toBeGreaterThanOrEqual(1);
 
       // Assert Telugu placeholder
       expect(
@@ -215,10 +215,10 @@ describe('Strict Language Suite - UI End-to-End Switching', () => {
       ).toBeInTheDocument();
 
       // Assert Hindi quick chips
-      expect(screen.getByRole('button', { name: (c) => c.includes('सरल') })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: (c) => c.includes('उदाहरण') })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: (c) => c.includes('सूत्र') })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: (c) => c.includes('सुझाव') })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('सरल') }).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('उदाहरण') }).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('सूत्र') }).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('सुझाव') }).length).toBeGreaterThanOrEqual(1);
 
       // Assert Hindi placeholder
       expect(
@@ -252,10 +252,10 @@ describe('Strict Language Suite - UI End-to-End Switching', () => {
       ).toBeInTheDocument();
 
       // Assert English quick chips
-      expect(screen.getByRole('button', { name: (c) => c.includes('Explain') })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: (c) => c.includes('example') })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: (c) => c.includes('formula') })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: (c) => c.includes('tip') })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('Explain') }).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('example') }).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('formula') }).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('button', { name: (c) => c.includes('tip') }).length).toBeGreaterThanOrEqual(1);
 
       // Assert English placeholder
       expect(

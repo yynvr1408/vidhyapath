@@ -11,6 +11,7 @@ import { SCHEDULED_LANGUAGES } from '../config/languages';
 import { AppUpdateHeaderPill } from '../components/AppUpdateHeaderPill';
 import { AppUpdateBanner } from '../components/AppUpdateBanner';
 import { AppUpdateModal } from '../components/AppUpdateModal';
+import { UnifiedAuthModal } from '../components/auth/UnifiedAuthModal';
 
 // Formats display names cleanly based on current language
 const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
@@ -50,6 +51,7 @@ export const ProfileSelectorScreen: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [studentCodeInput, setStudentCodeInput] = useState('');
   const [codeLoginError, setCodeLoginError] = useState<string | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const handleProfileClick = (learner: LearnerProfile) => {
     setSelectedLearnerForPin(learner);
@@ -85,18 +87,18 @@ export const ProfileSelectorScreen: React.FC = () => {
           </span>
         </div>
 
-        {/* Top Right: Language Selector Dropdown (Telugu, Hindi, English) */}
-        <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1.5 rounded-[12px] border border-[#E2E8F0] shadow-2xs min-h-[44px]">
+        {/* Top Right: Language Selector Dropdown */}
+        <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-3 py-1.5 rounded-[12px] border border-[#E2E8F0] shadow-2xs min-h-[44px]">
           <Globe className="w-4 h-4 text-[#0F766E]" />
           <select
             value={currentLanguage}
             onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
-            className="text-xs font-bold text-[#0F172A] bg-transparent focus:outline-hidden cursor-pointer max-w-[130px] truncate"
-            title="Select Language (Telugu, Hindi, English)"
+            className="text-sm font-bold text-[#0F172A] bg-transparent focus:outline-hidden cursor-pointer pr-1"
+            title="Select Language"
           >
             {SCHEDULED_LANGUAGES.map((lang) => (
               <option key={lang.code} value={lang.code}>
-                {lang.nativeName} ({lang.name})
+                {lang.nativeName}
               </option>
             ))}
           </select>
@@ -235,14 +237,25 @@ export const ProfileSelectorScreen: React.FC = () => {
 
       {/* 4. Minimal Footer with Guardian Link & Privacy Note */}
       <footer className="pt-3 border-t border-[#E2E8F0] flex flex-col items-center text-center gap-2">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setScreen('PARENT_VIEW')}
-            className="text-sm text-[#0F766E] hover:underline font-bold inline-flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-[#F0FDFA] min-h-[48px]"
+            className="text-xs sm:text-sm text-[#0F766E] hover:underline font-bold inline-flex items-center gap-1.5 py-2 px-3 rounded-lg hover:bg-[#F0FDFA] min-h-[44px]"
           >
-            <ShieldCheck className="w-5 h-5 text-[#0F766E]" />
+            <ShieldCheck className="w-4 h-4 text-[#0F766E]" />
             <span>{t.parentViewTitle}</span>
+          </button>
+
+          <span className="text-[#CBD5E1]">·</span>
+
+          <button
+            type="button"
+            onClick={() => setAuthModalOpen(true)}
+            className="text-xs sm:text-sm text-[#0F766E] hover:underline font-bold inline-flex items-center gap-1.5 py-2 px-3 rounded-lg hover:bg-[#F0FDFA] min-h-[44px]"
+          >
+            <Lock className="w-4 h-4 text-[#0F766E]" />
+            <span>Portal Login (Student/Parent/Staff)</span>
           </button>
         </div>
 
@@ -251,6 +264,12 @@ export const ProfileSelectorScreen: React.FC = () => {
           <span>{t.zeroPiiNotice}</span>
         </p>
       </footer>
+
+      {/* Unified Multi-Role Auth Modal */}
+      <UnifiedAuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
 
       {/* 4-Digit PIN Pad Modal */}
       {selectedLearnerForPin && (

@@ -1,4 +1,28 @@
-export type SupportedLang = 'te' | 'hi' | 'en';
+export type SupportedLang =
+  | 'te'
+  | 'hi'
+  | 'en'
+  | 'bn'
+  | 'mr'
+  | 'ta'
+  | 'gu'
+  | 'ur'
+  | 'kn'
+  | 'or'
+  | 'ml'
+  | 'pa'
+  | 'as'
+  | 'mai'
+  | 'sat'
+  | 'ks'
+  | 'ne'
+  | 'gom'
+  | 'sd'
+  | 'doi'
+  | 'brx'
+  | 'mni'
+  | 'sa'
+  | string;
 
 export interface TranslationDictionary {
   // Common & Layout

@@ -78,9 +78,9 @@ export const S1_ProfilePicker: React.FC = () => {
             title="Switch Language Pack / భాష మార్చు"
             className="text-xs bg-[#FFFFFF] hover:bg-[#DCFCE7] text-[#0F172A] font-bold pl-7 pr-2.5 py-1.5 rounded-xl border border-[#D1E7DD] focus:border-[#15803D] focus:outline-hidden min-h-[38px] transition-all cursor-pointer shadow-2xs"
           >
-            <option value="te-10-maths-ap">తెలుగు (Telugu)</option>
-            <option value="en-10-maths-cbse">English (CBSE)</option>
-            <option value="hi-10-maths-cbse">हिन्दी (Hindi)</option>
+            <option value="te-10-maths-ap">తెలుగు</option>
+            <option value="en-10-maths-cbse">English</option>
+            <option value="hi-10-maths-cbse">हिन्दी</option>
           </select>
         </div>
       </div>

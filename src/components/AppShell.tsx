@@ -297,21 +297,21 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
       {/* Bottom: Settings, Offline Demo Toggle, Language & Switch Profile */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2.5">
-        {/* Language Switcher Dropdown (Telugu, Hindi, English) */}
-        <div className="flex items-center justify-between bg-[#F8FAFC] p-2.5 rounded-[12px] border border-[#E2E8F0]">
-          <div className="flex items-center gap-1.5 text-sm font-bold text-[#475569] shrink-0">
+        {/* Language Switcher Dropdown (22 Scheduled Languages - Pure Native Script) */}
+        <div className="flex items-center justify-between bg-[#F8FAFC] p-2.5 rounded-[12px] border border-[#E2E8F0] gap-2">
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#475569] shrink-0">
             <Globe className="w-4 h-4 text-[#0F766E]" />
             <span>{t.languageLabel}</span>
           </div>
           <select
             value={currentLanguage}
             onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
-            className="text-sm bg-white text-[#0F172A] font-bold px-2 py-1.5 rounded-md border border-[#E2E8F0] focus:outline-hidden cursor-pointer max-w-[130px] truncate min-h-[38px]"
-            title="Select Language (Telugu, Hindi, English)"
+            className="text-xs sm:text-sm bg-white text-[#0F172A] font-bold px-2.5 py-1.5 rounded-lg border border-[#CBD5E1] focus:border-[#0F766E] focus:outline-hidden cursor-pointer min-h-[38px] shadow-2xs flex-1 max-w-[140px] text-right"
+            title="Select Language / భాష మార్చు"
           >
             {SCHEDULED_LANGUAGES.map((lang) => (
               <option key={lang.code} value={lang.code}>
-                {lang.nativeName} ({lang.name})
+                {lang.nativeName}
               </option>
             ))}
           </select>

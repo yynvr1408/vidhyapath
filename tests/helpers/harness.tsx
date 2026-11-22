@@ -64,10 +64,19 @@ export function loadPack(packId: string): ContentPack {
   return JSON.parse(fs.readFileSync(`${PACK_DIR}/${packId}.json`, 'utf8')) as ContentPack;
 }
 
-/** Serves /packs/<id>.json from disk; any other URL gets a 404 so callers see a failed request. */
+const nativeFetch = globalThis.fetch;
+
+/** Serves /packs/<id>.json from disk; forwards local test servers; any other URL gets a 404. */
 export function installFetchMock() {
   const spy = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (url.startsWith('http://127.0.0.1:') || url.startsWith('http://localhost:')) {
+      try {
+        return await nativeFetch(input, _init);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err.message || 'connection failed' }), { status: 502 });
+      }
+    }
     const m = url.match(/\/packs\/([^/?]+)\.json$/);
     if (m) {
       const body = fs.readFileSync(`${PACK_DIR}/${m[1]}.json`, 'utf8');

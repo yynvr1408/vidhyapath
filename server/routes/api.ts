@@ -6,6 +6,7 @@ import { EmailService } from '../services/email.js';
 import { AiGuardrailService } from '../services/aiGuardrails.js';
 import { SyllabusProcessorService } from '../services/syllabusProcessor.js';
 import { askGroqTutor } from '../services/groq.js';
+import { uploadToR2 } from '../services/r2Storage.js';
 import {
   User,
   UserRole,
@@ -17,6 +18,11 @@ import {
   CourseEnrollment,
   AiConversation,
   AiMessage,
+  Assignment,
+  AssignmentSubmission,
+  Quiz,
+  QuizAttempt,
+  QuizQuestion,
 } from '../../src/types/enterprise.js';
 
 const router = Router();
@@ -25,42 +31,49 @@ const router = Router();
 // 1. AUTHENTICATION & ACCOUNT MANAGEMENT
 // ============================================================================
 
-// POST /api/auth/login
+// POST /api/auth/login (Unified Role-Based Login: Email/Password for Staff/Parents & RollNo/PIN for Students)
 router.post('/auth/login', (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
+  const { email, password, loginCode, rollNumber, pin } = req.body;
+  const rawIdentifier = loginCode || rollNumber || email;
+  const rawCredential = pin || password;
+
+  if (!rawIdentifier || !rawCredential) {
+    return res.status(400).json({ error: 'Username/Email/Roll Number and Password/PIN are required.' });
   }
 
-  const normalizedEmail = String(email).trim().toLowerCase();
+  const normalizedIdentifier = String(rawIdentifier).trim().toLowerCase();
 
   // Check account lockout
-  const lockout = AuthService.checkAccountLockout(normalizedEmail);
+  const lockout = AuthService.checkAccountLockout(normalizedIdentifier);
   if (lockout.locked) {
     return res.status(429).json({
       error: `Account temporarily locked due to multiple failed login attempts. Please wait ${lockout.waitSeconds}s before trying again.`,
     });
   }
 
-  // Find user
+  // Find user by Email, Roll Number / Login Code, or User ID
   let matchedUser: (User & { passwordHash: string; salt: string }) | null = null;
   for (const user of dataStore.users.values()) {
-    if (user.email.toLowerCase() === normalizedEmail) {
+    if (
+      user.email.toLowerCase() === normalizedIdentifier ||
+      user.id.toLowerCase() === normalizedIdentifier ||
+      (user.studentProfile?.rollNumber && user.studentProfile.rollNumber.toLowerCase() === normalizedIdentifier)
+    ) {
       matchedUser = user;
       break;
     }
   }
 
   if (!matchedUser) {
-    AuthService.recordLoginFailure(normalizedEmail);
-    return res.status(401).json({ error: 'Invalid email or password.' });
+    AuthService.recordLoginFailure(normalizedIdentifier);
+    return res.status(401).json({ error: 'Invalid credentials. User profile not found.' });
   }
 
-  // Verify password
-  const isValid = dataStore.verifyPassword(password, matchedUser.passwordHash, matchedUser.salt);
+  // Verify password or PIN
+  const isValid = dataStore.verifyPassword(String(rawCredential), matchedUser.passwordHash, matchedUser.salt);
   if (!isValid) {
-    AuthService.recordLoginFailure(normalizedEmail);
-    return res.status(401).json({ error: 'Invalid email or password.' });
+    AuthService.recordLoginFailure(normalizedIdentifier);
+    return res.status(401).json({ error: 'Invalid password or PIN.' });
   }
 
   // Check user status
@@ -68,11 +81,11 @@ router.post('/auth/login', (req: Request, res: Response) => {
     return res.status(403).json({ error: 'Your account has been suspended. Please contact your administrator.' });
   }
   if (matchedUser.status === 'pending_verification') {
-    return res.status(403).json({ error: 'Your account is pending email verification. Please verify your OTP.' });
+    return res.status(403).json({ error: 'Your account is pending verification. Please verify your OTP.' });
   }
 
   // Success
-  AuthService.recordLoginSuccess(normalizedEmail);
+  AuthService.recordLoginSuccess(normalizedIdentifier);
   matchedUser.lastLoginAt = Date.now();
 
   const token = AuthService.generateToken(matchedUser);
@@ -92,8 +105,8 @@ router.post('/auth/login', (req: Request, res: Response) => {
     institution_admin: '/dashboard/institution-admin',
     academic_admin: '/dashboard/academic-admin',
     teacher: '/dashboard/teacher',
-    student: '/dashboard/student',
-    guardian: '/dashboard/guardian',
+    student: '/learn',
+    guardian: '/guardian',
     coordinator: '/dashboard/academic-admin',
     exam_admin: '/dashboard/academic-admin',
   };
@@ -111,7 +124,168 @@ router.post('/auth/login', (req: Request, res: Response) => {
       studentProfile: matchedUser.studentProfile,
       teacherProfile: matchedUser.teacherProfile,
     },
-    redirectTo: dashboardRoutes[matchedUser.role] || '/dashboard/student',
+    redirectTo: dashboardRoutes[matchedUser.role] || '/learn',
+  });
+});
+
+// POST /api/auth/register/guardian (Parent/Guardian Family Account Registration)
+router.post('/auth/register/guardian', async (req: Request, res: Response) => {
+  const { fullName, email, password, phone } = req.body;
+  if (!fullName || !email || !password) {
+    return res.status(400).json({ error: 'Full name, email, and password are required.' });
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  for (const u of dataStore.users.values()) {
+    if (u.email.toLowerCase() === normalizedEmail) {
+      return res.status(400).json({ error: 'An account with this email address already exists.' });
+    }
+  }
+
+  const guardianId = 'user_guard_' + Date.now().toString(36);
+  const pwd = dataStore.hashPassword(String(password));
+  const newGuardian: User & { passwordHash: string; salt: string } = {
+    id: guardianId,
+    fullName: String(fullName).trim(),
+    email: normalizedEmail,
+    phone: phone ? String(phone).trim() : undefined,
+    role: 'guardian',
+    status: 'active',
+    passwordHash: pwd.hash,
+    salt: pwd.salt,
+    createdAt: Date.now(),
+  };
+
+  dataStore.users.set(guardianId, newGuardian);
+
+  // Auto-provision primary family account
+  const famId = 'fam_' + Date.now().toString(36);
+  const family: Family = {
+    id: famId,
+    name: `${newGuardian.fullName}'s Family`,
+    primaryGuardianId: guardianId,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  dataStore.families.set(famId, family);
+
+  const memberId = 'fmem_' + Date.now().toString(36);
+  dataStore.familyMembers.set(memberId, {
+    id: memberId,
+    familyId: famId,
+    userId: guardianId,
+    role: 'guardian',
+    createdAt: Date.now(),
+  });
+
+  const token = AuthService.generateToken(newGuardian);
+
+  dataStore.logAudit({
+    userId: guardianId,
+    userEmail: newGuardian.email,
+    category: 'auth',
+    action: 'GUARDIAN_ACCOUNT_REGISTERED',
+    details: { familyId: famId, fullName: newGuardian.fullName },
+  });
+
+  return res.json({
+    success: true,
+    message: 'Parent/Guardian account created successfully.',
+    token,
+    user: newGuardian,
+    family,
+  });
+});
+
+// POST /api/auth/student/safety-question (Query student security question for PIN recovery)
+router.post('/auth/student/safety-question', (req: Request, res: Response) => {
+  const { loginCode, rollNumber } = req.body;
+  const rawCode = String(loginCode || rollNumber || '').trim().toUpperCase();
+  if (!rawCode) {
+    return res.status(400).json({ error: 'Student login code or roll number is required.' });
+  }
+
+  let matchedStudent: User | null = null;
+  for (const u of dataStore.users.values()) {
+    if (
+      u.role === 'student' &&
+      (u.studentProfile?.rollNumber?.toUpperCase() === rawCode || u.id.toUpperCase() === rawCode)
+    ) {
+      matchedStudent = u;
+      break;
+    }
+  }
+
+  if (!matchedStudent) {
+    return res.status(404).json({ error: 'Student account not found.' });
+  }
+
+  return res.json({
+    success: true,
+    studentId: matchedStudent.id,
+    fullName: matchedStudent.fullName,
+    securityQuestionId: matchedStudent.studentProfile?.securityQuestionId || 'subject',
+    securityQuestion: matchedStudent.studentProfile?.securityQuestion || 'What is your favorite school subject?',
+  });
+});
+
+// POST /api/auth/student/reset-pin (Zero-PII Student PIN Reset via Security Answer)
+router.post('/auth/student/reset-pin', (req: Request, res: Response) => {
+  const { loginCode, rollNumber, securityAnswer, newPin } = req.body;
+  const rawCode = String(loginCode || rollNumber || '').trim().toUpperCase();
+  if (!rawCode || !securityAnswer || !newPin) {
+    return res.status(400).json({ error: 'Login code, security answer, and new 4-digit PIN are required.' });
+  }
+
+  const cleanPin = String(newPin).trim();
+  if (cleanPin.length !== 4 || !/^\d{4}$/.test(cleanPin)) {
+    return res.status(400).json({ error: 'PIN must be exactly 4 digits.' });
+  }
+
+  let matchedStudent: (User & { passwordHash: string; salt: string }) | null = null;
+  for (const u of dataStore.users.values()) {
+    if (
+      u.role === 'student' &&
+      (u.studentProfile?.rollNumber?.toUpperCase() === rawCode || u.id.toUpperCase() === rawCode)
+    ) {
+      matchedStudent = u;
+      break;
+    }
+  }
+
+  if (!matchedStudent) {
+    return res.status(404).json({ error: 'Student profile not found.' });
+  }
+
+  // Verify answer (case-insensitive + regional synonyms)
+  const inputAnswer = String(securityAnswer).trim().toLowerCase();
+  const acceptedMath = ['maths', 'math', 'mathematics', 'లెక్కలు', 'గణితం', 'गणित'];
+  const storedAnswer = (matchedStudent.studentProfile?.securityAnswerHash || 'maths').toLowerCase();
+
+  const isMatch =
+    inputAnswer === storedAnswer ||
+    (storedAnswer.includes('math') && acceptedMath.includes(inputAnswer));
+
+  if (!isMatch) {
+    return res.status(400).json({ error: 'Incorrect security answer. Please try again.' });
+  }
+
+  // Update student PIN hash
+  const pwd = dataStore.hashPassword(cleanPin);
+  matchedStudent.passwordHash = pwd.hash;
+  matchedStudent.salt = pwd.salt;
+  dataStore.users.set(matchedStudent.id, matchedStudent);
+
+  dataStore.logAudit({
+    userId: matchedStudent.id,
+    category: 'auth',
+    action: 'STUDENT_PIN_RESET_SUCCESS',
+    details: { rollNumber: rawCode },
+  });
+
+  return res.json({
+    success: true,
+    message: 'PIN successfully updated! You can now log in with your new 4-digit PIN.',
   });
 });
 
@@ -366,46 +540,98 @@ router.post('/auth/register/institution', async (req: Request, res: Response) =>
   });
 });
 
-// POST /api/auth/register/student (supports both /auth/register/student and /api/auth/register/student)
+// POST /api/auth/register/student (supports both Institutional and Independent Home Learners)
 router.post(['/auth/register/student', '/api/auth/register/student'], async (req: Request, res: Response) => {
   const {
     fullName,
     email,
     password,
+    pin,
     institutionId,
     departmentId,
     programmeId,
     admissionYear,
     semester,
+    classGrade,
+    board,
+    state,
+    isIndependent,
+    familyId,
+    guardianId,
     rollNumber,
     guardianEmail,
+    securityQuestionId,
+    securityQuestion,
+    securityAnswer,
   } = req.body;
 
-  if (!fullName || !email || !password || !institutionId || !programmeId || !semester) {
-    return res.status(400).json({ error: 'Full name, email, password, institution, programme, and semester are required.' });
+  const cleanName = String(fullName || '').trim();
+  if (!cleanName) {
+    return res.status(400).json({ error: 'Student full name is required.' });
   }
 
-  // Check if email already registered
-  for (const u of dataStore.users.values()) {
-    if (u.email.toLowerCase() === String(email).trim().toLowerCase()) {
-      return res.status(400).json({ error: 'An account with this email address already exists.' });
+  const grade = parseInt(classGrade || semester || '10', 10) || 10;
+  const credential = pin || password || '1234';
+
+  const studentId = 'user_student_' + Date.now().toString(36);
+  const cleanEmail = email
+    ? String(email).trim().toLowerCase()
+    : `${studentId}@student.vidyapath.local`;
+
+  // Check if email already registered (if explicit email provided)
+  if (email) {
+    for (const u of dataStore.users.values()) {
+      if (u.email.toLowerCase() === cleanEmail) {
+        return res.status(400).json({ error: 'An account with this email address already exists.' });
+      }
     }
   }
 
-  const inst = dataStore.institutions.get(institutionId);
-  if (!inst) {
-    return res.status(400).json({ error: 'Invalid institution selected.' });
+  // Resolve institution: if independent home learner, bind to global platform institution
+  let effectiveInstId = institutionId;
+  let instName = 'Vidyapath Global Independent Academy';
+
+  if (!effectiveInstId || isIndependent) {
+    effectiveInstId = 'inst_global';
+    // Ensure inst_global exists in dataStore
+    if (!dataStore.institutions.has('inst_global')) {
+      dataStore.institutions.set('inst_global', {
+        id: 'inst_global',
+        name: 'Vidyapath Global Academy (Independent Learning)',
+        code: 'GLOBAL-SSC-CBSE',
+        type: 'school',
+        address: 'National Digital Learning Grid',
+        contactEmail: 'support@vidyapath.edu',
+        contactPhone: '+91 800-VIDYAPATH',
+        status: 'approved',
+        academicYears: [],
+        aiPolicy: {
+          institutionId: 'inst_global',
+          maxDailyQueriesStudent: 100,
+          blockExamKeywords: true,
+          requireSyllabusGrounding: true,
+          auditLoggingEnabled: true,
+        },
+        createdAt: Date.now(),
+      });
+    }
+  } else {
+    const inst = dataStore.institutions.get(effectiveInstId);
+    if (inst) instName = inst.name;
   }
 
-  const pwd = dataStore.hashPassword(password);
-  const studentId = 'user_student_' + Date.now().toString(36);
+  // Generate clean roll number if not provided
+  const prefix = cleanName.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) || 'STD';
+  const finalRollNumber = rollNumber || `${prefix}-${grade}`;
+
+  const pwd = dataStore.hashPassword(String(credential));
 
   const newStudent: User & { passwordHash: string; salt: string } = {
     id: studentId,
-    institutionId,
-    institutionName: inst.name,
-    fullName,
-    email: String(email).trim().toLowerCase(),
+    institutionId: effectiveInstId,
+    institutionName: instName,
+    fullName: cleanName,
+    email: cleanEmail,
     role: 'student',
     status: 'active',
     passwordHash: pwd.hash,
@@ -413,12 +639,20 @@ router.post(['/auth/register/student', '/api/auth/register/student'], async (req
     createdAt: Date.now(),
     studentProfile: {
       userId: studentId,
-      institutionId,
-      departmentId: departmentId || 'dept_cse',
-      programmeId,
-      admissionYear: admissionYear || '2024',
-      semester: parseInt(semester, 10) || 1,
-      rollNumber: rollNumber || `STD-${Date.now().toString().slice(-4)}`,
+      institutionId: effectiveInstId,
+      departmentId: departmentId || 'dept_maths',
+      programmeId: programmeId || `CLASS-${grade}`,
+      admissionYear: admissionYear || '2026',
+      semester: grade <= 10 ? 1 : (parseInt(semester, 10) || 1),
+      classGrade: grade,
+      board: board || (state ? `${state} SSC` : 'CBSE'),
+      state: state || 'Andhra Pradesh',
+      isIndependent: Boolean(isIndependent || !institutionId),
+      guardianId: guardianId || undefined,
+      securityQuestionId: securityQuestionId || 'subject',
+      securityQuestion: securityQuestion || 'What is your favorite school subject?',
+      securityAnswerHash: securityAnswer ? String(securityAnswer).trim().toLowerCase() : 'maths',
+      rollNumber: finalRollNumber,
       guardianEmail: guardianEmail || undefined,
       attendancePercent: 100,
       completedTopicIds: [],
@@ -427,7 +661,41 @@ router.post(['/auth/register/student', '/api/auth/register/student'], async (req
 
   dataStore.users.set(studentId, newStudent);
 
+  // Link to Guardian / Family Account if provided
+  if (familyId || guardianId) {
+    const targetFamilyId = familyId || (guardianId ? Array.from(dataStore.families.values()).find(f => f.primaryGuardianId === guardianId)?.id : null);
+    if (targetFamilyId && dataStore.families.has(targetFamilyId)) {
+      const memberId = 'fmem_' + Date.now().toString(36);
+      dataStore.familyMembers.set(memberId, {
+        id: memberId,
+        familyId: targetFamilyId,
+        userId: studentId,
+        role: 'student',
+        createdAt: Date.now(),
+      });
+
+      const guardId = 'guard_' + Date.now().toString(36);
+      const fam = dataStore.families.get(targetFamilyId)!;
+      dataStore.guardianships.set(guardId, {
+        id: guardId,
+        guardianId: fam.primaryGuardianId,
+        studentId,
+        relationship: 'parent',
+        createdAt: Date.now(),
+      });
+    }
+  }
+
   const token = AuthService.generateToken(newStudent);
+
+  dataStore.logAudit({
+    userId: studentId,
+    userEmail: newStudent.email,
+    institutionId: effectiveInstId,
+    category: 'auth',
+    action: 'STUDENT_REGISTERED_SUCCESS',
+    details: { classGrade: grade, rollNumber: finalRollNumber, isIndependent: Boolean(isIndependent) },
+  });
 
   return res.json({
     success: true,
@@ -442,7 +710,7 @@ router.post(['/auth/register/student', '/api/auth/register/student'], async (req
       institutionName: newStudent.institutionName,
       studentProfile: newStudent.studentProfile,
     },
-    redirectTo: '/dashboard/student',
+    redirectTo: '/learn',
   });
 });
 
@@ -742,46 +1010,323 @@ router.post('/lms/subjects/:subjectId/resources', requireAuth, requireRole(['tea
   return res.json({ success: true, message: 'Resource added successfully.', resource });
 });
 
-// POST /api/lms/assignments/:id/submit
-router.post('/lms/assignments/:id/submit', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+// ============================================================================
+// PHASE 4: TEACHER LMS WORKFLOWS (ASSIGNMENTS, QUIZZES, GRADING & R2 UPLOADS)
+// ============================================================================
+
+// POST /api/lms/assignments
+// Teachers create an assignment with instructions, due date, max marks, and optional Cloudflare R2 attachments
+router.post('/lms/assignments', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (user) {
+    if (!['teacher', 'institution_admin', 'academic_admin', 'super_admin'].includes(user.role)) {
+      return res.status(403).json({
+        error: `Access denied. Role "${user.role}" does not have teacher permissions to create assignments.`,
+      });
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const { subjectId, unitId, title, description, instructions, dueDate, maxMarks, fileUrl, teacherId, teacherName } = req.body;
+
+  if (!title || !subjectId) {
+    return res.status(400).json({ error: 'Title and subjectId (or courseId) are required.' });
+  }
+
+  const assignmentId = 'assign_' + Date.now().toString(36);
+  const activeTeacherId = user?.userId || teacherId || 'teacher_srinivas';
+  const teacherUser = dataStore.users.get(activeTeacherId);
+
+  const newAssignment: Assignment = {
+    id: assignmentId,
+    subjectId,
+    unitId: unitId || 'unit_1',
+    teacherId: activeTeacherId,
+    teacherName: teacherName || teacherUser?.fullName || 'Faculty Instructor',
+    title: String(title).trim(),
+    description: description || '',
+    instructions: instructions || '',
+    dueDate: Number(dueDate) || Date.now() + 7 * 86400000, // Default 7 days
+    maxMarks: Number(maxMarks) || 100,
+    submissionsCount: 0,
+    createdAt: Date.now(),
+  };
+
+  dataStore.assignments.set(assignmentId, newAssignment);
+
+  dataStore.logAudit({
+    category: 'academic',
+    action: 'ASSIGNMENT_CREATED',
+    details: {
+      assignmentId,
+      subjectId,
+      title: newAssignment.title,
+      maxMarks: newAssignment.maxMarks,
+      dueDate: newAssignment.dueDate,
+    },
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: 'Assignment created successfully by instructor.',
+    assignment: newAssignment,
+  });
+});
+
+// GET /api/lms/assignments/:id/submissions
+// Teacher reviews student submissions for an assignment
+router.get('/lms/assignments/:id/submissions', (req: Request, res: Response) => {
   const assignmentId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const assignment = dataStore.assignments.get(assignmentId);
   if (!assignment) {
     return res.status(404).json({ error: 'Assignment not found.' });
   }
 
-  const user = dataStore.users.get(req.user!.userId);
-  const subject = dataStore.subjects.get(assignment.subjectId);
-  if (user?.institutionId && subject?.institutionId && user.institutionId !== subject.institutionId) {
-    return res.status(403).json({ error: 'You are not enrolled in the institution offering this assignment.' });
+  const list = Array.from(dataStore.submissions.values()).filter((s) => s.assignmentId === assignmentId);
+
+  return res.json({
+    success: true,
+    assignmentId,
+    assignmentTitle: assignment.title,
+    count: list.length,
+    submissions: list,
+  });
+});
+
+// POST /api/lms/assignments/:id/grade
+// Teacher grades an assignment submission with marks and qualitative feedback
+router.post('/lms/assignments/:id/grade', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (user) {
+    if (!['teacher', 'institution_admin', 'academic_admin', 'super_admin'].includes(user.role)) {
+      return res.status(403).json({
+        error: `Access denied. Role "${user.role}" cannot grade submissions.`,
+      });
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Authentication required to grade.' });
   }
 
-  const { contentText, fileUrl } = req.body;
-  const subId = 'sub_' + assignmentId + '_' + req.user!.userId;
-  const submission = {
+  const assignmentId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const { submissionId, marksObtained, feedback } = req.body;
+
+  if (!submissionId || marksObtained === undefined) {
+    return res.status(400).json({ error: 'submissionId and marksObtained are required.' });
+  }
+
+  const submission = dataStore.submissions.get(submissionId);
+  if (!submission || submission.assignmentId !== assignmentId) {
+    return res.status(404).json({ error: 'Submission not found for this assignment.' });
+  }
+
+  const assignment = dataStore.assignments.get(assignmentId);
+  const numericMarks = Number(marksObtained);
+  if (assignment && numericMarks > assignment.maxMarks) {
+    return res.status(400).json({
+      error: `Marks obtained (${numericMarks}) cannot exceed max marks (${assignment.maxMarks}).`,
+    });
+  }
+
+  submission.marksObtained = numericMarks;
+  submission.feedback = feedback || 'Graded by instructor.';
+  submission.status = 'graded';
+  submission.gradedAt = Date.now();
+
+  // Create student notification
+  const notifId = 'notif_' + Date.now().toString(36);
+  dataStore.notifications.set(notifId, {
+    id: notifId,
+    userId: submission.studentId,
+    title: `Assignment Graded: ${assignment?.title || 'Assignment'}`,
+    message: `You received ${numericMarks}/${assignment?.maxMarks || 100} marks. Feedback: "${submission.feedback}"`,
+    type: 'assignment',
+    actionUrl: `/assignments/${assignmentId}`,
+    read: false,
+    createdAt: Date.now(),
+  });
+
+  dataStore.logAudit({
+    category: 'academic',
+    action: 'SUBMISSION_GRADED',
+    details: {
+      assignmentId,
+      submissionId,
+      studentId: submission.studentId,
+      marksObtained: numericMarks,
+    },
+  });
+
+  return res.json({
+    success: true,
+    message: 'Submission graded successfully with marks and feedback.',
+    submission,
+  });
+});
+
+// POST /api/lms/quizzes
+// Teachers author quizzes with distractor mistake tags for AI Socratic remediation
+router.post('/lms/quizzes', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (user) {
+    if (!['teacher', 'institution_admin', 'academic_admin', 'super_admin'].includes(user.role)) {
+      return res.status(403).json({
+        error: `Access denied. Role "${user.role}" cannot author quizzes.`,
+      });
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const { subjectId, unitId, title, timeLimitMinutes, passPercentage, questions, teacherId } = req.body;
+
+  if (!title || !subjectId || !Array.isArray(questions) || questions.length === 0) {
+    return res.status(400).json({ error: 'Title, subjectId, and at least one question are required.' });
+  }
+
+  const quizId = 'quiz_' + Date.now().toString(36);
+  const activeTeacherId = user?.userId || teacherId || 'teacher_srinivas';
+
+  const formattedQuestions: QuizQuestion[] = questions.map((q: any, idx: number) => ({
+    id: q.id || `q_${quizId}_${idx + 1}`,
+    text: String(q.text || ''),
+    options: Array.isArray(q.options) ? q.options.map(String) : [],
+    correctOptionIndex: Number(q.correctOptionIndex) || 0,
+    explanation: q.explanation || '',
+  }));
+
+  const newQuiz: Quiz = {
+    id: quizId,
+    subjectId,
+    unitId: unitId || 'unit_1',
+    teacherId: activeTeacherId,
+    title: String(title).trim(),
+    timeLimitMinutes: Number(timeLimitMinutes) || 15,
+    passPercentage: Number(passPercentage) || 60,
+    questions: formattedQuestions,
+    createdAt: Date.now(),
+  };
+
+  dataStore.quizzes.set(quizId, newQuiz);
+
+  dataStore.logAudit({
+    category: 'academic',
+    action: 'QUIZ_CREATED',
+    details: {
+      quizId,
+      subjectId,
+      title: newQuiz.title,
+      questionCount: newQuiz.questions.length,
+      passPercentage: newQuiz.passPercentage,
+    },
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: 'Quiz created successfully by instructor.',
+    quiz: newQuiz,
+  });
+});
+
+// GET /api/lms/quizzes/:id/attempts
+// Teacher reviews quiz attempts and student scores
+router.get('/lms/quizzes/:id/attempts', (req: Request, res: Response) => {
+  const quizId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const quiz = dataStore.quizzes.get(quizId);
+  if (!quiz) {
+    return res.status(404).json({ error: 'Quiz not found.' });
+  }
+
+  const list = Array.from(dataStore.quizAttempts.values()).filter((a) => a.quizId === quizId);
+
+  return res.json({
+    success: true,
+    quizId,
+    quizTitle: quiz.title,
+    count: list.length,
+    attempts: list,
+  });
+});
+
+// POST /api/lms/upload
+// Zero-disk Cloudflare R2 file upload for teaching materials, assignments & answer keys
+router.post('/lms/upload', async (req: Request, res: Response) => {
+  try {
+    const { filename, contentType, base64Data } = req.body;
+    if (!filename || !base64Data) {
+      return res.status(400).json({ error: 'filename and base64Data are required.' });
+    }
+
+    const buffer = Buffer.from(base64Data, 'base64');
+    const safeName = `${Date.now()}_${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const fileUrl = await uploadToR2(buffer, safeName, contentType || 'application/pdf');
+
+    return res.status(201).json({
+      success: true,
+      message: 'File uploaded to Cloudflare R2 successfully.',
+      fileUrl,
+      filename: safeName,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to upload file to Cloudflare R2: ' + err.message });
+  }
+});
+
+// POST /api/lms/assignments/:id/submit
+router.post('/lms/assignments/:id/submit', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (!user && process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Authentication required to submit assignment.' });
+  }
+
+  const assignmentId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const assignment = dataStore.assignments.get(assignmentId);
+  if (!assignment) {
+    return res.status(404).json({ error: 'Assignment not found.' });
+  }
+
+  const { contentText, fileUrl, studentId, studentName } = req.body;
+  const targetStudentId = user?.userId || studentId;
+  if (!targetStudentId) {
+    return res.status(400).json({ error: 'studentId or authenticated session is required.' });
+  }
+
+  const subUser = dataStore.users.get(targetStudentId);
+  const subId = 'sub_' + assignmentId + '_' + targetStudentId;
+  const submission: AssignmentSubmission = {
     id: subId,
     assignmentId,
-    studentId: req.user!.userId,
-    studentName: user?.fullName || 'Student',
+    studentId: targetStudentId,
+    studentName: studentName || subUser?.fullName || 'Student',
     contentText: contentText || '',
     fileUrl,
     status: 'submitted',
     submittedAt: Date.now(),
   };
 
-  dataStore.submissions.set(subId, submission as any);
+  dataStore.submissions.set(subId, submission);
 
   return res.json({ success: true, message: 'Assignment submitted successfully!', submission });
 });
 
 // POST /api/lms/quizzes/:id/attempt
-router.post('/lms/quizzes/:id/attempt', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/lms/quizzes/:id/attempt', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (!user && process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Authentication required to attempt quiz.' });
+  }
+
   const quizId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const quiz = dataStore.quizzes.get(quizId);
   if (!quiz) return res.status(404).json({ error: 'Quiz not found.' });
 
-  const { selectedAnswers = [] } = req.body;
-  const user = dataStore.users.get(req.user!.userId);
+  const { selectedAnswers = [], studentId, studentName } = req.body;
+  const targetStudentId = user?.userId || studentId;
+  if (!targetStudentId) {
+    return res.status(400).json({ error: 'studentId or authenticated session is required.' });
+  }
+
+  const subUser = dataStore.users.get(targetStudentId);
 
   let score = 0;
   quiz.questions.forEach((q, idx) => {
@@ -794,11 +1339,11 @@ router.post('/lms/quizzes/:id/attempt', requireAuth, (req: AuthenticatedRequest,
   const passed = percentage >= quiz.passPercentage;
 
   const attemptId = 'att_' + quiz.id + '_' + Date.now().toString(36);
-  const attempt = {
+  const attempt: QuizAttempt = {
     id: attemptId,
     quizId: quiz.id,
-    studentId: req.user!.userId,
-    studentName: user?.fullName || 'Student',
+    studentId: targetStudentId,
+    studentName: studentName || subUser?.fullName || 'Student',
     score,
     totalQuestions: quiz.questions.length,
     percentage,
@@ -807,7 +1352,7 @@ router.post('/lms/quizzes/:id/attempt', requireAuth, (req: AuthenticatedRequest,
     completedAt: Date.now(),
   };
 
-  dataStore.quizAttempts.set(attemptId, attempt as any);
+  dataStore.quizAttempts.set(attemptId, attempt);
 
   return res.json({
     success: true,
@@ -855,23 +1400,36 @@ router.post('/lms/topics/:topicId/toggle-complete', requireAuth, (req: Authentic
 // 6. RESPONSIBLE AI TUTOR WITH MULTI-TIER GUARDRAILS
 // ============================================================================
 
-// POST /api/tutor/chat
-router.post('/tutor/chat', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { query, subjectId, unitTitle, topicTitle } = req.body;
+// POST /api/tutor/chat (Context-Aware Socratic AI Tutor with Dynamic Grade, Board & Trilingual Delivery)
+router.post('/tutor/chat', async (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (!user && process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Authentication required to consult AI tutor.' });
+  }
+
+  const { query, subjectId, unitTitle, topicTitle, classGrade, board, state, language, studentId } = req.body;
   if (!query) {
     return res.status(400).json({ error: 'Query prompt is required.' });
   }
 
-  const user = req.user!;
+  const activeUserId = user?.userId || studentId || 'student_guest';
+  const studentUser = dataStore.users.get(activeUserId);
+  const profile = studentUser?.studentProfile;
+
+  const effectiveGrade = Number(classGrade || profile?.classGrade || 10);
+  const effectiveBoard = board || profile?.board || 'State SSC';
+  const effectiveState = state || profile?.state || 'Andhra Pradesh';
+  const effectiveLang = (language || 'te').toLowerCase() === 'hi' ? 'hi' : (language || 'te').toLowerCase() === 'en' ? 'en' : 'te';
+
   const subject = subjectId ? dataStore.subjects.get(subjectId) : null;
-  const subjectName = subject ? subject.name : 'Computer Science & Mathematics';
+  const subjectName = subject ? subject.name : 'Mathematics';
 
   // 1. Enforce Application & Backend Guardrails
   const check = AiGuardrailService.inspectQuery(
-    user.userId,
+    activeUserId,
     String(query),
-    user.institutionId,
-    user.role
+    user?.institutionId,
+    user?.role || 'student'
   );
 
   if (!check.allowed) {
@@ -889,27 +1447,55 @@ router.post('/tutor/chat', requireAuth, async (req: AuthenticatedRequest, res: R
       answer: check.pedagogicalNudge,
       flagged: false,
       isSocraticNudge: true,
+      language: effectiveLang,
     });
   }
 
-  // 3. Build syllabus-grounded system prompt
-  const systemPrompt = AiGuardrailService.buildPedagogicalSystemPrompt(subjectName, unitTitle, topicTitle);
+  // 3. Build dynamic syllabus-grounded system prompt
+  const systemPrompt = AiGuardrailService.buildPedagogicalSystemPrompt(
+    subjectName,
+    unitTitle,
+    topicTitle,
+    effectiveGrade,
+    effectiveBoard,
+    effectiveState,
+    effectiveLang
+  );
 
   try {
     const aiResponse = await askGroqTutor(query, systemPrompt);
-    return res.json({
-      answer: aiResponse,
-      flagged: false,
-      groundedSubject: subjectName,
-    });
+    if (aiResponse) {
+      return res.json({
+        answer: aiResponse,
+        flagged: false,
+        groundedSubject: subjectName,
+        classGrade: effectiveGrade,
+        board: effectiveBoard,
+        state: effectiveState,
+        language: effectiveLang,
+      });
+    }
   } catch (err: any) {
-    // Socratic Fallback
-    return res.json({
-      answer: `Let's break this down step-by-step for ${subjectName}. What is the primary definition or theorem relevant to your question? Try explaining your first thoughts, and I will guide you to the full solution!`,
-      flagged: false,
-      fallback: true,
-    });
+    console.warn('[AI Tutor] Model call failed, using Socratic pedagogical fallback.');
   }
+
+  // Socratic Fallback Localized to the 3 Core Teaching Languages
+  const fallbackMessage =
+    effectiveLang === 'te'
+      ? `మనం ${subjectName} (తరగతి ${effectiveGrade}) లోని ఈ భావనను క్రమపద్ధతిలో అర్థం చేసుకుందాం. మీ ప్రశ్నకు సంబంధించిన మొదటి సూత్రం లేదా సిద్ధాంతం ఏమిటో మీరు చెప్పగలరా? ప్రయత్నించండి, నేను మీకు సమాధానం చేరుకోవడానికి మార్గదర్శనం చేస్తాను!`
+      : effectiveLang === 'hi'
+      ? `आइए हम ${subjectName} (कक्षा ${effectiveGrade}) की इस अवधारणा को चरण-दर-चरण समझें। क्या आप इस प्रश्न से संबंधित पहला सूत्र या प्रमेय बता सकते हैं? प्रयास करें, मैं आपको उत्तर तक पहुँचने में मार्गदर्शन करूँगा!`
+      : `Let's break this concept down step-by-step for ${subjectName} (Class ${effectiveGrade}, ${effectiveBoard}). What is the primary definition or theorem relevant to your question? Try explaining your first thoughts, and I will guide you to the full solution!`;
+
+  return res.json({
+    answer: fallbackMessage,
+    flagged: false,
+    fallback: true,
+    classGrade: effectiveGrade,
+    board: effectiveBoard,
+    state: effectiveState,
+    language: effectiveLang,
+  });
 });
 
 // ============================================================================
@@ -1310,6 +1896,154 @@ router.get('/family/children/:id', (req: Request, res: Response) => {
 });
 
 // ============================================================================
+// PHASE 5: VERIFIED GUARDIAN DASHBOARD & SHARED-DEVICE FAMILY MANAGER
+// ============================================================================
+
+// GET /api/family/:familyId/overview
+// Comprehensive Guardian Dashboard overview across all children (multi-child switcher)
+router.get('/family/:familyId/overview', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  const familyId = Array.isArray(req.params.familyId) ? req.params.familyId[0] : req.params.familyId;
+  const family = dataStore.families.get(familyId);
+  if (!family) {
+    return res.status(404).json({ error: 'Family not found.' });
+  }
+
+  // Authorization: Guardian must be linked to family (or super_admin)
+  if (user && user.role === 'guardian') {
+    const isFamilyGuardian =
+      family.primaryGuardianId === user.userId ||
+      Array.from(dataStore.familyMembers.values()).some(
+        (m) => m.familyId === familyId && m.userId === user.userId && m.role === 'guardian'
+      );
+    if (!isFamilyGuardian) {
+      return res.status(403).json({ error: 'Access denied. You can only view your own family dashboard.' });
+    }
+  }
+
+  const memberStudentIds = Array.from(dataStore.familyMembers.values())
+    .filter((m) => m.familyId === familyId && m.role === 'student')
+    .map((m) => m.userId);
+
+  const childrenOverview = memberStudentIds.map((studentId) => {
+    const studentUser = dataStore.users.get(studentId);
+    const profile = studentUser?.studentProfile;
+
+    // Quiz telemetry
+    const attempts = Array.from(dataStore.quizAttempts.values()).filter((a) => a.studentId === studentId);
+    const passedCount = attempts.filter((a) => a.passed).length;
+    const avgScore =
+      attempts.length > 0
+        ? Math.round(attempts.reduce((sum, a) => sum + a.percentage, 0) / attempts.length)
+        : 0;
+
+    // Assignment telemetry
+    const submissions = Array.from(dataStore.submissions.values()).filter((s) => s.studentId === studentId);
+    const gradedSubmissions = submissions.filter((s) => s.status === 'graded');
+
+    // AI Conversations
+    const convs = Array.from(dataStore.aiConversations.values()).filter((c) => c.studentId === studentId);
+
+    return {
+      studentId,
+      fullName: studentUser?.fullName || 'Child',
+      loginCode: profile?.rollNumber || studentId,
+      classGrade: profile?.classGrade || 10,
+      board: profile?.board || 'State SSC',
+      state: profile?.state || 'Andhra Pradesh',
+      isIndependent: profile?.isIndependent ?? true,
+      attendancePercent: profile?.attendancePercent || 100,
+      completedTopicsCount: profile?.completedTopicIds?.length || 0,
+      quizzes: {
+        totalAttempted: attempts.length,
+        passedCount,
+        averagePercentage: avgScore,
+        recentAttempts: attempts.slice(-3),
+      },
+      assignments: {
+        totalSubmitted: submissions.length,
+        gradedCount: gradedSubmissions.length,
+        recentFeedback: gradedSubmissions.slice(-3).map((g) => ({
+          assignmentId: g.assignmentId,
+          marksObtained: g.marksObtained,
+          feedback: g.feedback,
+        })),
+      },
+      aiTutorActivity: {
+        conversationsCount: convs.length,
+        activeTopics: convs.map((c) => c.topicId).filter(Boolean),
+      },
+    };
+  });
+
+  return res.json({
+    success: true,
+    family: { id: family.id, name: family.name },
+    childrenCount: childrenOverview.length,
+    children: childrenOverview,
+  });
+});
+
+// POST /api/family/:familyId/children/:studentId/reset-pin
+// Guardian resets their child's 4-digit PIN directly from the Guardian Dashboard
+router.post('/family/:familyId/children/:studentId/reset-pin', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  const familyId = Array.isArray(req.params.familyId) ? req.params.familyId[0] : req.params.familyId;
+  const studentId = Array.isArray(req.params.studentId) ? req.params.studentId[0] : req.params.studentId;
+  const { newPin } = req.body;
+
+  if (!newPin || !/^\d{4}$/.test(String(newPin))) {
+    return res.status(400).json({ error: 'PIN must be exactly 4 digits (e.g. 1234).' });
+  }
+
+  const family = dataStore.families.get(familyId);
+  if (!family) {
+    return res.status(404).json({ error: 'Family not found.' });
+  }
+
+  // Authorization check
+  if (user && user.role === 'guardian') {
+    const isFamilyGuardian =
+      family.primaryGuardianId === user.userId ||
+      Array.from(dataStore.familyMembers.values()).some(
+        (m) => m.familyId === familyId && m.userId === user.userId && m.role === 'guardian'
+      );
+    if (!isFamilyGuardian) {
+      return res.status(403).json({ error: 'Access denied. Only the guardian of this family can reset child PIN.' });
+    }
+  }
+
+  const isChildInFamily = Array.from(dataStore.familyMembers.values()).some(
+    (m) => m.familyId === familyId && m.userId === studentId && m.role === 'student'
+  );
+  if (!isChildInFamily) {
+    return res.status(404).json({ error: 'Child is not a member of this family.' });
+  }
+
+  const studentUser = dataStore.users.get(studentId);
+  if (!studentUser) {
+    return res.status(404).json({ error: 'Student record not found.' });
+  }
+
+  // Hash new PIN
+  const pwd = dataStore.hashPassword(String(newPin));
+  studentUser.passwordHash = pwd.hash;
+  studentUser.salt = pwd.salt;
+  dataStore.users.set(studentId, studentUser);
+
+  dataStore.logAudit({
+    category: 'auth',
+    action: 'GUARDIAN_CHILD_PIN_RESET',
+    details: { familyId, studentId, guardianId: user?.userId || family.primaryGuardianId },
+  });
+
+  return res.json({
+    success: true,
+    message: `PIN for ${studentUser.fullName} has been reset successfully.`,
+  });
+});
+
+// ============================================================================
 // 9. COURSES & ACADEMIC MANAGEMENT (L2 Institution Admin Direct Control)
 // ============================================================================
 
@@ -1355,6 +2089,345 @@ router.post('/courses', (req: Request, res: Response) => {
     success: true,
     message: 'Course created successfully under Institutional Administration.',
     course: newCourse,
+  });
+});
+
+// ============================================================================
+// PHASE 2: GLOBAL COURSE CATALOG & STATE SSC / CBSE ENGINE (CLASSES 1-10 FREE)
+// ============================================================================
+
+// Helper: Seed standard Pan-India Global Courses (Classes 1-10 Strictly 100% Free)
+function ensureGlobalCoursesSeeded() {
+  const existingGlobals = Array.from(dataStore.courses.values()).filter((c) => c.scope === 'global');
+  if (existingGlobals.length > 0) return;
+
+  const standardCourses: Partial<Course>[] = [
+    {
+      id: 'course_ap_ssc_10_maths_te',
+      code: 'AP-SSC-10-MATHS',
+      title: 'Class 10 Mathematics (AP State Board SSC)',
+      classGrade: 10,
+      board: 'State SSC',
+      state: 'Andhra Pradesh',
+      subjectName: 'Mathematics',
+      language: 'te',
+      description: 'Complete SSC syllabus including Real Numbers, Sets, Polynomials, and Trigonometry taught in native Telugu.',
+      isFree: true,
+      feeAmount: 0,
+      feeCurrency: 'INR',
+      syllabus: [
+        { unitNumber: 1, title: 'వాస్తవ సంఖ్యలు (Real Numbers)', topics: ['యూక్లిడ్ భాగహార న్యాయం', 'అంకగణిత ప్రాథమిక సిద్ధాంతం'] },
+        { unitNumber: 2, title: 'సమితులు (Sets)', topics: ['సమితుల రకాలు', 'వెన్ చిత్రాలు', 'సమ్మేళనం మరియు ఛేదనం'] },
+        { unitNumber: 3, title: 'బహుపదులు (Polynomials)', topics: ['బహుపది శూన్యాలు', 'రేఖాత్మక మరియు వర్గ బహుపదులు'] },
+      ],
+    },
+    {
+      id: 'course_cbse_10_maths_hi',
+      code: 'CBSE-10-MATHS-HI',
+      title: 'Class 10 Mathematics (CBSE Pan-India)',
+      classGrade: 10,
+      board: 'CBSE',
+      state: 'All India',
+      subjectName: 'Mathematics',
+      language: 'hi',
+      description: 'NCERT aligned Class 10 CBSE mathematics curriculum with step-by-step Socratic practice in Hindi.',
+      isFree: true,
+      feeAmount: 0,
+      feeCurrency: 'INR',
+      syllabus: [
+        { unitNumber: 1, title: 'वास्तविक संख्याएँ (Real Numbers)', topics: ['यूक्लिड विभाजन प्रमेयिका', 'अपरिमेय संख्याओं का पुनर्भ्रमण'] },
+        { unitNumber: 2, title: 'बहुपद (Polynomials)', topics: ['शून्यकों का ज्यामितीय अर्थ', 'विभाजन एल्गोरिद्म'] },
+      ],
+    },
+    {
+      id: 'course_cbse_10_maths_en',
+      code: 'CBSE-10-MATHS-EN',
+      title: 'Class 10 Mathematics (CBSE Pan-India)',
+      classGrade: 10,
+      board: 'CBSE',
+      state: 'All India',
+      subjectName: 'Mathematics',
+      language: 'en',
+      description: 'Comprehensive CBSE Class 10 Maths with bilingual voice tutor and offline practice sets.',
+      isFree: true,
+      feeAmount: 0,
+      feeCurrency: 'INR',
+      syllabus: [
+        { unitNumber: 1, title: 'Real Numbers', topics: ['Fundamental Theorem of Arithmetic', 'Revisiting Irrational Numbers'] },
+        { unitNumber: 2, title: 'Polynomials', topics: ['Geometrical Meaning of Zeroes', 'Relationship between Zeroes and Coefficients'] },
+      ],
+    },
+    {
+      id: 'course_ts_ssc_10_maths_te',
+      code: 'TS-SSC-10-MATHS',
+      title: 'Class 10 Mathematics (Telangana State SSC)',
+      classGrade: 10,
+      board: 'State SSC',
+      state: 'Telangana',
+      subjectName: 'Mathematics',
+      language: 'te',
+      description: 'Telangana SCERT Class 10 syllabus with localized examples and Telugu voice tutoring.',
+      isFree: true,
+      feeAmount: 0,
+      feeCurrency: 'INR',
+      syllabus: [
+        { unitNumber: 1, title: 'వాస్తవ సంఖ్యలు', topics: ['అకరణీయ సంఖ్యలు', 'సంవర్గమానాలు (Logarithms)'] },
+      ],
+    },
+    {
+      id: 'course_cbse_08_maths_en',
+      code: 'CBSE-08-MATHS-EN',
+      title: 'Class 8 Mathematics (CBSE)',
+      classGrade: 8,
+      board: 'CBSE',
+      state: 'All India',
+      subjectName: 'Mathematics',
+      language: 'en',
+      description: 'Foundational middle school algebra and geometry with visual problem breakdown.',
+      isFree: true,
+      feeAmount: 0,
+      feeCurrency: 'INR',
+      syllabus: [
+        { unitNumber: 1, title: 'Rational Numbers', topics: ['Properties of Rational Numbers', 'Representation on Number Line'] },
+      ],
+    },
+    {
+      id: 'course_cbse_05_evs_en',
+      code: 'CBSE-05-EVS-EN',
+      title: 'Class 5 Environmental Studies (EVS)',
+      classGrade: 5,
+      board: 'CBSE',
+      state: 'All India',
+      subjectName: 'Environmental Studies',
+      language: 'en',
+      description: 'Primary school nature exploration and science foundations with audio-visual stories.',
+      isFree: true,
+      feeAmount: 0,
+      feeCurrency: 'INR',
+      syllabus: [
+        { unitNumber: 1, title: 'Super Senses', topics: ['How Animals Sense', 'Ecosystem Wonders'] },
+      ],
+    },
+  ];
+
+  for (const c of standardCourses) {
+    const fullCourse: Course = {
+      id: c.id!,
+      code: c.code!,
+      title: c.title!,
+      institutionId: 'global',
+      scope: 'global',
+      classGrade: c.classGrade,
+      board: c.board,
+      state: c.state,
+      subjectName: c.subjectName,
+      language: c.language,
+      isFree: true,
+      feeAmount: 0,
+      feeCurrency: 'INR',
+      description: c.description || '',
+      syllabus: c.syllabus || [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    dataStore.courses.set(fullCourse.id, fullCourse);
+  }
+}
+
+// POST /api/courses/global/publish
+// Super Admin publishes standardized global courses.
+// Strict Business Rule: Classes 1 to 10 are ALWAYS 100% Free (isFree: true, feeAmount: 0).
+router.post('/courses/global/publish', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (user) {
+    if (user.role !== 'super_admin') {
+      return res.status(403).json({
+        error: `Access denied. Only Super Administrators can publish global courses. Your role is "${user.role}".`,
+      });
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Authentication required to publish global courses.' });
+  }
+
+  const { code, title, classGrade, board, state, subjectName, language, description, syllabus, isFree, feeAmount } = req.body;
+
+  if (!code || !title) {
+    return res.status(400).json({ error: 'Course code and title are required.' });
+  }
+
+  const grade = Number(classGrade) || 10;
+  const isClass1to10 = grade >= 1 && grade <= 10;
+
+  // Strict Policy Enforcement: Classes 1 to 10 CANNOT have paywalls
+  const guaranteedFree = isClass1to10 ? true : (isFree !== undefined ? Boolean(isFree) : true);
+  const guaranteedFee = isClass1to10 ? 0 : (guaranteedFree ? 0 : Number(feeAmount || 0));
+
+  const courseId = 'course_glob_' + Date.now().toString(36);
+  const newCourse: Course = {
+    id: courseId,
+    code: String(code).trim().toUpperCase(),
+    title: String(title).trim(),
+    institutionId: 'global',
+    scope: 'global',
+    classGrade: grade,
+    board: board || 'State SSC',
+    state: state || 'All India',
+    subjectName: subjectName || 'General',
+    language: language || 'en',
+    description: description || '',
+    syllabus: syllabus || [],
+    isFree: guaranteedFree,
+    feeAmount: guaranteedFee,
+    feeCurrency: 'INR',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  dataStore.courses.set(courseId, newCourse);
+
+  dataStore.logAudit({
+    category: 'academic',
+    action: 'GLOBAL_COURSE_PUBLISHED',
+    details: {
+      courseId,
+      code: newCourse.code,
+      title: newCourse.title,
+      classGrade: newCourse.classGrade,
+      board: newCourse.board,
+      state: newCourse.state,
+      isFree: newCourse.isFree,
+    },
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: isClass1to10
+      ? `Global Course for Class ${grade} published successfully under Mandatory 100% Free Tier.`
+      : `Global Course for Class ${grade} published successfully.`,
+    course: newCourse,
+  });
+});
+
+// GET /api/courses/global
+// Browse and filter the Pan-India Global Course Catalog
+router.get('/courses/global', (req: Request, res: Response) => {
+  ensureGlobalCoursesSeeded();
+
+  const { classGrade, board, state, language, search } = req.query;
+
+  let list = Array.from(dataStore.courses.values()).filter((c) => c.scope === 'global');
+
+  if (classGrade) {
+    const g = Number(classGrade);
+    list = list.filter((c) => c.classGrade === g);
+  }
+
+  if (board) {
+    const b = String(board).trim().toLowerCase();
+    list = list.filter((c) => c.board?.toLowerCase() === b || (b === 'state_ssc' && c.board?.toLowerCase().includes('state')));
+  }
+
+  if (state) {
+    const s = String(state).trim().toLowerCase();
+    list = list.filter((c) => c.state?.toLowerCase().includes(s) || c.state?.toLowerCase() === 'all india');
+  }
+
+  if (language) {
+    const lang = String(language).trim().toLowerCase();
+    list = list.filter((c) => c.language === lang);
+  }
+
+  if (search) {
+    const q = String(search).trim().toLowerCase();
+    list = list.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q) ||
+        (c.description && c.description.toLowerCase().includes(q)) ||
+        (c.subjectName && c.subjectName.toLowerCase().includes(q))
+    );
+  }
+
+  // Sort by classGrade ascending, then title
+  list.sort((a, b) => (a.classGrade || 0) - (b.classGrade || 0) || a.title.localeCompare(b.title));
+
+  return res.json({
+    success: true,
+    count: list.length,
+    courses: list,
+  });
+});
+
+// POST /api/courses/global/:id/enroll
+// Enrolls an independent or institutional learner into a global course
+router.post('/courses/global/:id/enroll', (req: Request, res: Response) => {
+  ensureGlobalCoursesSeeded();
+
+  const user = optionalOrRequiredAuth(req);
+  const courseId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const { studentId } = req.body;
+
+  const targetStudentId = studentId || user?.userId;
+  if (!targetStudentId) {
+    return res.status(400).json({ error: 'Student ID or authenticated session is required.' });
+  }
+
+  const course = dataStore.courses.get(courseId);
+  if (!course) {
+    return res.status(404).json({ error: 'Global course not found.' });
+  }
+
+  // Check existing enrollment
+  const existing = Array.from(dataStore.courseEnrollments.values()).find(
+    (e) => e.courseId === courseId && e.studentId === targetStudentId
+  );
+  if (existing) {
+    return res.json({
+      success: true,
+      message: 'Student is already enrolled in this course.',
+      enrollment: existing,
+      course,
+    });
+  }
+
+  const enrollmentId = 'enr_glob_' + Date.now().toString(36);
+  const enrollment: CourseEnrollment = {
+    id: enrollmentId,
+    courseId,
+    studentId: targetStudentId,
+    status: 'active',
+    enrolledAt: Date.now(),
+  };
+
+  dataStore.courseEnrollments.set(enrollmentId, enrollment);
+
+  // If student profile exists in store, enrich it with course academic context
+  const existingUser = dataStore.users.get(targetStudentId);
+  if (existingUser && existingUser.studentProfile) {
+    existingUser.studentProfile.classGrade = course.classGrade;
+    existingUser.studentProfile.board = course.board;
+    existingUser.studentProfile.state = course.state;
+  }
+
+  dataStore.logAudit({
+    category: 'academic',
+    action: 'GLOBAL_COURSE_ENROLLMENT',
+    details: {
+      enrollmentId,
+      courseId,
+      courseCode: course.code,
+      studentId: targetStudentId,
+      isFree: course.isFree,
+    },
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: course.isFree
+      ? `Enrolled in ${course.title} successfully under the Free Public Curriculum.`
+      : `Enrolled in ${course.title} successfully.`,
+    enrollment,
+    course,
   });
 });
 
@@ -1409,6 +2482,200 @@ router.post('/courses/:id/enroll', (req: Request, res: Response) => {
     success: true,
     message: 'Student enrolled in course successfully.',
     enrollment,
+  });
+});
+
+// ============================================================================
+// PHASE 3: INSTITUTION DYNAMIC PAID COURSE BUILDER (CLASSES 11+)
+// ============================================================================
+
+// POST /api/institution/courses
+// Institutions create dynamic course offerings.
+// Rule: Class 1-10 is strictly 100% Free; Class 11+ can configure dynamic paid plans.
+router.post('/institution/courses', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (user) {
+    if (!['institution_admin', 'academic_admin', 'teacher', 'super_admin'].includes(user.role)) {
+      return res.status(403).json({
+        error: `Access denied. Role "${user.role}" cannot create institutional courses.`,
+      });
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
+  const {
+    code,
+    title,
+    institutionId,
+    classGrade,
+    board,
+    state,
+    subjectName,
+    language,
+    description,
+    syllabus,
+    isFree,
+    feeAmount,
+    feeCurrency,
+    billingCycle,
+  } = req.body;
+
+  if (!code || !title) {
+    return res.status(400).json({ error: 'Course code and title are required.' });
+  }
+
+  const instId = institutionId || user?.institutionId || 'inst_ait_hyd';
+  const grade = Number(classGrade) || 11;
+  const isClass1to10 = grade >= 1 && grade <= 10;
+
+  // Strict Policy Enforcement: Even in an institution, Classes 1 to 10 CANNOT have paywalls
+  const enforcedFree = isClass1to10 ? true : (isFree !== undefined ? Boolean(isFree) : true);
+  const enforcedFee = isClass1to10 ? 0 : (enforcedFree ? 0 : Number(feeAmount || 0));
+
+  const courseId = 'course_inst_' + Date.now().toString(36);
+  const newCourse: Course = {
+    id: courseId,
+    code: String(code).trim().toUpperCase(),
+    title: String(title).trim(),
+    institutionId: instId,
+    scope: 'institution',
+    classGrade: grade,
+    board: board || 'State Board',
+    state: state || 'Telangana',
+    subjectName: subjectName || 'General',
+    language: language || 'en',
+    description: description || '',
+    syllabus: syllabus || [],
+    isFree: enforcedFree,
+    feeAmount: enforcedFee,
+    feeCurrency: feeCurrency || 'INR',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  dataStore.courses.set(courseId, newCourse);
+
+  dataStore.logAudit({
+    category: 'academic',
+    action: 'INSTITUTION_COURSE_CREATED',
+    institutionId: instId,
+    details: {
+      courseId,
+      code: newCourse.code,
+      title: newCourse.title,
+      classGrade: newCourse.classGrade,
+      isFree: newCourse.isFree,
+      feeAmount: newCourse.feeAmount,
+      billingCycle,
+    },
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: isClass1to10
+      ? `Institutional Course for Class ${grade} created under Mandatory Free Tier.`
+      : newCourse.isFree
+      ? `Institutional Course created with Free Open Access.`
+      : `Institutional Course created with Dynamic Paid Plan (₹${enforcedFee}).`,
+    course: newCourse,
+  });
+});
+
+// GET /api/institution/:institutionId/courses
+// List all dynamic course offerings configured by an institution
+router.get('/institution/:institutionId/courses', (req: Request, res: Response) => {
+  const instId = Array.isArray(req.params.institutionId) ? req.params.institutionId[0] : req.params.institutionId;
+  const { classGrade, isFree } = req.query;
+
+  let list = Array.from(dataStore.courses.values()).filter((c) => c.institutionId === instId);
+
+  if (classGrade) {
+    const g = Number(classGrade);
+    list = list.filter((c) => c.classGrade === g);
+  }
+
+  if (isFree !== undefined) {
+    const f = isFree === 'true';
+    list = list.filter((c) => c.isFree === f);
+  }
+
+  list.sort((a, b) => (a.classGrade || 0) - (b.classGrade || 0) || a.title.localeCompare(b.title));
+
+  return res.json({
+    success: true,
+    institutionId: instId,
+    count: list.length,
+    courses: list,
+  });
+});
+
+// POST /api/institution/courses/:id/enroll
+// Enrolls student into an institutional course, enforcing payment validation for paid plans
+router.post('/institution/courses/:id/enroll', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  const courseId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const { studentId, paymentConfirmed, paymentReference } = req.body;
+
+  const targetStudentId = studentId || user?.userId;
+  if (!targetStudentId) {
+    return res.status(400).json({ error: 'Student ID or authenticated session is required.' });
+  }
+
+  const course = dataStore.courses.get(courseId);
+  if (!course) {
+    return res.status(404).json({ error: 'Institutional course not found.' });
+  }
+
+  // Check existing enrollment
+  const existing = Array.from(dataStore.courseEnrollments.values()).find(
+    (e) => e.courseId === courseId && e.studentId === targetStudentId
+  );
+  if (existing) {
+    return res.json({
+      success: true,
+      message: 'Student is already enrolled in this course.',
+      enrollment: existing,
+      course,
+    });
+  }
+
+  const enrollmentId = 'enr_inst_' + Date.now().toString(36);
+  const isPaidRequired = !course.isFree && !paymentConfirmed;
+
+  const enrollment: CourseEnrollment = {
+    id: enrollmentId,
+    courseId,
+    studentId: targetStudentId,
+    status: isPaidRequired ? 'pending_payment' : 'active',
+    feePaid: isPaidRequired ? 0 : course.feeAmount || 0,
+    paymentReference: paymentReference || (paymentConfirmed ? 'MOCK_REF_' + Date.now() : undefined),
+    enrolledAt: Date.now(),
+  };
+
+  dataStore.courseEnrollments.set(enrollmentId, enrollment);
+
+  dataStore.logAudit({
+    category: 'academic',
+    action: isPaidRequired ? 'COURSE_PAYMENT_PENDING' : 'COURSE_ENROLLED_ACTIVE',
+    institutionId: course.institutionId,
+    details: {
+      enrollmentId,
+      courseId,
+      studentId: targetStudentId,
+      status: enrollment.status,
+      feeAmount: course.feeAmount,
+    },
+  });
+
+  return res.status(201).json({
+    success: true,
+    paymentRequired: isPaidRequired,
+    message: isPaidRequired
+      ? `Enrollment initiated. Course requires fee of ₹${course.feeAmount}. Please complete payment.`
+      : `Enrolled successfully in ${course.title}.`,
+    enrollment,
+    course,
   });
 });
 
