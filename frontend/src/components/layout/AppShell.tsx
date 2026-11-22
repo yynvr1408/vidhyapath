@@ -164,252 +164,160 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col text-[#0F172A] font-sans max-w-[100vw] overflow-x-hidden">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-white border-b border-[#E2E8F0] px-3 sm:px-4 py-2.5 flex items-center justify-between shadow-xs">
-        {/* Left: Mobile hamburger + Brand */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] focus:outline-none"
-            aria-label="Toggle Navigation Menu"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-
-          <div className="flex items-center space-x-2">
-            <VidyapathLogo className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-xs" />
-            <div>
-              <span className="font-extrabold text-sm sm:text-base md:text-lg text-[#0F766E] tracking-tight">Vidyapath</span>
-              <span className="ml-1.5 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 bg-[#CCFBF1] text-[#0F766E] rounded-md hidden xs:inline-block">
-                విద్యాపథ్
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Controls & Student Profile */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
-          {/* Online/Offline Status Pill */}
-          <div
-            className={`inline-flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border ${
-              isOffline
-                ? 'bg-[#FEF2F2] border-[#FCA5A5] text-[#DC2626]'
-                : 'bg-[#F0FDF4] border-[#86EFAC] text-[#16A34A]'
-            }`}
-            title={isOffline ? 'Offline mode active - local caching enabled' : 'Connected to Vidyapath network'}
-          >
-            {isOffline ? <WifiOff className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Wifi className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
-            <span className="hidden sm:inline">{isOffline ? t.offlineMode || 'Offline' : t.online || 'Online'}</span>
+    <div className="h-[100dvh] w-full flex overflow-hidden bg-[#F8FAFC] text-[#0F172A] font-sans">
+      {/* Desktop Sidebar (Left Column) */}
+      <aside className="hidden md:flex flex-col w-72 bg-white border-r border-[#E2E8F0] p-3 justify-between shrink-0 overflow-y-auto overflow-x-hidden">
+        <nav className="space-y-1.5">
+          <div className="px-3 py-2 text-[11px] font-bold tracking-wider text-[#94A3B8] uppercase">
+            Class 10 Learning Grid
           </div>
 
-          {/* Low Data Mode Toggle */}
-          <button
-            type="button"
-            onClick={toggleLowDataMode}
-            className={`p-1 sm:p-1.5 rounded-lg border text-xs font-medium flex items-center space-x-1 transition-colors ${
-              lowDataMode
-                ? 'bg-[#FEF3C7] border-[#FCD34D] text-[#D97706]'
-                : 'bg-white border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
-            }`}
-            title="Toggle Low Data Mode"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">{lowDataMode ? 'Low Data: ON' : 'Data Saver'}</span>
-          </button>
-
-          {/* Compact Language Selector */}
-          <LanguageSelector variant="compact" />
-
-          {/* Active Student Pill (Clickable -> Opens In-Place Switch Modal) */}
-          {activeLearner && (
-            <button
-              type="button"
-              onClick={openSwitchModal}
-              className="flex items-center space-x-1.5 sm:space-x-2 bg-[#F1F5F9] hover:bg-[#E2E8F0] border border-[#CBD5E1] pl-1 sm:pl-1.5 pr-2 sm:pr-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer"
-              title="Click to Switch Profile"
-            >
-              <span
-                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs sm:text-sm shadow-xs shrink-0"
-                style={{ backgroundColor: activeLearner.avatarColor || '#0F766E' }}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentScreen === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleNavClick(item.id)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-colors duration-150 cursor-pointer ${
+                  isActive
+                    ? 'bg-[#0F766E] text-white shadow-xs shadow-teal-700/20'
+                    : 'text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A]'
+                }`}
               >
-                {activeLearner.avatarEmoji || '👦'}
-              </span>
-              <span className="text-[#1E293B] max-w-[65px] sm:max-w-[90px] truncate">{activeLearner.nickname}</span>
-              <span className="text-[#64748B] text-[10px] hidden md:inline">Class {activeLearner.classGrade || 10}</span>
-            </button>
-          )}
+                <div className="flex items-center space-x-3 truncate">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-[#0F766E]'}`} />
+                  <span className="truncate">{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-[#CCFBF1] text-[#0F766E]'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
 
-          {/* Dedicated Switch Profile Header Button */}
+        {/* Pinned Bottom Sidebar: Switch Profile (In-Place Modal) */}
+        <div className="pt-3 border-t border-[#E2E8F0] space-y-2">
           <button
             type="button"
             onClick={openSwitchModal}
-            className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg border border-[#E2E8F0] text-xs font-semibold text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A] flex items-center space-x-1 transition-colors cursor-pointer"
-            title={t.navSwitchProfile || 'Switch Profile'}
+            className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-[#DC2626] bg-[#FEF2F2] hover:bg-[#FEE2E2] transition-colors cursor-pointer"
           >
-            <LogOut className="w-3.5 h-3.5 text-[#64748B]" />
-            <span className="hidden sm:inline">{t.navSwitchProfile || 'Switch'}</span>
+            <LogOut className="w-4 h-4 shrink-0 text-[#DC2626]" />
+            <span>{t.navSwitchProfile || 'Switch Profile'}</span>
           </button>
+          <p className="text-[11px] text-center text-[#94A3B8]">
+            Zero-PII Local Student Session
+          </p>
         </div>
-      </header>
+      </aside>
 
-      {/* Main Body */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col w-72 bg-white border-r border-[#E2E8F0] p-3 justify-between shrink-0 overflow-y-auto overflow-x-hidden">
-          <nav className="space-y-1.5">
-            <div className="px-3 py-2 text-[11px] font-bold tracking-wider text-[#94A3B8] uppercase">
-              Class 10 Learning Grid
+      {/* Right Content Column (Top Header + <main> + Mobile Nav) */}
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
+        {/* Top Header */}
+        <header className="shrink-0 bg-white border-b border-[#E2E8F0] px-3 sm:px-4 py-2.5 flex items-center justify-between shadow-xs z-20">
+          {/* Left: Mobile hamburger + Brand */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-1.5 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] focus:outline-none"
+              aria-label="Toggle Navigation Menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
+            <div className="flex items-center space-x-2">
+              <VidyapathLogo className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg shadow-xs" />
+              <div>
+                <span className="font-extrabold text-sm sm:text-base md:text-lg text-[#0F766E] tracking-tight">Vidyapath</span>
+                <span className="ml-1.5 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 bg-[#CCFBF1] text-[#0F766E] rounded-md hidden xs:inline-block">
+                  విద్యాపథ్
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Controls & Student Profile */}
+          <div className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3">
+            {/* Online/Offline Status Pill */}
+            <div
+              className={`inline-flex items-center space-x-1 sm:space-x-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border ${
+                isOffline
+                  ? 'bg-[#FEF2F2] border-[#FCA5A5] text-[#DC2626]'
+                  : 'bg-[#F0FDF4] border-[#86EFAC] text-[#16A34A]'
+              }`}
+              title={isOffline ? 'Offline mode active - local caching enabled' : 'Connected to Vidyapath network'}
+            >
+              {isOffline ? <WifiOff className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Wifi className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+              <span className="hidden sm:inline">{isOffline ? t.offlineMode || 'Offline' : t.online || 'Online'}</span>
             </div>
 
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentScreen === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-colors duration-150 cursor-pointer ${
-                    isActive
-                      ? 'bg-[#0F766E] text-white shadow-xs shadow-teal-700/20'
-                      : 'text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A]'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3 truncate">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-[#0F766E]'}`} />
-                    <span className="truncate">{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-[#CCFBF1] text-[#0F766E]'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
+            {/* Low Data Mode Toggle */}
+            <button
+              type="button"
+              onClick={toggleLowDataMode}
+              className={`p-1 sm:p-1.5 rounded-lg border text-xs font-medium flex items-center space-x-1 transition-colors ${
+                lowDataMode
+                  ? 'bg-[#FEF3C7] border-[#FCD34D] text-[#D97706]'
+                  : 'bg-white border-[#E2E8F0] text-[#64748B] hover:bg-[#F8FAFC]'
+              }`}
+              title="Toggle Low Data Mode"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">{lowDataMode ? 'Low Data: ON' : 'Data Saver'}</span>
+            </button>
 
-          {/* Pinned Bottom Sidebar: Switch Profile (In-Place Modal) */}
-          <div className="pt-3 border-t border-[#E2E8F0] space-y-2">
+            {/* Compact Language Selector */}
+            <LanguageSelector variant="compact" />
+
+            {/* Active Student Pill (Clickable -> Opens In-Place Switch Modal) */}
+            {activeLearner && (
+              <button
+                type="button"
+                onClick={openSwitchModal}
+                className="flex items-center space-x-1.5 sm:space-x-2 bg-[#F1F5F9] hover:bg-[#E2E8F0] border border-[#CBD5E1] pl-1 sm:pl-1.5 pr-2 sm:pr-2.5 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer"
+                title="Click to Switch Profile"
+              >
+                <span
+                  className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs sm:text-sm shadow-xs shrink-0"
+                  style={{ backgroundColor: activeLearner.avatarColor || '#0F766E' }}
+                >
+                  {activeLearner.avatarEmoji || '👦'}
+                </span>
+                <span className="text-[#1E293B] max-w-[65px] sm:max-w-[90px] truncate">{activeLearner.nickname}</span>
+                <span className="text-[#64748B] text-[10px] hidden md:inline">Class {activeLearner.classGrade || 10}</span>
+              </button>
+            )}
+
+            {/* Dedicated Switch Profile Header Button */}
             <button
               type="button"
               onClick={openSwitchModal}
-              className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-[#DC2626] bg-[#FEF2F2] hover:bg-[#FEE2E2] transition-colors cursor-pointer"
+              className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg border border-[#E2E8F0] text-xs font-semibold text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A] flex items-center space-x-1 transition-colors cursor-pointer"
+              title={t.navSwitchProfile || 'Switch Profile'}
             >
-              <LogOut className="w-4 h-4 shrink-0 text-[#DC2626]" />
-              <span>{t.navSwitchProfile || 'Switch Profile'}</span>
+              <LogOut className="w-3.5 h-3.5 text-[#64748B]" />
+              <span className="hidden sm:inline">{t.navSwitchProfile || 'Switch'}</span>
             </button>
-            <p className="text-[11px] text-center text-[#94A3B8]">
-              Zero-PII Local Student Session
-            </p>
           </div>
-        </aside>
+        </header>
 
-        {/* Mobile Slide-Over Drawer */}
-        {mobileMenuOpen && (
-          <div className="fixed inset-0 z-40 md:hidden flex">
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-
-            <div className="relative w-4/5 max-w-xs bg-white h-full shadow-2xl p-4 flex flex-col justify-between z-10">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-                  <div className="flex items-center space-x-2">
-                    <VidyapathLogo className="w-7 h-7 rounded-lg" />
-                    <span className="font-bold text-base text-[#0F766E]">Vidyapath</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="p-1 rounded-md text-[#64748B] hover:bg-[#F1F5F9]"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {activeLearner && (
-                  <button
-                    type="button"
-                    onClick={openSwitchModal}
-                    className="w-full text-left flex items-center space-x-3 p-3 bg-[#F8FAFC] hover:bg-[#F1F5F9] rounded-xl border border-[#E2E8F0] transition-colors cursor-pointer"
-                  >
-                    <span
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0 shadow-xs"
-                      style={{ backgroundColor: activeLearner.avatarColor || '#0F766E' }}
-                    >
-                      {activeLearner.avatarEmoji || '👦'}
-                    </span>
-                    <div className="truncate flex-1">
-                      <p className="text-sm font-bold text-[#0F172A] truncate">{activeLearner.nickname}</p>
-                      <p className="text-xs text-[#64748B]">Class {activeLearner.classGrade || 10}</p>
-                    </div>
-                    <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                      Switch
-                    </span>
-                  </button>
-                )}
-
-                <nav className="space-y-1">
-                  {navItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = currentScreen === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => handleNavClick(item.id)}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
-                          isActive
-                            ? 'bg-[#0F766E] text-white shadow-xs'
-                            : 'text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A]'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#0F766E]'}`} />
-                          <span>{item.label}</span>
-                        </div>
-                        {item.badge && (
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                              isActive ? 'bg-white/20 text-white' : 'bg-[#CCFBF1] text-[#0F766E]'
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </nav>
-              </div>
-
-              {/* Drawer Bottom: In-Place Switch Profile */}
-              <div className="pt-3 border-t border-[#E2E8F0]">
-                <button
-                  type="button"
-                  onClick={openSwitchModal}
-                  className="w-full flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-[#DC2626] bg-[#FEF2F2] hover:bg-[#FEE2E2] transition-colors cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>{t.navSwitchProfile || 'Switch Profile'}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Content Pane */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-28 sm:pb-24 md:pb-8 focus:outline-none w-full">
-          <div className="max-w-6xl mx-auto p-2.5 sm:p-4 md:p-6">
+        {/* <main> Scroll Container */}
+        <main
+          ref={mainRef}
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain pb-24 md:pb-8 focus:outline-none w-full"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <div className="max-w-6xl mx-auto p-2.5 sm:p-4 md:p-6 min-h-full">
             {children}
           </div>
         </main>
@@ -445,6 +353,79 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           );
         })}
       </nav>
+
+      {/* Mobile Sidebar Slide-Over Drawer (Only rendered when mobileMenuOpen is true) */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          {/* Drawer Pane */}
+          <div className="fixed inset-y-0 left-0 w-72 bg-white p-4 shadow-xl flex flex-col justify-between z-10 animate-slide-right">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+                <div className="flex items-center space-x-2">
+                  <VidyapathLogo className="w-7 h-7 rounded-lg" />
+                  <span className="font-extrabold text-base text-[#0F766E]">Vidyapath</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <nav className="space-y-1">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentScreen === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleNavClick(item.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-[#0F766E] text-white shadow-xs'
+                          : 'text-[#475569] hover:bg-[#F1F5F9] hover:text-[#0F172A]'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#0F766E]'}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                            isActive ? 'bg-white/20 text-white' : 'bg-[#CCFBF1] text-[#0F766E]'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            <div className="pt-3 border-t border-[#E2E8F0]">
+              <button
+                type="button"
+                onClick={openSwitchModal}
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-[#DC2626] bg-[#FEF2F2] hover:bg-[#FEE2E2] transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>{t.navSwitchProfile || 'Switch Profile'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* IN-PLACE SWITCH PROFILE MODAL (DOES NOT REDIRECT TO LANDING) */}
       {isSwitchModalOpen && (

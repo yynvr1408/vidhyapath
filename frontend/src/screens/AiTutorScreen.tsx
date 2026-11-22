@@ -270,9 +270,9 @@ export const AiTutorScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-100px)] max-w-4xl mx-auto bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
+    <div className="flex flex-col min-h-[calc(100dvh-8rem)] max-w-4xl mx-auto bg-white rounded-2xl border border-[#E2E8F0] shadow-xs">
       {/* AI Tutor Header with Chapter Selector */}
-      <div className="px-4 py-3 md:px-6 md:py-3.5 bg-linear-to-r from-[#0F766E] to-[#115E59] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div className="shrink-0 px-4 py-3 md:px-6 md:py-3.5 bg-gradient-to-r from-[#0F766E] to-[#115E59] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-t-2xl">
         <div className="flex items-center space-x-2.5">
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-xs">
             <Sparkles className="w-5 h-5 text-white" />
@@ -305,7 +305,7 @@ export const AiTutorScreen: React.FC = () => {
       </div>
 
       {/* Chat Messages Stream */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 bg-[#F8FAFC]">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 sm:px-6 py-4 space-y-4 bg-[#F8FAFC]">
         {messages.map((msg) => {
           const isStudent = msg.sender === 'student';
           return (
@@ -448,7 +448,7 @@ export const AiTutorScreen: React.FC = () => {
       </div>
 
       {/* Input Bar */}
-      <div className="p-3 md:p-4 bg-white border-t border-[#E2E8F0]">
+      <div className="shrink-0 sticky bottom-0 p-3 md:p-4 bg-white border-t border-[#E2E8F0] rounded-b-2xl z-10">
         <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
           {/* Photo Doubt Button */}
           <button

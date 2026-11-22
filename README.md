@@ -19,6 +19,12 @@
 | **Live Backend API (Render)** | [https://vidhyapath-w5za.onrender.com](https://vidhyapath-w5za.onrender.com) | Health probe: [`/healthz`](https://vidhyapath-w5za.onrender.com/healthz) • API: `/api/syllabus` |
 | **Admin Syllabus-to-RAG Panel** | [https://vidyapath1.netlify.app/admin](https://vidyapath1.netlify.app/admin) | **Username:** `Admin` • **Password:** `admin123` |
 
+### 🔐 Admin Panel Access
+1. Open **https://vidyapath1.netlify.app/admin** in your browser (there is no button in the app; type the URL directly).
+2. Log in with username `Admin` and password `admin123`.
+3. Upload or paste a syllabus (.pdf, .txt, .md) per subject; it is parsed into chapters/concepts and becomes available to students in the AI Tutor and My Syllabus screens.
+4. The admin session lasts only for the current browser tab (sessionStorage).
+
 ### ⚡ 60-Second Hackathon Judge Quick-Start
 1. Open the **[Live Student Web App](https://vidyapath1.netlify.app/)** on desktop or mobile.
 2. Select any sample student profile (e.g. **👦 Ravi** or **👧 Priya**) and enter the 4-digit PIN: `1234` (or tap **`+ New Student`** to create a custom profile locally).
@@ -105,7 +111,7 @@ flowchart TD
    - Employs **in-memory file handling** (`multer.memoryStorage()`) and text extraction (`pdf-parse`) ensuring zero disk writes, making the deployment fully compatible with ephemeral cloud containers (Docker/Render/K8s).
 
 3. **Curriculum-to-RAG Pipeline (`/admin`):**
-   - Teachers, government officials, or NGO staff can log into `http://localhost:3000/admin` (or Netlify `/admin`) using `Admin` / `admin123`.
+   - Teachers, government officials, or NGO staff can log into `https://vidyapath1.netlify.app/admin` using `Admin` / `admin123`.
    - Uploading a state-board textbook chapter (`.pdf`, `.txt`, `.md`) or pasting curriculum text automatically parses units into structured concepts, generates keyword-indexed RAG chunks, and updates the AI Tutor in real time without downtime or code deployments.
 
 4. **Speech & Audio Layer:**
@@ -210,7 +216,7 @@ npm run server
 npm run dev
 ```
 
-Open your browser at **`http://localhost:3000/`**.
+Open the live app at **`https://vidyapath1.netlify.app/`**, or run locally and open your local Vite dev URL.
 
 ### 4. Build & Verify
 ```bash
