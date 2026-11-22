@@ -32,6 +32,12 @@ export interface AppContextValue {
   lowDataMode: boolean;
   currentLanguage: SupportedLang;
   t: ReturnType<typeof getTranslations>;
+  simulatedOffline: boolean;
+  toggleSimulatedOffline: () => void;
+  triggerSync: () => Promise<void>;
+  syncPending: boolean;
+  queuedDoubtsCount: number;
+  switchPack: (packId: string) => Promise<void>;
 
   // Actions
   setScreen: (screen: ScreenId) => void;
@@ -385,6 +391,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  const [simulatedOffline, setSimulatedOffline] = useState(false);
+  const [syncPending, setSyncPending] = useState(false);
+  const [queuedDoubtsCount, setQueuedDoubtsCount] = useState(0);
+
+  const toggleSimulatedOffline = useCallback(() => {
+    setSimulatedOffline((prev) => !prev);
+  }, []);
+
+  const triggerSync = useCallback(async () => {
+    setSyncPending(true);
+    try {
+      await new Promise((r) => setTimeout(r, 400));
+    } finally {
+      setSyncPending(false);
+    }
+  }, []);
+
+  const switchPack = useCallback(async (packId: string) => {
+    try {
+      const res = await fetch(`/packs/${packId}.json`);
+      if (res.ok) {
+        const data = await res.json();
+        setPack(data);
+      }
+    } catch (err) {
+      console.warn('Could not switch pack:', err);
+    }
+  }, []);
+
   const toggleLowDataMode = useCallback(() => {
     setLowDataMode((prev) => {
       const next = !prev;
@@ -411,6 +446,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     lowDataMode,
     currentLanguage,
     t,
+    simulatedOffline,
+    toggleSimulatedOffline,
+    triggerSync,
+    syncPending,
+    queuedDoubtsCount,
+    switchPack,
     setScreen: setCurrentScreen,
     selectTopic,
     selectLearner,

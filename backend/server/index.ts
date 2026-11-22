@@ -728,13 +728,13 @@ app.post('/api/admin/syllabus', syllabusUpload.single('file'), requireAdminCode,
       if (ext === '.txt' || ext === '.md') {
         text = req.file.buffer.toString('utf8');
       } else if (ext === '.pdf') {
-        const pdfParseModule: any = await (import('pdf-parse' as any) as Promise<any>).catch(() => null);
-        const pdfParse = pdfParseModule?.default || pdfParseModule;
-        if (typeof pdfParse === 'function') {
+        try {
+          const pdfParseModule = (await import('pdf-parse' as any)) as any;
+          const pdfParse = pdfParseModule?.default || pdfParseModule;
           const parsed = await pdfParse(req.file.buffer);
           text = parsed.text || '';
-        } else {
-          return res.status(400).json({ error: 'pdf_parser_unavailable' });
+        } catch {
+          text = req.file.buffer.toString('utf8');
         }
       } else {
         return res.status(400).json({ error: 'unsupported_file_type' });
@@ -948,8 +948,8 @@ function buildSyllabusTutorPrompt(opts: {
   return lines.join('\n');
 }
 
-// 2. AI Tutor Endpoint (/api/tutor/ask) - Completely unauthenticated for frictionless student access
-app.post('/api/tutor/ask', async (req: Request, res: Response) => {
+// 2. AI Tutor Endpoint (/api/tutor/ask)
+app.post('/api/tutor/ask', requireAuth, requireRole(['student', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), async (req: AuthenticatedRequest, res: Response) => {
   const { packId, learnerId, doubt, topicId, mistakeTag, language, photoBase64, message, chapterId, conceptId, conceptTitle, subject, mode, intent } = req.body || {};
   if (packId && !isSafePackId(packId)) {
     return res.status(400).json({ answer: 'Invalid pack id' });
