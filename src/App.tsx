@@ -7,9 +7,12 @@ import { AiTutorScreen } from './screens/AiTutorScreen';
 import { PracticeWeakTopicsScreen } from './screens/PracticeWeakTopicsScreen';
 import { MyProgressScreen } from './screens/MyProgressScreen';
 import { ParentTeacherViewScreen } from './screens/ParentTeacherViewScreen';
+import { useNativeBackButton } from './hooks/useNativeBackButton';
+import { PhoneExitToast } from './components/PhoneExitToast';
 
 const AppContent: React.FC = () => {
   const { currentScreen, setScreen, activeLearner } = useApp();
+  const { exitToast } = useNativeBackButton();
 
   // Support direct route hashes: #guardian, etc.
   useEffect(() => {
@@ -23,12 +26,22 @@ const AppContent: React.FC = () => {
 
   // 1. If no learner profile is unlocked and not on Parent/Teacher view, show Screen 1 (Profile Selector)
   if (!activeLearner && currentScreen !== 'PARENT_VIEW') {
-    return <ProfileSelectorScreen />;
+    return (
+      <>
+        <ProfileSelectorScreen />
+        <PhoneExitToast message={exitToast} />
+      </>
+    );
   }
 
   // When S1_PICKER is explicitly selected (e.g. switch profile)
   if (currentScreen === 'S1_PICKER') {
-    return <ProfileSelectorScreen />;
+    return (
+      <>
+        <ProfileSelectorScreen />
+        <PhoneExitToast message={exitToast} />
+      </>
+    );
   }
 
   // 2. Render the core 5 pages inside responsive AppShell
@@ -56,7 +69,12 @@ const AppContent: React.FC = () => {
     }
   };
 
-  return <AppShell>{renderScreen()}</AppShell>;
+  return (
+    <>
+      <AppShell>{renderScreen()}</AppShell>
+      <PhoneExitToast message={exitToast} />
+    </>
+  );
 };
 
 export const App: React.FC = () => {

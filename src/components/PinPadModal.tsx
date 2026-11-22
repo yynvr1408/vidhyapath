@@ -5,6 +5,7 @@ import { StudentAvatar } from './StudentAvatar';
 import { getTranslations, SupportedLang } from '../utils/translations';
 import { useApp } from '../context/AppContext';
 import { getSafetyQuestionLabel } from '../config/safetyQuestions';
+import { navigationManager } from '../services/navigationManager';
 
 // Helper to format clean display name
 const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
@@ -53,6 +54,22 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
     setErrorMsg(null);
     setSafetyAnswerInput('');
   }, [learner?.id, isOpen]);
+
+  // Phone back-button integration
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    return navigationManager.registerBackHandler(() => {
+      if (mode !== 'enter_pin') {
+        setMode('enter_pin');
+        setEnteredPin('');
+        setErrorMsg(null);
+        return true;
+      }
+      onClose();
+      return true;
+    }, 100);
+  }, [isOpen, mode, onClose]);
 
   if (!isOpen) return null;
 

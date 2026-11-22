@@ -4,6 +4,7 @@ import { LearnerProfile } from '../types';
 import { useApp } from '../context/AppContext';
 import { getTranslations } from '../utils/translations';
 import { SAFETY_QUESTIONS, getSafetyQuestionLabel } from '../config/safetyQuestions';
+import { navigationManager } from '../services/navigationManager';
 
 interface AddProfileModalProps {
   isOpen: boolean;
@@ -24,6 +25,14 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
   const [pin, setPin] = useState('1234');
   const [securityQuestionId, setSecurityQuestionId] = useState(SAFETY_QUESTIONS[0].id);
   const [securityAnswer, setSecurityAnswer] = useState('Maths');
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    return navigationManager.registerBackHandler(() => {
+      onClose();
+      return true;
+    }, 100);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

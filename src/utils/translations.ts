@@ -34,6 +34,14 @@ export interface TranslationDictionary {
   navParentView: string;
   navSwitchProfile: string;
 
+  // Bottom Navigation (Mobile Touch Bar)
+  bottomNavSyllabus: string;
+  bottomNavTutor: string;
+  bottomNavPractice: string;
+  bottomNavProgress: string;
+  bottomNavParent: string;
+  pressBackAgainToExit: string;
+
   // Screen 1: Profile Selector & PIN Modal
   landingTitle: string;
   landingSubtitle: string;
@@ -227,6 +235,13 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     navParentView: 'తల్లిదండ్రులు / ఉపాధ్యాయుల వ్యూ',
     navSwitchProfile: 'ప్రొఫైల్ మార్చు (లాగౌట్)',
 
+    bottomNavSyllabus: 'సిలబస్',
+    bottomNavTutor: 'AI ట్యూటర్',
+    bottomNavPractice: 'సాధన',
+    bottomNavProgress: 'ప్రగతి',
+    bottomNavParent: 'తల్లిదండ్రులు',
+    pressBackAgainToExit: 'యాప్ నుండి నిష్క్రమించడానికి మళ్లీ వెనక్కి నొక్కండి',
+
     landingTitle: 'మీ ప్రొఫైల్ ఎంచుకోండి',
     landingSubtitle: 'మీ పేరుపై ట్యాప్ చేసి, 1234 పిన్ నమోదు చేయండి',
     tapToEnter: 'ప్రవేశించండి (పిన్: 1234)',
@@ -408,6 +423,13 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     navParentView: 'Parent / Teacher View',
     navSwitchProfile: 'Switch Profile (Exit)',
 
+    bottomNavSyllabus: 'Syllabus',
+    bottomNavTutor: 'AI Tutor',
+    bottomNavPractice: 'Practice',
+    bottomNavProgress: 'Progress',
+    bottomNavParent: 'Parent',
+    pressBackAgainToExit: 'Press back again to exit the app',
+
     landingTitle: 'Select Your Profile',
     landingSubtitle: 'Tap your profile and enter PIN 1234 to start learning',
     tapToEnter: 'Enter (PIN: 1234)',
@@ -588,6 +610,13 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     navProgress: 'मेरी प्रगति',
     navParentView: 'अभिभावक / शिक्षक दृश्य',
     navSwitchProfile: 'प्रोफ़ाइल बदलें (लॉगआउट)',
+
+    bottomNavSyllabus: 'पाठ्यक्रम',
+    bottomNavTutor: 'AI ट्यूटर',
+    bottomNavPractice: 'अभ्यास',
+    bottomNavProgress: 'प्रगति',
+    bottomNavParent: 'अभिभावक',
+    pressBackAgainToExit: 'ऐप से बाहर निकलने के लिए फिर से बैक दबाएं',
 
     landingTitle: 'अपनी प्रोफ़ाइल चुनें',
     landingSubtitle: 'अपने नाम पर टैप करें और पिन 1234 दर्ज करें',

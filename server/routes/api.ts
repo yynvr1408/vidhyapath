@@ -6,7 +6,18 @@ import { EmailService } from '../services/email.js';
 import { AiGuardrailService } from '../services/aiGuardrails.js';
 import { SyllabusProcessorService } from '../services/syllabusProcessor.js';
 import { askGroqTutor } from '../services/groq.js';
-import { User, UserRole, Institution } from '../../src/types/enterprise.js';
+import {
+  User,
+  UserRole,
+  Institution,
+  Family,
+  FamilyMember,
+  Guardianship,
+  Course,
+  CourseEnrollment,
+  AiConversation,
+  AiMessage,
+} from '../../src/types/enterprise.js';
 
 const router = Router();
 
@@ -918,6 +929,435 @@ router.post('/notifications/:id/read', requireAuth, (req: AuthenticatedRequest, 
 router.get('/announcements', (req: Request, res: Response) => {
   const annList = Array.from(dataStore.announcements.values()).sort((a, b) => b.createdAt - a.createdAt);
   return res.json(annList);
+});
+
+// ============================================================================
+// 8. FAMILY MANAGEMENT & MULTI-STUDENT SIBLING PROFILES
+// ============================================================================
+
+// POST /api/family/create
+router.post('/family/create', (req: Request, res: Response) => {
+  const { name, guardianId } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Family name is required.' });
+  }
+
+  const famId = 'fam_' + Date.now().toString(36);
+  const primaryGuardianId = guardianId || 'guardian_' + Date.now().toString(36);
+
+  const family: Family = {
+    id: famId,
+    name: name.trim(),
+    primaryGuardianId,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  dataStore.families.set(famId, family);
+
+  // Link guardian in family_members
+  const memberId = 'fmem_' + Date.now().toString(36);
+  dataStore.familyMembers.set(memberId, {
+    id: memberId,
+    familyId: famId,
+    userId: primaryGuardianId,
+    role: 'guardian',
+    createdAt: Date.now(),
+  });
+
+  dataStore.logAudit({
+    category: 'auth',
+    action: 'FAMILY_ACCOUNT_CREATED',
+    details: { familyId: famId, name: family.name, primaryGuardianId },
+  });
+
+  return res.json({
+    success: true,
+    message: 'Family account created successfully.',
+    family,
+  });
+});
+
+// POST /api/family/add-student
+// Zero-PII student profile creation within family
+router.post('/family/add-student', (req: Request, res: Response) => {
+  const {
+    familyId,
+    fullName,
+    classGrade,
+    pin,
+    securityQuestionId,
+    securityQuestion,
+    securityAnswer,
+    avatarEmoji,
+    avatarColor,
+  } = req.body;
+
+  if (!familyId || !fullName || !classGrade) {
+    return res.status(400).json({ error: 'Family ID, student full name, and class grade are required.' });
+  }
+
+  const family = dataStore.families.get(familyId);
+  if (!family) {
+    return res.status(404).json({ error: 'Family not found.' });
+  }
+
+  const cleanName = String(fullName).trim();
+  const grade = parseInt(classGrade, 10) || 10;
+  const studentId = 'user_student_' + Date.now().toString(36);
+  const cleanPin = pin && String(pin).trim().length === 4 ? String(pin).trim() : '1234';
+
+  // Generate zero-PII student code: e.g. RAVI-10
+  const prefix = cleanName.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) || 'STD';
+  const loginCode = `${prefix}-${grade}`;
+
+  const pwd = dataStore.hashPassword(cleanPin);
+
+  const newStudent: User & { passwordHash: string; salt: string } = {
+    id: studentId,
+    fullName: cleanName,
+    email: `${studentId}@student.local`,
+    role: 'student',
+    status: 'active',
+    passwordHash: pwd.hash,
+    salt: pwd.salt,
+    createdAt: Date.now(),
+    studentProfile: {
+      userId: studentId,
+      institutionId: 'inst_ait_hyd',
+      departmentId: 'dept_maths',
+      programmeId: 'CLASS-10',
+      semester: 1,
+      admissionYear: '2026',
+      rollNumber: loginCode,
+      attendancePercent: 100,
+      completedTopicIds: [],
+    },
+  };
+
+  dataStore.users.set(studentId, newStudent);
+
+  // Link to family members
+  const memberId = 'fmem_' + Date.now().toString(36);
+  dataStore.familyMembers.set(memberId, {
+    id: memberId,
+    familyId,
+    userId: studentId,
+    role: 'student',
+    createdAt: Date.now(),
+  });
+
+  // Link guardianship
+  const guardId = 'guard_' + Date.now().toString(36);
+  dataStore.guardianships.set(guardId, {
+    id: guardId,
+    guardianId: family.primaryGuardianId,
+    studentId,
+    relationship: 'parent',
+    createdAt: Date.now(),
+  });
+
+  dataStore.logAudit({
+    category: 'auth',
+    action: 'FAMILY_STUDENT_REGISTERED',
+    details: { familyId, studentId, loginCode, classGrade: grade },
+  });
+
+  return res.json({
+    success: true,
+    message: 'Student profile added to family successfully.',
+    student: {
+      id: studentId,
+      fullName: cleanName,
+      loginCode,
+      classGrade: grade,
+      avatarEmoji: avatarEmoji || '👦',
+      avatarColor: avatarColor || '#0F766E',
+      securityQuestionId: securityQuestionId || 'subject',
+      securityQuestion: securityQuestion || 'What is your favorite school subject?',
+      createdAt: newStudent.createdAt,
+    },
+  });
+});
+
+// POST /api/family/link-student
+router.post('/family/link-student', (req: Request, res: Response) => {
+  const { familyId, studentCode } = req.body;
+  if (!familyId || !studentCode) {
+    return res.status(400).json({ error: 'Family ID and Student Code are required.' });
+  }
+
+  const family = dataStore.families.get(familyId);
+  if (!family) {
+    return res.status(404).json({ error: 'Family not found.' });
+  }
+
+  // Find student by loginCode / rollNumber
+  const code = String(studentCode).trim().toUpperCase();
+  let matchedStudent: User | null = null;
+  for (const u of dataStore.users.values()) {
+    if (
+      u.role === 'student' &&
+      (u.studentProfile?.rollNumber?.toUpperCase() === code || u.id === studentCode)
+    ) {
+      matchedStudent = u;
+      break;
+    }
+  }
+
+  if (!matchedStudent) {
+    return res.status(404).json({ error: 'Student with this code not found.' });
+  }
+
+  // Check if already linked
+  const isAlreadyMember = Array.from(dataStore.familyMembers.values()).some(
+    (m) => m.familyId === familyId && m.userId === matchedStudent!.id
+  );
+
+  if (!isAlreadyMember) {
+    const memberId = 'fmem_' + Date.now().toString(36);
+    dataStore.familyMembers.set(memberId, {
+      id: memberId,
+      familyId,
+      userId: matchedStudent.id,
+      role: 'student',
+      createdAt: Date.now(),
+    });
+
+    const guardId = 'guard_' + Date.now().toString(36);
+    dataStore.guardianships.set(guardId, {
+      id: guardId,
+      guardianId: family.primaryGuardianId,
+      studentId: matchedStudent.id,
+      relationship: 'parent',
+      createdAt: Date.now(),
+    });
+  }
+
+  return res.json({
+    success: true,
+    message: 'Student linked to family successfully.',
+    student: {
+      id: matchedStudent.id,
+      fullName: matchedStudent.fullName,
+      rollNumber: matchedStudent.studentProfile?.rollNumber,
+    },
+  });
+});
+
+// GET /api/family/:familyId/children
+router.get('/family/:familyId/children', (req: Request, res: Response) => {
+  const familyId = Array.isArray(req.params.familyId) ? req.params.familyId[0] : req.params.familyId;
+  const family = dataStore.families.get(familyId);
+  if (!family) {
+    return res.status(404).json({ error: 'Family not found.' });
+  }
+
+  // Get student members
+  const memberStudentIds = Array.from(dataStore.familyMembers.values())
+    .filter((m) => m.familyId === familyId && m.role === 'student')
+    .map((m) => m.userId);
+
+  const children = memberStudentIds
+    .map((id) => dataStore.users.get(id))
+    .filter((u): u is NonNullable<typeof u> => Boolean(u))
+    .map((u) => ({
+      id: u.id,
+      fullName: u.fullName,
+      loginCode: u.studentProfile?.rollNumber || u.id,
+      classGrade: 10,
+      completedTopicsCount: u.studentProfile?.completedTopicIds?.length || 0,
+      attendancePercent: u.studentProfile?.attendancePercent || 100,
+    }));
+
+  return res.json({
+    success: true,
+    family: { id: family.id, name: family.name },
+    children,
+  });
+});
+
+// GET /api/family/children/:id
+router.get('/family/children/:id', (req: Request, res: Response) => {
+  const studentId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const user = dataStore.users.get(studentId);
+  if (!user || user.role !== 'student') {
+    return res.status(404).json({ error: 'Student profile not found.' });
+  }
+
+  return res.json({
+    success: true,
+    child: {
+      id: user.id,
+      fullName: user.fullName,
+      loginCode: user.studentProfile?.rollNumber || user.id,
+      completedTopicIds: user.studentProfile?.completedTopicIds || [],
+      attendancePercent: user.studentProfile?.attendancePercent || 100,
+      createdAt: user.createdAt,
+    },
+  });
+});
+
+// ============================================================================
+// 9. COURSES & ACADEMIC MANAGEMENT (L2 Institution Admin Direct Control)
+// ============================================================================
+
+// POST /api/courses
+router.post('/courses', (req: Request, res: Response) => {
+  const { code, title, institutionId, description, syllabus } = req.body;
+  if (!code || !title) {
+    return res.status(400).json({ error: 'Course code and title are required.' });
+  }
+
+  const courseId = 'course_' + Date.now().toString(36);
+  const newCourse: Course = {
+    id: courseId,
+    code: String(code).trim().toUpperCase(),
+    title: String(title).trim(),
+    institutionId: institutionId || 'inst_ait_hyd',
+    description: description || '',
+    syllabus: syllabus || [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  dataStore.courses.set(courseId, newCourse);
+
+  dataStore.logAudit({
+    category: 'academic',
+    action: 'COURSE_CREATED',
+    details: { courseId, code: newCourse.code, title: newCourse.title },
+  });
+
+  return res.json({
+    success: true,
+    message: 'Course created successfully under Institutional Administration.',
+    course: newCourse,
+  });
+});
+
+// GET /api/courses
+router.get('/courses', (req: Request, res: Response) => {
+  const courseList = Array.from(dataStore.courses.values()).sort((a, b) => b.createdAt - a.createdAt);
+  return res.json({ success: true, courses: courseList });
+});
+
+// GET /api/courses/:id
+router.get('/courses/:id', (req: Request, res: Response) => {
+  const courseId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const course = dataStore.courses.get(courseId);
+  if (!course) {
+    return res.status(404).json({ error: 'Course not found.' });
+  }
+  return res.json({ success: true, course });
+});
+
+// POST /api/courses/:id/enroll
+router.post('/courses/:id/enroll', (req: Request, res: Response) => {
+  const courseId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const { studentId } = req.body;
+  if (!studentId) {
+    return res.status(400).json({ error: 'Student ID is required.' });
+  }
+
+  const course = dataStore.courses.get(courseId);
+  if (!course) {
+    return res.status(404).json({ error: 'Course not found.' });
+  }
+
+  const enrollmentId = 'enr_' + Date.now().toString(36);
+  const enrollment: CourseEnrollment = {
+    id: enrollmentId,
+    courseId,
+    studentId,
+    status: 'active',
+    enrolledAt: Date.now(),
+  };
+
+  dataStore.courseEnrollments.set(enrollmentId, enrollment);
+
+  return res.json({
+    success: true,
+    message: 'Student enrolled in course successfully.',
+    enrollment,
+  });
+});
+
+// ============================================================================
+// 10. AI TUTOR CONVERSATION HISTORY & RAG PERSISTENCE
+// ============================================================================
+
+// POST /api/tutor/conversations
+router.post('/tutor/conversations', (req: Request, res: Response) => {
+  const { studentId, topicId, language, message } = req.body;
+  if (!studentId || !message || !message.text) {
+    return res.status(400).json({ error: 'Student ID and message text are required.' });
+  }
+
+  // Find or create conversation
+  let conv: AiConversation | undefined;
+  for (const c of dataStore.aiConversations.values()) {
+    if (c.studentId === studentId && (!topicId || c.topicId === topicId)) {
+      conv = c;
+      break;
+    }
+  }
+
+  if (!conv) {
+    const convId = 'conv_' + Date.now().toString(36);
+    conv = {
+      id: convId,
+      studentId,
+      topicId: topicId || 'ch1_real_numbers',
+      language: language || 'te',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    dataStore.aiConversations.set(convId, conv);
+  } else {
+    conv.updatedAt = Date.now();
+  }
+
+  const msgId = 'msg_' + Date.now().toString(36);
+  const newMsg: AiMessage = {
+    id: msgId,
+    conversationId: conv.id,
+    sender: message.sender || 'student',
+    text: message.text,
+    audioUrl: message.audioUrl,
+    photoUrl: message.photoUrl,
+    createdAt: Date.now(),
+  };
+
+  dataStore.aiMessages.set(msgId, newMsg);
+
+  return res.json({
+    success: true,
+    conversationId: conv.id,
+    messageId: newMsg.id,
+    message: newMsg,
+  });
+});
+
+// GET /api/tutor/conversations/:studentId
+router.get('/tutor/conversations/:studentId', (req: Request, res: Response) => {
+  const studentId = Array.isArray(req.params.studentId) ? req.params.studentId[0] : req.params.studentId;
+
+  const convList = Array.from(dataStore.aiConversations.values())
+    .filter((c) => c.studentId === studentId)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  const result = convList.map((c) => {
+    const msgs = Array.from(dataStore.aiMessages.values())
+      .filter((m) => m.conversationId === c.id)
+      .sort((a, b) => a.createdAt - b.createdAt);
+    return { ...c, messages: msgs };
+  });
+
+  return res.json({
+    success: true,
+    conversations: result,
+  });
 });
 
 export { router as enterpriseApiRouter };

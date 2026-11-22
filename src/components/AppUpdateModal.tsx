@@ -15,6 +15,7 @@ import { useAppUpdate } from '../hooks/useAppUpdate';
 import { useApp } from '../context/AppContext';
 import { getTranslations } from '../utils/translations';
 import { VidyapathLogo } from './VidyapathLogo';
+import { navigationManager } from '../services/navigationManager';
 
 export const AppUpdateModal: React.FC = () => {
   const { currentLanguage } = useApp();
@@ -32,6 +33,14 @@ export const AppUpdateModal: React.FC = () => {
     checkForUpdates,
     applyPwaUpdate,
   } = useAppUpdate();
+
+  React.useEffect(() => {
+    if (!isModalOpen) return;
+    return navigationManager.registerBackHandler(() => {
+      closeModal();
+      return true;
+    }, 110);
+  }, [isModalOpen, closeModal]);
 
   if (!isModalOpen) return null;
 

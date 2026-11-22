@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Menu,
   X,
@@ -24,6 +24,7 @@ import { AppUpdateBanner } from './AppUpdateBanner';
 import { AppUpdateModal } from './AppUpdateModal';
 import { getTranslations, SupportedLang } from '../utils/translations';
 import { SCHEDULED_LANGUAGES } from '../config/languages';
+import { navigationManager } from '../services/navigationManager';
 
 const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
   if (!nickname) return { primary: 'Student', secondary: '' };
@@ -64,6 +65,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const t = getTranslations(currentLanguage);
+
+  // Phone back-button integration to close mobile drawer if open
+  useEffect(() => {
+    if (!mobileDrawerOpen) return;
+    return navigationManager.registerBackHandler(() => {
+      setMobileDrawerOpen(false);
+      return true;
+    }, 80);
+  }, [mobileDrawerOpen]);
 
   // Map ScreenId to Title
   const getScreenTitle = (screen: ScreenId) => {
@@ -114,6 +124,35 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       id: 'PROGRESS',
       label: t.navProgress,
       icon: <TrendingUp className="w-5 h-5 shrink-0" />,
+    },
+  ];
+
+  // Mobile Sticky Bottom Touch Navigation Tabs (5 primary views)
+  const mobileBottomNavItems: { id: ScreenId; label: string; icon: React.ReactNode }[] = [
+    {
+      id: 'MY_SYLLABUS',
+      label: t.bottomNavSyllabus,
+      icon: <BookOpen className="w-5 h-5 shrink-0" />,
+    },
+    {
+      id: 'AI_TUTOR',
+      label: t.bottomNavTutor,
+      icon: <HelpCircle className="w-5 h-5 shrink-0" />,
+    },
+    {
+      id: 'PRACTICE',
+      label: t.bottomNavPractice,
+      icon: <Target className="w-5 h-5 shrink-0" />,
+    },
+    {
+      id: 'PROGRESS',
+      label: t.bottomNavProgress,
+      icon: <TrendingUp className="w-5 h-5 shrink-0" />,
+    },
+    {
+      id: 'PARENT_VIEW',
+      label: t.bottomNavParent,
+      icon: <ShieldCheck className="w-5 h-5 shrink-0" />,
     },
   ];
 
@@ -422,9 +461,43 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       )}
 
       {/* Main Content Area beside Sidebar */}
-      <main className="flex-1 min-w-0 max-w-4xl mx-auto w-full p-4 md:p-6 pb-12">
+      <main className="flex-1 min-w-0 max-w-4xl mx-auto w-full p-4 md:p-6 pb-28 md:pb-12">
         {children}
       </main>
+
+      {/* Mobile Sticky Touch Bottom Navigation Bar (< 768px) */}
+      <nav
+        aria-label="Mobile Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E2E8F0] px-1 pt-1.5 shadow-lg flex items-center justify-around pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      >
+        {mobileBottomNavItems.map((item) => {
+          const active = isItemActive(item.id);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleNavClick(item.id)}
+              className={`flex-1 flex flex-col items-center justify-center py-1 px-1 min-h-[48px] rounded-lg transition-all relative ${
+                active ? 'text-[#0F766E]' : 'text-[#64748B] hover:text-[#0F172A]'
+              }`}
+            >
+              {active && (
+                <span className="absolute top-0 w-8 h-1 bg-[#0F766E] rounded-full" />
+              )}
+              <div className={`p-1 rounded-md transition-transform ${active ? 'scale-110 text-[#0F766E]' : 'text-[#64748B]'}`}>
+                {item.icon}
+              </div>
+              <span
+                className={`text-[11px] font-bold leading-tight truncate max-w-[65px] ${
+                  active ? 'text-[#0F766E]' : 'text-[#64748B]'
+                }`}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
 
       {/* Global Interactive In-App Update Modal */}
       <AppUpdateModal />

@@ -19,7 +19,14 @@ import {
   AiSafetyPolicy,
   AuditLog,
   OtpRecord,
-  UserRole
+  UserRole,
+  Family,
+  FamilyMember,
+  Guardianship,
+  Course,
+  CourseEnrollment,
+  AiConversation,
+  AiMessage,
 } from '../../src/types/enterprise.js';
 
 export type StoreSyncListeners = {
@@ -70,6 +77,13 @@ class InMemoryDataStore {
   announcements: Map<string, Announcement> = new ObservableMap<string, Announcement>((v) => this.syncListeners.onSaveAnnouncement?.(v));
   notifications: Map<string, NotificationItem> = new ObservableMap<string, NotificationItem>((v) => this.syncListeners.onSaveNotification?.(v));
   otps: Map<string, OtpRecord> = new ObservableMap<string, OtpRecord>((v) => this.syncListeners.onSaveOtp?.(v));
+  families: Map<string, Family> = new Map();
+  familyMembers: Map<string, FamilyMember> = new Map();
+  guardianships: Map<string, Guardianship> = new Map();
+  courses: Map<string, Course> = new Map();
+  courseEnrollments: Map<string, CourseEnrollment> = new Map();
+  aiConversations: Map<string, AiConversation> = new Map();
+  aiMessages: Map<string, AiMessage> = new Map();
   auditLogs: AuditLog[] = [];
   aiPolicies: Map<string, AiSafetyPolicy> = new Map();
 

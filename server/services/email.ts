@@ -10,22 +10,41 @@ export interface EmailOptions {
   toEmail: string;
   toName: string;
   subject: string;
+  templateCategory?: 'verification' | 'password_reset' | 'notification';
   templateParams: Record<string, string | number>;
 }
 
 export class EmailService {
   private static serviceId = process.env.EMAILJS_SERVICE_ID || '';
-  private static templateId = process.env.EMAILJS_TEMPLATE_ID || '';
+  private static defaultTemplateId = process.env.EMAILJS_TEMPLATE_ID || '';
+  private static templateVerification = process.env.EMAILJS_TEMPLATE_VERIFICATION || process.env.EMAILJS_TEMPLATE_ID || '';
+  private static templatePasswordReset = process.env.EMAILJS_TEMPLATE_PASSWORD_RESET || process.env.EMAILJS_TEMPLATE_ID || '';
+  private static templateNotification = process.env.EMAILJS_TEMPLATE_NOTIFICATION || process.env.EMAILJS_TEMPLATE_ID || '';
   private static publicKey = process.env.EMAILJS_PUBLIC_KEY || '';
   private static privateKey = process.env.EMAILJS_PRIVATE_KEY || '';
 
   static isConfigured(): boolean {
-    return Boolean(this.serviceId && this.templateId && this.publicKey);
+    return Boolean(this.serviceId && (this.defaultTemplateId || this.templateVerification) && this.publicKey);
+  }
+
+  // Get active EmailJS template ID for the 3 production templates
+  static getTemplateId(category?: 'verification' | 'password_reset' | 'notification'): string {
+    if (category === 'verification') {
+      return this.templateVerification || this.defaultTemplateId;
+    }
+    if (category === 'password_reset') {
+      return this.templatePasswordReset || this.defaultTemplateId;
+    }
+    if (category === 'notification') {
+      return this.templateNotification || this.defaultTemplateId;
+    }
+    return this.defaultTemplateId || this.templateNotification;
   }
 
   // Generic Email Sender via EmailJS REST API
   static async sendEmail(opts: EmailOptions): Promise<{ success: boolean; messageId?: string; simulated?: boolean }> {
-    const { toEmail, toName, subject, templateParams } = opts;
+    const { toEmail, toName, subject, templateCategory, templateParams } = opts;
+    const resolvedTemplateId = this.getTemplateId(templateCategory);
 
     // In local dev/testing without credentials, log the email safely
     if (!this.isConfigured()) {
@@ -54,13 +73,14 @@ export class EmailService {
         },
         body: JSON.stringify({
           service_id: this.serviceId,
-          template_id: this.templateId,
+          template_id: resolvedTemplateId,
           user_id: this.publicKey,
           accessToken: this.privateKey || undefined,
           template_params: {
             to_name: toName,
             to_email: toEmail,
             subject,
+            notification_type: templateCategory || 'general_notification',
             ...templateParams,
           },
         }),
@@ -95,10 +115,12 @@ export class EmailService {
     };
 
     const label = purposeLabels[purpose] || 'Verification Code';
+    const isReset = purpose === 'password_reset';
     const res = await this.sendEmail({
       toEmail: email,
       toName: email.split('@')[0],
       subject: `[Vidyapath] Your ${label}: ${otp}`,
+      templateCategory: isReset ? 'password_reset' : 'verification',
       templateParams: {
         otp_code: otp,
         purpose_label: label,
@@ -122,6 +144,7 @@ export class EmailService {
       toEmail: email,
       toName: institutionName,
       subject: `[Vidyapath] Institution Registration Status: ${status.toUpperCase()}`,
+      templateCategory: 'notification',
       templateParams: {
         institution_name: institutionName,
         status: status.toUpperCase(),
@@ -145,6 +168,7 @@ export class EmailService {
       toEmail: email,
       toName: teacherName,
       subject: `[Vidyapath] Faculty Invitation: ${institutionName}`,
+      templateCategory: 'notification',
       templateParams: {
         teacher_name: teacherName,
         institution_name: institutionName,
@@ -169,6 +193,7 @@ export class EmailService {
       toEmail: email,
       toName: userName,
       subject: `[Vidyapath Security Alert] ${alertTitle}`,
+      templateCategory: 'notification',
       templateParams: {
         alert_title: alertTitle,
         ip_address: ipAddress || 'Unknown IP',
@@ -204,6 +229,7 @@ export class EmailService {
       toEmail: email,
       toName: adminName,
       subject: template.subject,
+      templateCategory: 'notification',
       templateParams: {
         admin_name: adminName,
         institution_name: institutionName,
@@ -241,6 +267,7 @@ export class EmailService {
       toEmail: email,
       toName: adminName,
       subject: template.subject,
+      templateCategory: 'password_reset',
       templateParams: {
         admin_name: adminName,
         reset_code: otp,
@@ -274,6 +301,7 @@ export class EmailService {
       toEmail: email,
       toName: adminName,
       subject: template.subject,
+      templateCategory: 'notification',
       templateParams: {
         admin_name: adminName,
         portal_url: portalUrl,

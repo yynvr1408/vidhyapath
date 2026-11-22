@@ -278,3 +278,65 @@ export interface OtpRecord {
   expiresAt: number;
   createdAt: number;
 }
+
+export interface Family {
+  id: string;
+  name: string;
+  primaryGuardianId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface FamilyMember {
+  id: string;
+  familyId: string;
+  userId: string;
+  role: 'guardian' | 'student';
+  createdAt: number;
+}
+
+export interface Guardianship {
+  id: string;
+  guardianId: string;
+  studentId: string;
+  relationship: string;
+  createdAt: number;
+}
+
+export interface Course {
+  id: string;
+  code: string;
+  title: string;
+  institutionId: string;
+  description?: string;
+  syllabus?: any[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CourseEnrollment {
+  id: string;
+  courseId: string;
+  studentId: string;
+  status: 'active' | 'completed' | 'dropped';
+  enrolledAt: number;
+}
+
+export interface AiConversation {
+  id: string;
+  studentId: string;
+  topicId?: string;
+  language: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AiMessage {
+  id: string;
+  conversationId: string;
+  sender: 'student' | 'tutor';
+  text: string;
+  audioUrl?: string;
+  photoUrl?: string;
+  createdAt: number;
+}

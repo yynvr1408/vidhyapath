@@ -320,6 +320,75 @@ CREATE TABLE IF NOT EXISTS cohort_aggregates (
   updated_at BIGINT NOT NULL
 );
 
+-- 21. Families (Family Multi-Student Management)
+CREATE TABLE IF NOT EXISTS families (
+  id VARCHAR(64) PRIMARY KEY,
+  name TEXT NOT NULL,
+  primary_guardian_id VARCHAR(64) REFERENCES users(id) ON DELETE CASCADE,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+
+-- 22. Family Members
+CREATE TABLE IF NOT EXISTS family_members (
+  id VARCHAR(64) PRIMARY KEY,
+  family_id VARCHAR(64) REFERENCES families(id) ON DELETE CASCADE,
+  user_id VARCHAR(64) REFERENCES users(id) ON DELETE CASCADE,
+  role VARCHAR(32) NOT NULL,
+  created_at BIGINT NOT NULL
+);
+
+-- 23. Guardianships
+CREATE TABLE IF NOT EXISTS guardianships (
+  id VARCHAR(64) PRIMARY KEY,
+  guardian_id VARCHAR(64) REFERENCES users(id) ON DELETE CASCADE,
+  student_id VARCHAR(64) REFERENCES users(id) ON DELETE CASCADE,
+  relationship VARCHAR(64) DEFAULT 'parent',
+  created_at BIGINT NOT NULL
+);
+
+-- 24. Courses (Centralized Curriculum Management)
+CREATE TABLE IF NOT EXISTS courses (
+  id VARCHAR(64) PRIMARY KEY,
+  code VARCHAR(64) NOT NULL,
+  title TEXT NOT NULL,
+  institution_id VARCHAR(64) REFERENCES institutions(id) ON DELETE CASCADE,
+  description TEXT,
+  syllabus JSONB DEFAULT '[]'::jsonb,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+
+-- 25. Course Enrollments
+CREATE TABLE IF NOT EXISTS course_enrollments (
+  id VARCHAR(64) PRIMARY KEY,
+  course_id VARCHAR(64) REFERENCES courses(id) ON DELETE CASCADE,
+  student_id VARCHAR(64) REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(32) DEFAULT 'active',
+  enrolled_at BIGINT NOT NULL
+);
+
+-- 26. AI Conversations
+CREATE TABLE IF NOT EXISTS ai_conversations (
+  id VARCHAR(64) PRIMARY KEY,
+  student_id VARCHAR(64) NOT NULL,
+  topic_id VARCHAR(64),
+  language VARCHAR(16) NOT NULL,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+
+-- 27. AI Messages
+CREATE TABLE IF NOT EXISTS ai_messages (
+  id VARCHAR(64) PRIMARY KEY,
+  conversation_id VARCHAR(64) REFERENCES ai_conversations(id) ON DELETE CASCADE,
+  sender VARCHAR(16) NOT NULL,
+  text TEXT NOT NULL,
+  audio_url TEXT,
+  photo_url TEXT,
+  created_at BIGINT NOT NULL
+);
+
 -- Indexes for lightning fast lookups
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_institution ON users(institution_id);
@@ -333,6 +402,12 @@ CREATE INDEX IF NOT EXISTS idx_announcements_institution ON announcements(instit
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_verifications(email);
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_families_guardian ON families(primary_guardian_id);
+CREATE INDEX IF NOT EXISTS idx_family_members_fam ON family_members(family_id);
+CREATE INDEX IF NOT EXISTS idx_guardianships_g ON guardianships(guardian_id);
+CREATE INDEX IF NOT EXISTS idx_courses_inst ON courses(institution_id);
+CREATE INDEX IF NOT EXISTS idx_ai_conv_student ON ai_conversations(student_id);
+CREATE INDEX IF NOT EXISTS idx_ai_msg_conv ON ai_messages(conversation_id);
 `;
 
 /**
