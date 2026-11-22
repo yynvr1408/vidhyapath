@@ -2,7 +2,7 @@
 // jest-dom is imported from its vitest entry so its matchers extend Vitest's expect
 // (the bare entry expects a global `expect`, which this config does not provide).
 import '@testing-library/jest-dom/vitest';
-// In-memory IndexedDB so LocalDatabase (src/db/indexedDb.ts) works under jsdom.
+// In-memory IndexedDB so LocalDatabase (frontend/src/db/indexedDb.ts) works under jsdom.
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';

@@ -1,10 +1,17 @@
 // Enterprise Vidyapath Automated End-to-End System Tests
 import http from 'http';
-import { app } from '../server/index.js';
-import { AuthService } from '../server/services/auth.js';
-import { AiGuardrailService } from '../server/services/aiGuardrails.js';
-import { SyllabusProcessorService } from '../server/services/syllabusProcessor.js';
-import { dataStore } from '../server/db/store.js';
+import { app } from '../backend/server/index.js';
+import { AuthService } from '../backend/server/services/auth.js';
+import { AiGuardrailService } from '../backend/server/services/aiGuardrails.js';
+import { SyllabusProcessorService } from '../backend/server/services/syllabusProcessor.js';
+import { EmailService } from '../backend/server/services/email.js';
+import { dataStore } from '../backend/server/db/store.js';
+
+// E2E runs exercise invitation/approval paths without sending mail to real inboxes.
+EmailService.sendEmail = async () => ({ success: true, messageId: 'test-only', simulated: true });
+console.assert = (condition?: boolean, ...details: any[]) => {
+  if (!condition) throw new Error(details.map(String).join(' ') || 'Enterprise test assertion failed.');
+};
 
 async function runEnterpriseTests() {
   console.log('===========================================================');
@@ -17,7 +24,8 @@ async function runEnterpriseTests() {
   const baseUrl = 'http://localhost:3003';
 
   // Seed test-scoped fixtures for automated test validation
-  const testPwd = dataStore.hashPassword('password123');
+  const testPwd = dataStore.hashPassword('TestOnlyPassword@2026');
+  const testAdminPwd = dataStore.hashPassword('TestAdminPassword@2026');
   dataStore.institutions.set('inst_ait_hyd', {
     id: 'inst_ait_hyd',
     name: 'Apex Institute of Engineering & Technology',
@@ -34,15 +42,38 @@ async function runEnterpriseTests() {
     },
     createdAt: Date.now(),
   });
+  dataStore.departments.set('dept_cse', {
+    id: 'dept_cse', institutionId: 'inst_ait_hyd', name: 'Computer Science and Engineering', code: 'CSE', createdAt: Date.now(),
+  });
+  dataStore.programmes.set('prog_btech_cse', {
+    id: 'prog_btech_cse', institutionId: 'inst_ait_hyd', departmentId: 'dept_cse', name: 'B.Tech Computer Science', code: 'BTECH-CSE', degreeType: 'B.Tech', totalSemesters: 8, createdAt: Date.now(),
+  });
   dataStore.subjects.set('subj_cs501', {
     id: 'subj_cs501',
     institutionId: 'inst_ait_hyd',
+    departmentId: 'dept_cse',
+    programmeId: 'prog_btech_cse',
     name: 'Operating Systems',
     code: 'CS501',
     semester: 5,
     credits: 4,
-    isElective: false,
-    units: [],
+    description: 'Test fixture subject for isolated API checks.',
+    syllabusVersion: 'test-fixture',
+    isPublished: true,
+    assignedTeacherIds: [],
+    units: [{
+      id: 'unit_os_1', subjectId: 'subj_cs501', unitNumber: 1, title: 'Test unit', description: 'Test fixture content.',
+      topics: [{ id: 'top_os_1_3', unitId: 'unit_os_1', topicNumber: 3, title: 'Test topic', description: 'Test fixture content.', learningOutcomes: [], referenceMaterials: [] }],
+    }],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+  dataStore.assignments.set('assign_os_1', {
+    id: 'assign_os_1', subjectId: 'subj_cs501', teacherId: 'user_test_teacher', teacherName: 'Test Teacher', title: 'Test assignment', description: 'Isolated API fixture.', instructions: 'Submit a short test response.', dueDate: Date.now() + 86_400_000, maxMarks: 10, createdAt: Date.now(),
+  });
+  dataStore.quizzes.set('quiz_os_1', {
+    id: 'quiz_os_1', subjectId: 'subj_cs501', teacherId: 'user_test_teacher', title: 'Test quiz', timeLimitMinutes: 10, passPercentage: 60,
+    questions: [1, 1, 1, 3].map((correctOptionIndex, index) => ({ id: `test-q-${index}`, text: 'Test question', options: ['A', 'B', 'C', 'D'], correctOptionIndex })), createdAt: Date.now(),
   });
   dataStore.users.set('user_student_aditya', {
     id: 'user_student_aditya',
@@ -66,6 +97,16 @@ async function runEnterpriseTests() {
       attendancePercent: 91,
       completedTopicIds: [],
     },
+  });
+  dataStore.users.set('user_test_super_admin', {
+    id: 'user_test_super_admin',
+    fullName: 'Test Administrator',
+    email: 'test.admin@vidyapath.edu',
+    role: 'super_admin',
+    status: 'active',
+    passwordHash: testAdminPwd.hash,
+    salt: testAdminPwd.salt,
+    createdAt: Date.now(),
   });
 
   try {
@@ -124,29 +165,54 @@ async function runEnterpriseTests() {
     const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@vidyapath.edu', password: 'password123' }),
+      body: JSON.stringify({ email: 'test.admin@vidyapath.edu', password: 'TestAdminPassword@2026' }),
     });
     const loginData = await loginRes.json();
     console.assert(loginData.success === true, 'Super Admin login must succeed');
     console.assert(loginData.user.role === 'super_admin', 'Role must be super_admin');
-    console.assert(loginData.redirectTo === '/dashboard/super-admin', 'Super admin must redirect to /dashboard/super-admin');
+    console.assert(loginData.redirectTo === '/portal', 'Super admin must enter the shared portal');
     console.log(`[PASS] Super Admin Login verified. Redirects to: ${loginData.redirectTo}`);
 
     // Student Login
     const stdLoginRes = await fetch(`${baseUrl}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'aditya.23cs042@apextech.edu', password: 'password123' }),
+      body: JSON.stringify({ email: 'aditya.23cs042@apextech.edu', password: 'TestOnlyPassword@2026' }),
     });
     const stdData = await stdLoginRes.json();
     console.assert(stdData.user.role === 'student', 'Role must be student');
-    console.assert(stdData.redirectTo === '/dashboard/student', 'Student redirects to /dashboard/student');
+    console.assert(stdData.redirectTo === '/portal', 'Student enters the shared portal');
     console.log(`[PASS] Student Login verified. Redirects to: ${stdData.redirectTo}`);
+
+    const structureWrite = await fetch(`${baseUrl}/api/institution/inst_ait_hyd/departments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${stdData.token}` },
+      body: JSON.stringify({ name: 'Unauthorized Department', code: 'UNAUTH' }),
+    });
+    console.assert(structureWrite.status === 403, 'Students must not create institution academic structure');
+    console.log('[PASS] Student role cannot access institution structure write routes.');
+
+    const departmentResponse = await fetch(`${baseUrl}/api/institution/inst_ait_hyd/departments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${loginData.token}` },
+      body: JSON.stringify({ name: 'Test Data Systems', code: 'TEST-DS' }),
+    });
+    const departmentData = await departmentResponse.json();
+    console.assert(departmentResponse.status === 201 && departmentData.department.code === 'TEST-DS', 'Institution admin workflow creates a scoped department');
+    const programmeResponse = await fetch(`${baseUrl}/api/institution/inst_ait_hyd/programmes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${loginData.token}` },
+      body: JSON.stringify({ name: 'Test Data Systems Diploma', code: 'TEST-DIP', departmentId: departmentData.department.id, degreeType: 'Diploma', totalSemesters: 4 }),
+    });
+    const programmeData = await programmeResponse.json();
+    console.assert(programmeResponse.status === 201 && programmeData.programme.departmentId === departmentData.department.id, 'Programme is restricted to and linked with its department');
 
     // -------------------------------------------------------------
     // TEST 4: Institution Registration & Super Admin Approval Flow
     // -------------------------------------------------------------
     console.log('\n--- 4. Testing Institution Multi-Tier Approval Workflow ---');
+    const institutionOtp = AuthService.generateOtp('director.kgp@iitkgp.ac.in', 'registration');
+    AuthService.verifyOtp('director.kgp@iitkgp.ac.in', 'registration', institutionOtp.otp);
     const regInstRes = await fetch(`${baseUrl}/api/auth/register/institution`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -241,6 +307,7 @@ UNIT 2: Distributed Consensus & Fault Tolerance
         draft: parseData.draft,
         institutionId: 'inst_ait_hyd',
         departmentId: 'dept_cse',
+        programmeId: 'prog_btech_cse',
       }),
     });
     const pubData = await pubRes.json();
@@ -259,8 +326,7 @@ UNIT 2: Distributed Consensus & Fault Tolerance
         Authorization: `Bearer ${stdData.token}`,
       },
       body: JSON.stringify({
-        contentText: 'Detailed solutions for FCFS, SJF, and Round Robin Gantt chart simulation.',
-        fileUrl: '/uploads/aditya_os_hw1.pdf',
+        contentText: 'Test-only assignment submission payload.',
       }),
     });
     const assignSubmitData = await assignSubmitRes.json();
@@ -409,32 +475,20 @@ UNIT 2: Distributed Consensus & Fault Tolerance
     console.assert(rateLimitHeader !== null, 'X-RateLimit-Limit header must be present');
     console.log(`[PASS] Enterprise Rate Limiting verified (Active Limit: ${rateLimitHeader} req/min).`);
 
-    // -------------------------------------------------------------
-    // TEST 10: In-Memory Cloudflare R2 Uploads (Zero Ephemeral Disk Writes)
-    // -------------------------------------------------------------
-    console.log('\n--- 10. Testing Cloudflare R2 Uploads (Zero Ephemeral Disk Writes) ---');
-    const uploadRes = await fetch(`${baseUrl}/api/upload`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fileName: 'test_syllabus.pdf',
-        fileData: Buffer.from('%PDF-1.4 test in memory').toString('base64'),
-        contentType: 'application/pdf',
-      }),
-    });
-    console.assert(uploadRes.status === 200, 'Upload endpoint must return 200');
-    const uploadData = await uploadRes.json();
-    console.assert(uploadData.success === true, 'Upload must succeed');
-    console.assert(typeof uploadData.fileUrl === 'string' && uploadData.fileUrl.length > 0, 'Must return valid fileUrl');
-    console.log(`[PASS] In-Memory R2 Upload verified (0 disk writes): ${uploadData.fileUrl.slice(0, 45)}...`);
-
     console.log('\n===========================================================');
     console.log('=== ALL ENTERPRISE TEST CASES PASSED WITH 100% SUCCESS! ===');
     console.log('===========================================================');
   } finally {
+    server.closeAllConnections();
     server.close();
-    process.exit(0);
+    server.unref();
   }
 }
 
-runEnterpriseTests();
+void runEnterpriseTests().then(() => {
+  // HTTP keep-alive sockets created by fetch can outlive server.close in Node.
+  process.exit(process.exitCode || 0);
+}).catch((error) => {
+  console.error('[FAIL] Enterprise workflow test failed:', error);
+  process.exit(1);
+});

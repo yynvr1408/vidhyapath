@@ -1,9 +1,9 @@
 // Comprehensive E2E Tests for Family Management, Multi-Student Profiles, Courses & EmailJS 3-Template Mapping
 import { describe, it, expect, beforeEach } from 'vitest';
 import express, { Express } from 'express';
-import { enterpriseApiRouter } from '../../server/routes/api';
-import { dataStore } from '../../server/db/store';
-import { EmailService } from '../../server/services/email';
+import { enterpriseApiRouter } from '../../backend/server/routes/api';
+import { dataStore } from '../../backend/server/db/store';
+import { EmailService } from '../../backend/server/services/email';
 
 describe('Family Management, Academic Architecture & EmailJS Suite', () => {
   let app: Express;

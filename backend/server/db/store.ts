@@ -109,14 +109,16 @@ class InMemoryDataStore {
     this.syncListeners = { ...this.syncListeners, ...listeners };
   }
 
-  // Password hashing helper (10,000 PBKDF2 iterations)
+  // Password hashing helper (210,000 PBKDF2 iterations)
   hashPassword(password: string, salt?: string): { hash: string; salt: string } {
     const s = salt || crypto.randomBytes(16).toString('hex');
-    const hash = crypto.pbkdf2Sync(password, s, 10000, 64, 'sha512').toString('hex');
+    const hash = crypto.pbkdf2Sync(password, s, 210000, 64, 'sha512').toString('hex');
     return { hash, salt: s };
   }
 
   verifyPassword(password: string, hash: string, salt: string): boolean {
+    const computed210k = crypto.pbkdf2Sync(password, salt, 210000, 64, 'sha512').toString('hex');
+    if (safeHexEqual(computed210k, hash)) return true;
     const computed10k = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
     if (safeHexEqual(computed10k, hash)) return true;
     const computed1k = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');

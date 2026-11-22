@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
 import { Server } from 'http';
-import { enterpriseApiRouter } from '../../server/routes/api.js';
+import { enterpriseApiRouter } from '../../backend/server/routes/api.js';
 
 describe('Phase 6: Context-Aware Socratic AI Tutor & Release Hardening', () => {
   let app: express.Application;

@@ -37,23 +37,23 @@ export class SyllabusProcessorService {
   ): ExtractedSyllabusDraft {
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
 
-    let subjectName = 'Extracted Subject';
-    let subjectCode = 'SUB101';
-    let credits = 3;
+    let subjectName = '';
+    let subjectCode = '';
+    let credits = 0;
 
     // Detect subject header
     for (const line of lines) {
-      const codeMatch = line.match(/(?:course|subject)?\s*(?:code)?\s*[:\-]?\s*([A-Z]{2,4}\s*\d{3,4})/i);
+      const codeMatch = line.match(/^(?:course|subject)?\s*code\s*[:\-]?\s*([A-Z]{2,8}[A-Z0-9-]{0,10})$/i);
       if (codeMatch) {
         subjectCode = codeMatch[1].replace(/\s+/g, '').toUpperCase();
       }
-      const titleMatch = line.match(/(?:subject|course|title)\s*[:\-]\s*(.+)/i);
+      const titleMatch = line.match(/^(?:(?:subject|course)\s+(?:title|name)|title)\s*[:\-]\s*(.+)$/i);
       if (titleMatch) {
         subjectName = titleMatch[1].trim();
       }
-      const creditsMatch = line.match(/(?:credits|credit)\s*[:\-]?\s*(\d+)/i);
+      const creditsMatch = line.match(/^(?:credits|credit)\s*[:\-]?\s*(\d+(?:\.\d+)?)$/i);
       if (creditsMatch) {
-        credits = parseInt(creditsMatch[1], 10) || 3;
+        credits = Number(creditsMatch[1]);
       }
     }
 
@@ -61,8 +61,7 @@ export class SyllabusProcessorService {
     let currentUnit: ExtractedSyllabusDraft['units'][0] | null = null;
     let unitIndex = 1;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    for (const line of lines) {
       const unitMatch = line.match(/^(?:UNIT|CHAPTER|MODULE)\s*([0-9IVXLCDM]+)[\s:\-–—]+(.+)/i);
 
       if (unitMatch) {
@@ -86,9 +85,9 @@ export class SyllabusProcessorService {
             currentUnit.topics.push({
               topicNumber: currentUnit.topics.length + 1,
               title: topicText,
-              description: `Detailed study of ${topicText}`,
-              learningOutcomes: [`Understand the principles and applications of ${topicText}`],
-              referenceMaterials: ['Standard Course Textbook'],
+              description: '',
+              learningOutcomes: [],
+              referenceMaterials: [],
             });
           }
         } else if (!currentUnit.description && line.length > 15) {
@@ -101,31 +100,13 @@ export class SyllabusProcessorService {
       units.push(currentUnit);
     }
 
-    // Fallback if no explicit unit headers were detected
-    if (units.length === 0) {
-      units.push({
-        unitNumber: 1,
-        title: 'Unit 1: Foundational Principles & Core Concepts',
-        description: 'Comprehensive overview extracted from the provided syllabus document.',
-        topics: [
-          {
-            topicNumber: 1,
-            title: subjectName + ' - Fundamental Overview',
-            description: 'Core concepts and theoretical background',
-            learningOutcomes: ['Demonstrate foundational understanding of topic principles'],
-            referenceMaterials: ['Prescribed University Textbook'],
-          },
-        ],
-      });
-    }
-
     return {
       subjectName,
       subjectCode,
       credits,
       programmeId: meta.programmeId,
       semester: meta.semester,
-      syllabusVersion: meta.syllabusVersion || 'v1.0-Extracted',
+      syllabusVersion: meta.syllabusVersion || '',
       units,
     };
   }
@@ -136,7 +117,7 @@ export class SyllabusProcessorService {
     departmentId: string,
     draft: ExtractedSyllabusDraft
   ): Subject {
-    const subjectId = 'subj_' + draft.subjectCode.toLowerCase() + '_' + Date.now().toString(36);
+    const subjectId = 'subj_' + crypto.randomUUID();
 
     const fullUnits: CurriculumUnit[] = draft.units.map((u) => {
       const uId = 'unit_' + crypto.randomUUID();

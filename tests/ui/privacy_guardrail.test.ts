@@ -5,9 +5,9 @@ import React, { createElement } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AddProfileModal } from '../../src/components/AddProfileModal';
-import { localDb } from '../../src/db/indexedDb';
-import { getTranslations } from '../../src/utils/translations';
+import { AddProfileModal } from '../../frontend/src/components/AddProfileModal';
+import { localDb } from '../../frontend/src/db/indexedDb';
+import { getTranslations } from '../../frontend/src/utils/translations';
 import { AppTestRoot, dumpAllStores, installFetchMock, resetAppState } from '../helpers/harness';
 import { findKeysNamed } from '../helpers/keys';
 
@@ -29,6 +29,8 @@ describe('privacy guardrail on profile creation', () => {
     );
 
     await user.type(screen.getByPlaceholderText('e.g. Ravi / రవి'), 'Priya');
+    await user.type(screen.getByPlaceholderText('••••'), '1234');
+    await user.type(screen.getByPlaceholderText(en.securityAnswerPlaceholder), 'Maths');
     await user.click(screen.getByRole('button', { name: en.save }));
 
     await waitFor(async () => {

@@ -19,10 +19,6 @@ import { useApp, ScreenId } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { VidyapathLogo } from './VidyapathLogo';
 import { LanguageSelector } from './LanguageSelector';
-import { AppUpdateButton } from './AppUpdateButton';
-import { AppUpdateHeaderPill } from './AppUpdateHeaderPill';
-import { AppUpdateBanner } from './AppUpdateBanner';
-import { AppUpdateModal } from './AppUpdateModal';
 import { getTranslations, SupportedLang } from '../utils/translations';
 import { SCHEDULED_LANGUAGES } from '../config/languages';
 import { navigationManager } from '../services/navigationManager';
@@ -334,10 +330,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           </h2>
         </div>
 
-        {/* Right: Update Pill + Compact Connection / Sync Status Pill */}
+        {/* Right: Compact Connection / Sync Status Pill */}
         <div className="flex items-center gap-1.5">
-          <AppUpdateHeaderPill />
-
           {isOffline ? (
             <div
               title="Offline Mode - Saved on Phone"
@@ -359,9 +353,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           )}
         </div>
       </header>
-
-      {/* Global Floating App Update Notification Banner */}
-      <AppUpdateBanner />
 
       {/* Mobile Slide-out Drawer (< 768px) with Backdrop */}
       {mobileDrawerOpen && (
@@ -427,8 +418,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         })}
       </nav>
 
-      {/* Global Interactive In-App Update Modal */}
-      <AppUpdateModal />
     </div>
   );
 };

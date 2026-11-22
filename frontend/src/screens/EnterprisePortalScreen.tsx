@@ -4,9 +4,8 @@ import {
   EnterpriseShell,
   EnterpriseScreenId,
 } from '../components/layout/EnterpriseShell';
-import { Subject } from '../types/enterprise';
+import { Subject, UserRole } from '../types/enterprise';
 import { useEnterpriseAuth } from '../context/EnterpriseAuthContext';
-import { useApp } from '../context/AppContext';
 import { useAcademic } from '../context/AcademicContext';
 import { SuperAdminDashboard } from './dashboards/SuperAdminDashboard';
 import { InstitutionAdminDashboard } from './dashboards/InstitutionAdminDashboard';
@@ -27,7 +26,6 @@ import { GuardianDigestScreen } from './dashboards/GuardianDigestScreen';
 import {
   BookOpen,
   ArrowLeft,
-  Sparkles,
   Layers,
   ChevronRight,
   Lock,
@@ -35,17 +33,21 @@ import {
 import { navigationManager } from '../services/navigationManager';
 
 interface EnterprisePortalScreenProps {
-  onReturnToStudentApp?: () => void;
-  onNavigateToLogin?: () => void;
   onSignOut?: () => void;
 }
 
-const PORTAL_SCREENS: EnterpriseScreenId[] = [
-  'DASHBOARD', 'SUBJECT_VIEW', 'AI_TUTOR', 'SYLLABUS_MANAGER',
-  'OFFLINE_CENTER', 'FOUNDATION_MASCOTS', 'PRACTICE_ENGINE', 'MY_PROGRESS',
-  'GUARDIAN_DIGEST', 'INSTITUTIONS_QUEUE', 'USERS_DIRECTORY', 'AUDIT_LOGS',
-  'ASSIGNMENTS', 'ANNOUNCEMENTS',
-];
+const ROLE_SCREENS: Record<UserRole, EnterpriseScreenId[]> = {
+  super_admin: ['DASHBOARD', 'INSTITUTIONS_QUEUE', 'USERS_DIRECTORY', 'AUDIT_LOGS', 'ANNOUNCEMENTS'],
+  institution_admin: ['DASHBOARD', 'SYLLABUS_MANAGER', 'USERS_DIRECTORY', 'ANNOUNCEMENTS'],
+  academic_admin: ['DASHBOARD', 'SYLLABUS_MANAGER', 'USERS_DIRECTORY', 'ANNOUNCEMENTS'],
+  coordinator: ['DASHBOARD', 'SYLLABUS_MANAGER', 'USERS_DIRECTORY', 'ANNOUNCEMENTS'],
+  exam_admin: ['DASHBOARD', 'SYLLABUS_MANAGER', 'USERS_DIRECTORY', 'ANNOUNCEMENTS'],
+  teacher: ['DASHBOARD', 'SUBJECT_VIEW', 'ASSIGNMENTS', 'AI_TUTOR'],
+  guardian: ['DASHBOARD', 'GUARDIAN_DIGEST'],
+  student: ['DASHBOARD', 'SUBJECT_VIEW', 'AI_TUTOR', 'OFFLINE_CENTER', 'ANNOUNCEMENTS'],
+};
+
+const canAccessScreen = (role: UserRole, screen: EnterpriseScreenId) => ROLE_SCREENS[role]?.includes(screen) ?? false;
 
 const pathToScreenMap: Record<string, EnterpriseScreenId> = {
   'dashboard': 'DASHBOARD',
@@ -88,12 +90,9 @@ const getScreenFromUrl = (): EnterpriseScreenId => {
 };
 
 export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
-  onReturnToStudentApp,
-  onNavigateToLogin,
   onSignOut,
 }) => {
   const { user, activeRole, loading } = useEnterpriseAuth();
-  const { setScreen: setAppScreen } = useApp();
   const { subjects } = useAcademic();
 
   const [currentScreen, setCurrentScreen] = useState<EnterpriseScreenId>(getScreenFromUrl);
@@ -108,13 +107,16 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  useEffect(() => {
+    if (loading || !user || canAccessScreen(activeRole, currentScreen)) return;
+    setCurrentScreen('DASHBOARD');
+    setActiveSubject(null);
+    window.history.replaceState({ screen: 'DASHBOARD' }, '', '/portal');
+  }, [activeRole, currentScreen, loading, user]);
+
   const handleReturn = () => {
-    if (onReturnToStudentApp) {
-      onReturnToStudentApp();
-    } else {
-      window.history.pushState({}, '', '/learn');
-      setAppScreen('MY_SYLLABUS');
-    }
+    setCurrentScreen('DASHBOARD');
+    if (window.location.pathname !== '/portal') window.history.pushState({ screen: 'DASHBOARD' }, '', '/portal');
   };
 
   // Register hierarchical back-button handler inside Enterprise Portal
@@ -133,7 +135,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
     }, 45);
 
     return () => unregister();
-  }, [currentScreen, onReturnToStudentApp]);
+  }, [currentScreen]);
 
   // GATING 1: Loading state during session restoration
   if (loading) {
@@ -165,14 +167,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
           <div className="pt-2 flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => {
-                if (onNavigateToLogin) {
-                  onNavigateToLogin();
-                } else {
-                  window.history.pushState({}, '', '/login');
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }
-              }}
+              onClick={() => window.location.assign('/?auth=1&role=student&mode=login')}
               className="w-full py-3 px-4 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <span>Go to Sign In Page</span>
@@ -194,10 +189,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
 
   // Navigation dispatcher from sidebar/drawer with clean browser history synchronization
   const handlePortalNavigation = (screen: EnterpriseScreenId) => {
-    if (screen === 'PRACTICE_ENGINE' || screen === 'MY_PROGRESS' || screen === 'FOUNDATION_MASCOTS') {
-      setAppScreen(screen === 'PRACTICE_ENGINE' ? 'PRACTICE' : screen === 'MY_PROGRESS' ? 'PROGRESS' : 'PARENT_VIEW');
-      return;
-    }
+    if (!canAccessScreen(activeRole, screen)) return;
     setCurrentScreen(screen);
     const slug = screen.toLowerCase().replace(/_/g, '-');
     const newPath = screen === 'DASHBOARD' ? '/portal' : `/portal/${slug}`;
@@ -347,6 +339,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
 
   // Render the selected view
   const renderContent = () => {
+    if (!canAccessScreen(activeRole, currentScreen)) return renderDashboard();
     switch (currentScreen) {
       case 'DASHBOARD':
         return renderDashboard();
@@ -381,23 +374,14 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
 
   return (
     <div className="relative w-full min-h-screen bg-[#F8FAFC]">
-      {/* Top Banner to jump between Enterprise Portal and Student Learning Loop */}
+      {/* Single authenticated web portal */}
       <div className="sticky top-0 z-50 bg-[#0F766E] text-white px-4 py-2 flex items-center justify-between text-xs font-bold shadow-xs">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#CCFBF1]" />
           <span>Vidyapath Enterprise Administration &amp; LMS Portal</span>
         </div>
-        <button
-          type="button"
-          onClick={handleReturn}
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-[#0F766E] hover:bg-[#F0FDFA] font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Return to Student Learning App</span>
-        </button>
       </div>
 
-      <EnterpriseShell currentScreen={currentScreen} setScreen={handlePortalNavigation} onSignOut={onSignOut}>
+      <EnterpriseShell currentScreen={canAccessScreen(activeRole, currentScreen) ? currentScreen : 'DASHBOARD'} setScreen={handlePortalNavigation} onSignOut={onSignOut}>
         {renderContent()}
       </EnterpriseShell>
     </div>

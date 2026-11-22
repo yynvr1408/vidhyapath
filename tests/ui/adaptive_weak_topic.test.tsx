@@ -7,11 +7,11 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PracticeWeakTopicsScreen } from '../../src/screens/PracticeWeakTopicsScreen';
-import { MyProgressScreen } from '../../src/screens/MyProgressScreen';
-import { ParentTeacherViewScreen } from '../../src/screens/ParentTeacherViewScreen';
-import { PracticeEngine } from '../../src/engine/practiceEngine';
-import type { ContentPack, Question } from '../../src/types';
+import { PracticeWeakTopicsScreen } from '../../frontend/src/screens/PracticeWeakTopicsScreen';
+import { MyProgressScreen } from '../../frontend/src/screens/MyProgressScreen';
+import { ParentTeacherViewScreen } from '../../frontend/src/screens/ParentTeacherViewScreen';
+import { PracticeEngine } from '../../frontend/src/engine/practiceEngine';
+import type { ContentPack, Question } from '../../frontend/src/types';
 import { AppTestRoot, Captured, installFetchMock, loadPack, makeLearner, resetAppState } from '../helpers/harness';
 import { answerCurrentQuestion } from '../helpers/practice';
 

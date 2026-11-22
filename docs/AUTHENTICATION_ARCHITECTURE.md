@@ -1,66 +1,23 @@
-# Vidyapath — Authentication Architecture & Security Lifecycle
+# Vidyapath Authentication
 
-**Authoritative Backend:** Node.js Express Authentication Services  
-**Session Standard:** Signed JWT with PBKDF2 (SHA-512, 10,000 rounds) credential hashing
+All sign-in and registration actions use one modal on the website landing page. `/login`, `/register`, and `/auth` are route aliases that open this same flow. A successful sign-in enters `/portal`.
 
----
+## Session lifecycle
 
-## 1. Authentication Lifecycle
+1. The website sends credentials to `POST /api/auth/login`.
+2. The API verifies the account and issues a signed JWT. Production requires a `JWT_SECRET` with at least 32 characters; tokens expire after seven days.
+3. `EnterpriseAuthContext` stores the token in `localStorage` and calls `GET /api/auth/me` when restoring a session.
+4. The API checks the current account record on every protected request and uses its active role and institution. A stale token cannot keep a role that has been changed or suspended.
+5. Sign-out clears the shared token and returns to the landing page.
 
-```
-[ User Action: Register / Login / Reset ]
-                     |
-                     v
-       +-----------------------------+
-       |   Rate Limiter Middleware   |  (300 req/min, 5 failed attempts lockout)
-       +-----------------------------+
-                     |
-                     v
-       +-----------------------------+
-       |    Backend Validation API   |  (Email sanitization, password strength)
-       +-----------------------------+
-                     |
-         +-----------+-----------+
-         |                       |
-  [ Credentials ]          [ OTP Verification ]
-         |                       |
-         v                       v
-  Verify Hash + Salt       Check Hash + Expiry (5m)
-         |                       |
-         +-----------+-----------+
-                     |
-                     v
-       +-----------------------------+
-       |      Issue Signed JWT       |  (Payload: userId, role, institutionId)
-       +-----------------------------+
-                     |
-                     v
-       +-----------------------------+
-       |   Role-Based Redirection    |
-       | L1 -> /dashboard/super-admin|
-       | L2 -> /dashboard/inst-admin |
-       | L3 -> /dashboard/teacher    |
-       | L4 -> /dashboard/student    |
-       | L5 -> /dashboard/parent     |
-       +-----------------------------+
-```
+## Credentials and registration
 
----
+- Passwords are hashed with PBKDF2-SHA512 at 210,000 iterations. Verification also supports the older 10,000- and 1,000-iteration hashes so existing accounts can sign in during migration.
+- Email verification uses one-time codes for registration and recovery. Development can display a code locally when no email provider is configured; production requires email delivery configuration.
+- Students use their learner sign-in code and PIN. Guardians and institutional staff use email and password.
+- Student and guardian registration are available in the shared modal. Institution applications require super-admin approval. Teacher accounts are created by an institution invitation; public teacher registration is disabled.
+- Production does not create a shared administrator login. Configure `BOOTSTRAP_SUPER_ADMIN_EMAIL` and a unique `BOOTSTRAP_SUPER_ADMIN_PASSWORD` to initialize the operator account.
 
-## 2. Multi-Pathway Registration Matrix
+## Access control
 
-| Pathway | Mandatory Fields | Verification Method | Approval Required | Post-Activation Destination |
-|---|---|---|---|---|
-| **Student (Institutional)** | Name, Email, Password, Inst ID, Programme, Semester | EmailJS Template 1 OTP | Institution Administrator | Student Dashboard |
-| **Independent Learner** | Name, Email, Password, Target Grade | EmailJS Template 1 OTP | Immediate | Learner Dashboard |
-| **Parent / Guardian** | Name, Email, Password | EmailJS Template 1 OTP | Immediate | Family Onboarding |
-| **Teacher / Faculty** | Name, Email, Password, Inst Code, Dept | EmailJS Template 1 OTP | Institution Administrator | Teacher Dashboard |
-| **Institution Admin** | Inst Name, Code, Admin Email, Password | EmailJS Template 1 OTP | Super Administrator | Institution Dashboard |
-
----
-
-## 3. Student Zero-Email Security Guarantee
-For underage rural students using shared low-connectivity mobile devices, Vidyapath supports **Zero-PII Student Authentication**:
-- **Credentials:** Username / Login Code (e.g. `RAVI-10`) + 4-digit PIN (`1234`).
-- **Recovery:** Child-friendly Safety Question (e.g. *"What is your favorite school subject?"* $\to$ *"Maths"*).
-- **Privacy:** No phone numbers, personal emails, or SMS OTPs are required or collected from students.
+Portal navigation is filtered by role, including direct links to `/portal/:section`. The API separately checks roles and institution or learner ownership before returning protected data. The backend does not rely on which role tab the browser selected.

@@ -3,7 +3,6 @@ import {
   GraduationCap,
   Users,
   Building2,
-  Shield,
   ShieldCheck,
   BookOpen,
   ArrowRight,
@@ -18,10 +17,7 @@ import {
 } from 'lucide-react';
 import { VidyapathLogo } from '../components/VidyapathLogo';
 import { LanguageSelector } from '../components/LanguageSelector';
-import { AppUpdateHeaderPill } from '../components/AppUpdateHeaderPill';
-import { AppUpdateBanner } from '../components/AppUpdateBanner';
 import { useApp } from '../context/AppContext';
-import { useAppUpdate } from '../hooks/useAppUpdate';
 import { getTranslations } from '../utils/translations';
 import type { AuthRole } from '../types/auth';
 
@@ -36,7 +32,6 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
 }) => {
   const { currentLanguage } = useApp();
   const t = getTranslations(currentLanguage);
-  const { currentVersion, openModal } = useAppUpdate();
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col justify-between selection:bg-[#CCFBF1] selection:text-[#0F766E]">
@@ -69,9 +64,6 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
             {/* Native 22-Language Script Selector */}
             <LanguageSelector variant="compact" />
 
-            {/* App Update Pill */}
-            <AppUpdateHeaderPill />
-
             {/* Direct Web Portal Login Button */}
             <button
               type="button"
@@ -93,9 +85,6 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
           </div>
         </div>
       </header>
-
-      {/* Floating In-App Update Banner */}
-      <AppUpdateBanner />
 
       {/* 2. Hero Section */}
       <section className="py-12 sm:py-20 px-4 sm:px-6 bg-gradient-to-b from-white to-[#F8FAFC] border-b border-[#E2E8F0]">
@@ -272,13 +261,7 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
               >
                 Teacher Sign In
               </button>
-              <button
-                type="button"
-                onClick={() => onNavigateToAuth('teacher', 'register')}
-                className="py-2.5 px-3 rounded-xl bg-[#F8FAFC] text-[#475569] border border-[#CBD5E1] text-xs font-bold hover:bg-[#F1F5F9] cursor-pointer"
-              >
-                Register Faculty
-              </button>
+              <span className="text-xs text-[#64748B]">Teachers are invited by their institution.</span>
             </div>
           </div>
 
@@ -317,27 +300,6 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
           </div>
         </div>
 
-        {/* Master Super Admin Banner */}
-        <div className="bg-gradient-to-r from-[#FFFBEB] to-[#FEF3C7] p-5 rounded-3xl border border-[#FDE68A] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 text-center sm:text-left">
-            <div className="w-12 h-12 rounded-2xl bg-[#D97706] text-white flex items-center justify-center shrink-0">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-base text-[#92400E]">Platform Super Administrator Gateway</h4>
-              <p className="text-xs text-[#B45309] font-medium">
-                National institutional approval queue, security policies, and pan-India educational audit logs.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => onNavigateToAuth('admin', 'login')}
-            className="py-2.5 px-5 rounded-xl bg-[#D97706] hover:bg-[#B45309] text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
-          >
-            Super Admin Sign In →
-          </button>
-        </div>
       </section>
 
       {/* 4. Curriculum & Highlights Section */}
@@ -387,16 +349,7 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
 
           <div className="flex items-center gap-4 font-bold text-[#0F766E]">
             <button type="button" onClick={() => onNavigateToAuth('student', 'login')} className="hover:underline">
-              Student Login
-            </button>
-            <button type="button" onClick={() => onNavigateToAuth('guardian', 'login')} className="hover:underline">
-              Parent View
-            </button>
-            <button type="button" onClick={() => onNavigateToAuth('admin', 'login')} className="hover:underline">
-              Institution Portal
-            </button>
-            <button type="button" onClick={openModal} className="hover:underline text-[#D97706]">
-              Web v{currentVersion}
+              Sign in or create an account
             </button>
           </div>
         </div>

@@ -1,8 +1,13 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import express from 'express';
 import { Server } from 'http';
-import { enterpriseApiRouter } from '../../server/routes/api.js';
-import { dataStore } from '../../server/db/store.js';
+import { enterpriseApiRouter } from '../../backend/server/routes/api.js';
+import { dataStore } from '../../backend/server/db/store.js';
+import { authHeaders, createTestAccount } from '../helpers/enterprise_auth';
+
+vi.mock('../../backend/server/services/r2Storage.js', () => ({
+  uploadToR2: vi.fn(async (_buffer: Buffer, filename: string) => `https://uploads.example.invalid/${filename}`),
+}));
 
 describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading & R2 Attachments)', () => {
   let app: express.Application;
@@ -11,8 +16,26 @@ describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading
   let createdAssignmentId: string;
   let submissionId: string;
   let createdQuizId: string;
+  let teacherToken: string;
+  let studentToken: string;
+  let studentId: string;
 
   beforeAll(async () => {
+    const teacher = createTestAccount('teacher', 'unit_lms_teacher', 'inst_ait_hyd');
+    const student = createTestAccount('student', 'unit_lms_student', 'inst_ait_hyd');
+    teacherToken = teacher.token;
+    studentToken = student.token;
+    studentId = student.user.id;
+    student.user.studentProfile!.programmeId = 'prog_maths_10';
+    student.user.studentProfile!.semester = 1;
+    const subjectId = 'subj_maths_10';
+    teacher.user.teacherProfile!.assignedSubjectIds = [subjectId];
+    dataStore.subjects.set(subjectId, {
+      id: subjectId, institutionId: 'inst_ait_hyd', departmentId: 'dept_maths', programmeId: 'prog_maths_10', semester: 1,
+      name: 'Test Mathematics', code: 'TEST-MATHS', credits: 1, description: 'Isolated LMS fixture.', syllabusVersion: 'test-fixture',
+      isPublished: true, assignedTeacherIds: [teacher.user.id], units: [{ id: 'unit_real_numbers', subjectId, unitNumber: 1, title: 'Real numbers', description: '', topics: [] }],
+      createdAt: Date.now(), updatedAt: Date.now(),
+    });
     app = express();
     app.use(express.json());
     app.use('/api', enterpriseApiRouter);
@@ -38,7 +61,7 @@ describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading
   it('1. POST /api/lms/assignments allows a teacher to create an assignment with maxMarks and due date', async () => {
     const res = await fetch(`${baseUrl}/api/lms/assignments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(teacherToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         subjectId: 'subj_maths_10',
         unitId: 'unit_real_numbers',
@@ -62,12 +85,9 @@ describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading
   it('2. POST /api/lms/assignments/:id/submit allows a student to submit their homework solution', async () => {
     const res = await fetch(`${baseUrl}/api/lms/assignments/${createdAssignmentId}/submit`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(studentToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
-        studentId: 'student_chaitanya_ap',
-        studentName: 'Chaitanya Varma',
-        contentText: 'Applied Euclid Lemma: a = bq + r with 0 <= r < b. Q1 remainder is 3.',
-        fileUrl: 'https://pub-524b6af593b340d39cdadb488b86803b.r2.dev/chaitanya_hw1.pdf',
+        contentText: 'Test-only submission for the assigned mathematics subject.',
       }),
     });
 
@@ -79,7 +99,7 @@ describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading
   });
 
   it('3. GET /api/lms/assignments/:id/submissions lets teacher view all student submissions', async () => {
-    const res = await fetch(`${baseUrl}/api/lms/assignments/${createdAssignmentId}/submissions`);
+    const res = await fetch(`${baseUrl}/api/lms/assignments/${createdAssignmentId}/submissions`, { headers: authHeaders(teacherToken) });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.success).toBe(true);
@@ -90,7 +110,7 @@ describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading
   it('4. POST /api/lms/assignments/:id/grade grades student work with marks and qualitative feedback', async () => {
     const res = await fetch(`${baseUrl}/api/lms/assignments/${createdAssignmentId}/grade`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(teacherToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         submissionId,
         marksObtained: 95,
@@ -106,14 +126,14 @@ describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading
     expect(data.submission.feedback).toContain('Excellent work');
 
     // Check student notification was generated
-    const notifs = Array.from(dataStore.notifications.values()).filter((n) => n.userId === 'student_chaitanya_ap');
+    const notifs = Array.from(dataStore.notifications.values()).filter((n) => n.userId === studentId);
     expect(notifs.length).toBeGreaterThanOrEqual(1);
   });
 
   it('5. POST /api/lms/quizzes authors a multi-choice quiz with distractor mistake tags', async () => {
     const res = await fetch(`${baseUrl}/api/lms/quizzes`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(teacherToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         subjectId: 'subj_maths_10',
         unitId: 'unit_real_numbers',
@@ -147,10 +167,8 @@ describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading
   it('6. POST /api/lms/quizzes/:id/attempt auto-grades student submission', async () => {
     const res = await fetch(`${baseUrl}/api/lms/quizzes/${createdQuizId}/attempt`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(studentToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
-        studentId: 'student_chaitanya_ap',
-        studentName: 'Chaitanya Varma',
         selectedAnswers: [1, 2], // Both correct
       }),
     });
@@ -164,7 +182,7 @@ describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading
   });
 
   it('7. GET /api/lms/quizzes/:id/attempts allows teacher to review quiz analytics', async () => {
-    const res = await fetch(`${baseUrl}/api/lms/quizzes/${createdQuizId}/attempts`);
+    const res = await fetch(`${baseUrl}/api/lms/quizzes/${createdQuizId}/attempts`, { headers: authHeaders(teacherToken) });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.success).toBe(true);
@@ -176,7 +194,7 @@ describe('Phase 4: Complete Teacher LMS Workflows (Assignments, Quizzes, Grading
     const samplePdfContent = Buffer.from('Vidyapath Question Paper for Class 10 AP Board').toString('base64');
     const res = await fetch(`${baseUrl}/api/lms/upload`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(teacherToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         filename: 'ap_class10_maths_worksheet.pdf',
         contentType: 'application/pdf',

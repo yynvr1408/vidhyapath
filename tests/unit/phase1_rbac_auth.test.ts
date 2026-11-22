@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { dataStore } from '../../server/db/store.js';
-import { enterpriseApiRouter } from '../../server/routes/api.js';
+import { dataStore } from '../../backend/server/db/store.js';
+import { enterpriseApiRouter } from '../../backend/server/routes/api.js';
+import { AuthService } from '../../backend/server/services/auth.js';
 import express from 'express';
 
 describe('Phase 1: Canonical RBAC & Multi-Role Onboarding Suite', () => {
@@ -32,6 +33,9 @@ describe('Phase 1: Canonical RBAC & Multi-Role Onboarding Suite', () => {
 
   // 1. Guardian Family Account Registration
   it('registers a Parent/Guardian account and auto-provisions Family record', async () => {
+    const verification = AuthService.generateOtp('lakshmi.parent@test.com', 'registration');
+    expect(verification.otp).toBeDefined();
+    AuthService.verifyOtp('lakshmi.parent@test.com', 'registration', verification.otp!);
     const res = await fetch(`http://127.0.0.1:${port}/api/auth/register/guardian`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -60,17 +64,13 @@ describe('Phase 1: Canonical RBAC & Multi-Role Onboarding Suite', () => {
 
   // 2. Student Zero-PII Registration under Guardian (Free Class 1-10)
   it('registers a student sibling under the Guardian family account with Zero-PII 4-digit PIN', async () => {
-    const res = await fetch(`http://127.0.0.1:${port}/api/auth/register/student`, {
+    const res = await fetch(`http://127.0.0.1:${port}/api/family/add-student`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${guardianToken}` },
       body: JSON.stringify({
         fullName: 'Sai Reddy',
         classGrade: 10,
-        board: 'Andhra Pradesh SSC',
-        state: 'Andhra Pradesh',
-        pin: '4321',
-        isIndependent: true,
-        familyId: guardianFamilyId,
+        pin: '4321', familyId: guardianFamilyId,
         securityQuestionId: 'subject',
         securityQuestion: 'What is your favorite school subject?',
         securityAnswer: 'Maths',
@@ -80,13 +80,8 @@ describe('Phase 1: Canonical RBAC & Multi-Role Onboarding Suite', () => {
     const data = await res.json();
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.token).toBeDefined();
-    expect(data.user.role).toBe('student');
-    expect(data.user.studentProfile.classGrade).toBe(10);
-    expect(data.user.studentProfile.isIndependent).toBe(true);
-    expect(data.user.studentProfile.rollNumber).toBeDefined();
-
-    studentRollNumber = data.user.studentProfile.rollNumber;
+    expect(data.student.loginCode).toBeDefined();
+    studentRollNumber = data.student.loginCode;
   });
 
   // 3. Student Login with Roll Number & 4-Digit PIN
@@ -105,11 +100,11 @@ describe('Phase 1: Canonical RBAC & Multi-Role Onboarding Suite', () => {
     expect(data.success).toBe(true);
     expect(data.token).toBeDefined();
     expect(data.user.role).toBe('student');
-    expect(data.redirectTo).toBe('/learn');
+    expect(data.redirectTo).toBe('/portal');
   });
 
   // 4. Guardian Login with Email and Password
-  it('logs in Parent/Guardian using Email and Password and routes to /guardian', async () => {
+  it('logs in Parent/Guardian using Email and Password and routes to the shared portal', async () => {
     const res = await fetch(`http://127.0.0.1:${port}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -123,7 +118,7 @@ describe('Phase 1: Canonical RBAC & Multi-Role Onboarding Suite', () => {
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.user.role).toBe('guardian');
-    expect(data.redirectTo).toBe('/guardian');
+    expect(data.redirectTo).toBe('/portal');
   });
 
   // 5. Zero-PII Student PIN Reset via Security Question

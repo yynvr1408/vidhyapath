@@ -1,38 +1,24 @@
-# Vidyapath Web-First Architecture
+# Vidyapath Web Architecture
 
-**Current direction:** the supported product is a responsive browser PWA. Android packaging is deferred.
+The supported application is a responsive browser website. The repository has no Android project, native application package, or APK release workflow. Android packaging can be added in a later project phase.
 
-## What was colliding
+## Routes and sessions
 
-- `src/App.tsx` had separate browser and Capacitor render trees. A route could therefore render different screens depending on how the same site was opened.
-- The main app and the native navigation manager both listened for `popstate`. Browser Back could change the URL and also trigger the mobile exit/back flow in the same event.
-- The sync service read every profile's pending attempts but sent them with the currently selected learner ID. A shared device could attribute one learner's work to another learner.
-- The reconnect listener captured the initial empty learner value, so a later online event could fail to flush the selected learner's outbox.
-- The Android release workflow, APK download UI, Capacitor packages, and native project remained active after the web route had diverged.
+- `frontend/src/App.tsx` is the single route entry point. `/` displays the landing page. `/login`, `/register`, and `/auth` resolve to the same page and open the shared authentication modal.
+- Authenticated routes use `/portal` and `/portal/:section`. The portal reads the URL on load and handles browser Back/Forward. Old `/learn`, `/student`, `/guardian`, `/parent`, and `/admin` paths resolve to the same portal.
+- `EnterpriseAuthContext` stores one session token and reloads the current account through `/api/auth/me`. The server reads the live role and institution from the account record on every authenticated request.
+- Portal navigation and direct links use the same role allowlist. The API independently checks role and institution scope for protected data and writes.
 
-## Current route flow
+## Learning data and synchronization
 
-- `src/App.tsx` owns pathname and `popstate` handling. Browser Back/Forward changes the route once, and in-app learner screen changes create matching history entries.
-- `/` opens the landing page; `/login` and `/register` open web authentication; `/learn` opens profile selection or the learner flow; `/learn/tutor`, `/learn/practice`, and `/learn/progress` open learner sections; `/guardian` and `/portal` open their respective web views.
-- Older route aliases such as `/app`, `/student`, `/admin`, and `/parent` resolve to the web routes. Landing page anchors remain ordinary anchors.
-- Escape closes registered dialogs. It does not compete with the browser's Back button.
+- Departments and programmes hydrate from PostgreSQL when Render starts. Institution staff create those records through the authenticated portal; the API checks role, institution, and programme hierarchy before saving.
+- Syllabus processing requires a real department, programme, semester, version, and subject details. The API rejects incomplete drafts and writes published subjects to PostgreSQL before acknowledging success.
+- Learner progress is queued in browser IndexedDB by learner identity. Sync requests include only the active learner's records and the API verifies account ownership before accepting them.
+- Without a configured database, local development may use process memory for server data. Production startup requires PostgreSQL and a configured bootstrap administrator.
 
-## Current progress sync flow
+## Netlify and Render layout
 
-1. Practice answers and skill state are written locally before feedback is shown. A failed local write leaves the question retryable and displays an error.
-2. IndexedDB schema version 2 indexes outbox rows by learner. Each sync request contains only the selected learner's attempts and queued doubts.
-3. The server validates ownership and returns the event IDs it accepted. The browser removes only those IDs from the outbox; rejected or failed writes stay available for retry.
-4. The browser retries after profile selection, after a completed answer, at session completion, when connectivity returns, and with bounded backoff after temporary failures. Per-learner in-flight requests are deduplicated.
-5. When Neon is configured, the API waits for event and doubt writes before acknowledging them. Without `DATABASE_URL`, the API may answer through its process-local development fallback, but the browser ignores that non-durable acknowledgment and keeps its outbox for a later retry. The learner's IndexedDB history remains durable on that browser either way.
-
-## Android deferral
-
-The tracked `android/` project, Capacitor configuration and dependencies, hardware-back hook, APK download/update UI, and APK CI workflow were removed. The browser PWA and its deploy proxies remain the active delivery path. Android can be added again after the route and sync flows are stable.
-
-## Local workflow
-
-- Frontend: `npm run dev`
-- API, in a second terminal: `npm run server`
-- Production web assets: `npm run build`
-
-For cloud persistence, configure `DATABASE_URL` for the API and the deployment's `/api` proxy. In local fallback mode, learning progress remains in the browser's IndexedDB, while server-side sync is temporary.
+- `frontend/` contains the Vite website, its TypeScript configuration, package manifest, and lockfile. Netlify builds this directory and publishes `frontend/dist`.
+- `backend/` contains the Express API, its TypeScript configuration, package manifest, and lockfile. Render uses this as its root directory and exposes `/readyz` as the health check.
+- `netlify.toml` forwards `/api/*` and `/uploads/*` to the Render service and falls back to `index.html` for website routes.
+- Shared tests and repository-level developer commands remain at the repository root.

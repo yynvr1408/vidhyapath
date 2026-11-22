@@ -2,7 +2,7 @@
 // Real: TutorService.askDoubt / buildPrompt with a real pack from public/packs.
 // The network boundary (fetch) is captured; the server is not called.
 import { describe, it, expect } from 'vitest';
-import { TutorService } from '../../src/services/tutor';
+import { TutorService } from '../../frontend/src/services/tutor';
 import { installFetchMock, loadPack, resetAppState } from '../helpers/harness';
 
 describe('tutor language', () => {

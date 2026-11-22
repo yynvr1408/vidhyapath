@@ -7,8 +7,8 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AppShell } from '../../src/components/AppShell';
-import { getTranslations } from '../../src/utils/translations';
+import { AppShell } from '../../frontend/src/components/AppShell';
+import { getTranslations } from '../../frontend/src/utils/translations';
 import { AppTestRoot, installFetchMock, resetAppState } from '../helpers/harness';
 
 const en = getTranslations('en');

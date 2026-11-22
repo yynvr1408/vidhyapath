@@ -1,4 +1,4 @@
-// Unit: every public/packs/*.json parses and declares language, class and board; no email/phone keys.
+// Unit: every frontend/public/packs/*.json parses and declares language, class and board; no email/phone keys.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import { PACK_DIR } from '../helpers/harness';

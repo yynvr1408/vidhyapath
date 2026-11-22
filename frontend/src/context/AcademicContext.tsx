@@ -1,5 +1,5 @@
 // Academic Context: Intelligent Syllabus Fetching & Curriculum Management
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Subject, CurriculumTopic } from '../types/enterprise';
 import { useEnterpriseAuth } from './EnterpriseAuthContext';
 
@@ -23,33 +23,47 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [activeSubject, setActiveSubject] = useState<Subject | null>(null);
   const [completedTopicIds, setCompletedTopicIds] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const requestSequence = useRef(0);
 
   const fetchSyllabus = async () => {
+    const requestId = ++requestSequence.current;
     setLoading(true);
+    if (!token || !user) {
+      setSubjects([]);
+      setActiveSubject(null);
+      setCompletedTopicIds([]);
+      setLoading(false);
+      return;
+    }
     try {
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('/api/academic/student-syllabus', { headers });
+      const query = user?.institutionId ? `?institutionId=${encodeURIComponent(user.institutionId)}` : '';
+      const res = await fetch(`/api/academic/student-syllabus${query}`, { headers });
+      if (requestId !== requestSequence.current) return;
       if (res.ok) {
         const data = await res.json();
-        setSubjects(data.subjects || []);
+        const nextSubjects: Subject[] = Array.isArray(data.subjects) ? data.subjects : [];
+        setSubjects(nextSubjects);
         if (data.completedTopicIds) {
           setCompletedTopicIds(data.completedTopicIds);
+        } else {
+          setCompletedTopicIds([]);
         }
-        if (data.subjects && data.subjects.length > 0 && !activeSubject) {
-          setActiveSubject(data.subjects[0]);
-        }
+        setActiveSubject((current) => nextSubjects.find((subject) => subject.id === current?.id) || nextSubjects[0] || null);
       }
     } catch (err) {
+      if (requestId !== requestSequence.current) return;
       console.warn('Failed to fetch academic syllabus:', err);
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSyllabus();
+    void fetchSyllabus();
+    return () => { requestSequence.current += 1; };
   }, [user?.id, token]);
 
   const selectSubjectById = (subjectId: string) => {

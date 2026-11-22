@@ -85,7 +85,7 @@ function Create-Ico-File($img, $targetPath) {
     Write-Host "Created Favicon: $targetPath"
 }
 
-# 1. Web Icons in public/
+# 1. Web Icons in frontend/public/
 Resize-And-Save $srcImage 512 512 "public\icons\icon-512.png"
 Resize-And-Save $srcImage 192 192 "public\icons\icon-192.png"
 Resize-And-Save $srcImage 180 180 "public\icons\apple-touch-icon.png"

@@ -15,11 +15,8 @@ export interface EmailOptions {
 }
 
 export class EmailService {
-  // Service ID mapping:
-  // service_92ab4cb -> Primary service for 1st email (Student & User Registration Verification OTP)
-  // service_w1gbm99 -> Secondary service for 2nd and 3rd emails (Admin Password Reset & Guardian Notifications)
-  private static serviceId = process.env.EMAILJS_SERVICE_ID || 'service_w1gbm99';
-  private static serviceIdVerification = process.env.EMAILJS_SERVICE_ID_VERIFICATION || process.env.EMAILJS_SERVICE_ID || 'service_92ab4cb';
+  private static serviceId = process.env.EMAILJS_SERVICE_ID || '';
+  private static serviceIdVerification = process.env.EMAILJS_SERVICE_ID_VERIFICATION || process.env.EMAILJS_SERVICE_ID || '';
   private static defaultTemplateId = process.env.EMAILJS_TEMPLATE_ID || '';
   private static templateVerification = process.env.EMAILJS_TEMPLATE_VERIFICATION || process.env.EMAILJS_TEMPLATE_ID || '';
   private static templatePasswordReset = process.env.EMAILJS_TEMPLATE_PASSWORD_RESET || process.env.EMAILJS_TEMPLATE_ID || '';
@@ -64,6 +61,10 @@ export class EmailService {
 
     // In local dev/testing without credentials, log the email safely
     if (!this.isConfigured(templateCategory)) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error(`[EmailJS] ${templateCategory || 'transactional'} email delivery is not configured.`);
+        return { success: false };
+      }
       console.log(`\n======================================================`);
       console.log(`[TRANSACTIONAL EMAIL - SIMULATED (EmailJS not configured)]`);
       console.log(`To: "${toName}" <${toEmail}>`);

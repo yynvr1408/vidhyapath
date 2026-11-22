@@ -1,15 +1,24 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
 import { Server } from 'http';
-import { enterpriseApiRouter } from '../../server/routes/api.js';
-import { dataStore } from '../../server/db/store.js';
+import { enterpriseApiRouter } from '../../backend/server/routes/api.js';
+import { dataStore } from '../../backend/server/db/store.js';
+import { authHeaders, createTestAccount } from '../helpers/enterprise_auth';
 
 describe('Phase 2: Global Course Catalog & State SSC / CBSE Engine (Classes 1-10 Free Tier)', () => {
   let app: express.Application;
   let server: Server;
   let baseUrl: string;
+  let adminToken: string;
+  let studentToken: string;
+  let class10CourseId: string;
 
   beforeAll(async () => {
+    adminToken = createTestAccount('super_admin', 'unit_global_catalog_admin').token;
+    const student = createTestAccount('student', 'unit_global_catalog_student', 'inst_global');
+    student.user.studentProfile!.isIndependent = true;
+    student.user.studentProfile!.classGrade = 10;
+    studentToken = student.token;
     app = express();
     app.use(express.json());
     app.use('/api', enterpriseApiRouter);
@@ -23,6 +32,14 @@ describe('Phase 2: Global Course Catalog & State SSC / CBSE Engine (Classes 1-10
         resolve();
       });
     });
+
+    const seedResponse = await fetch(`${baseUrl}/api/courses/global/publish`, {
+      method: 'POST',
+      headers: authHeaders(adminToken, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ code: 'AP-SSC-10-MATHS', title: 'AP State Board SSC Mathematics', classGrade: 10, board: 'State SSC', state: 'Andhra Pradesh', subjectName: 'Mathematics', language: 'te', description: 'Test fixture course.', isFree: true, feeAmount: 0 }),
+    });
+    expect(seedResponse.status).toBe(201);
+    class10CourseId = (await seedResponse.json()).course.id;
   });
 
   afterAll(async () => {
@@ -67,7 +84,7 @@ describe('Phase 2: Global Course Catalog & State SSC / CBSE Engine (Classes 1-10
     // Attempt to publish a Class 6 course with a paid fee of 999 INR
     const res = await fetch(`${baseUrl}/api/courses/global/publish`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(adminToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         code: 'MH-SSC-06-MATHS',
         title: 'Class 6 Mathematics (Maharashtra State SSC)',
@@ -95,7 +112,7 @@ describe('Phase 2: Global Course Catalog & State SSC / CBSE Engine (Classes 1-10
   it('4. POST /api/courses/global/publish permits paid courses for Class 11+ and Higher Ed', async () => {
     const res = await fetch(`${baseUrl}/api/courses/global/publish`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(adminToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         code: 'CBSE-12-PHY',
         title: 'Class 12 Physics & Advanced Electromagnetism',
@@ -120,17 +137,11 @@ describe('Phase 2: Global Course Catalog & State SSC / CBSE Engine (Classes 1-10
 
   it('5. POST /api/courses/global/:id/enroll allows an independent student to enroll into a Class 10 course freely', async () => {
     // First, find the Class 10 AP course
-    const catalogRes = await fetch(`${baseUrl}/api/courses/global?classGrade=10&language=te`);
-    const catalogData = await catalogRes.json();
-    const courseId = catalogData.courses[0].id;
-
     // Enroll independent student
-    const enrollRes = await fetch(`${baseUrl}/api/courses/global/${courseId}/enroll`, {
+    const enrollRes = await fetch(`${baseUrl}/api/courses/global/${class10CourseId}/enroll`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentId: 'student_chaitanya_home',
-      }),
+      headers: authHeaders(studentToken, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({}),
     });
 
     expect(enrollRes.status).toBe(201);

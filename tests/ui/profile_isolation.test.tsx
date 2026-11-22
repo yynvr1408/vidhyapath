@@ -4,11 +4,11 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PinPadModal } from '../../src/components/PinPadModal';
-import { useApp } from '../../src/context/AppContext';
-import { PracticeEngine } from '../../src/engine/practiceEngine';
-import { localDb } from '../../src/db/indexedDb';
-import type { LearnerProfile } from '../../src/types';
+import { PinPadModal } from '../../frontend/src/components/PinPadModal';
+import { useApp } from '../../frontend/src/context/AppContext';
+import { PracticeEngine } from '../../frontend/src/engine/practiceEngine';
+import { localDb } from '../../frontend/src/db/indexedDb';
+import type { LearnerProfile } from '../../frontend/src/types';
 import { AppTestRoot, Captured, installFetchMock, loadPack, makeLearner, resetAppState } from '../helpers/harness';
 
 function UnlockGate({ learner }: { learner: LearnerProfile }) {

@@ -120,9 +120,9 @@ function main() {
   console.log('=== Vidyapath Audit Test Suite ===\n');
 
   // AUDIT-01
-  runCheck('AUDIT-01', 'server/index.ts /api/admin/packs, /validate and /publish routes reference an auth middleware', () => {
-    const src = readSrc('server/index.ts');
-    if (src === null) return skip('server/index.ts not found');
+  runCheck('AUDIT-01', 'backend/server/index.ts /api/admin/packs, /validate and /publish routes reference an auth middleware', () => {
+    const src = readSrc('backend/server/index.ts');
+    if (src === null) return skip('backend/server/index.ts not found');
     const routes = ['/api/admin/packs', '/api/admin/packs/validate', '/api/admin/packs/publish'];
     const found: string[] = [];
     const unauth: string[] = [];
@@ -132,7 +132,7 @@ function main() {
       found.push(r);
       if (!blocks.every((b) => AUTH_RE.test(stripForAuth(b)))) unauth.push(r);
     }
-    if (found.length === 0) return skip('admin pack route declarations not found in server/index.ts');
+    if (found.length === 0) return skip('admin pack route declarations not found in backend/server/index.ts');
     if (unauth.length > 0) return fail(`no auth/PIN middleware on: ${unauth.join(', ')}`);
     return pass(`auth middleware present on: ${found.join(', ')}`);
   });
@@ -142,7 +142,7 @@ function main() {
     const serverSrc = walkTs(path.resolve(process.cwd(), 'server'))
       .map((f) => fs.readFileSync(f, 'utf-8'))
       .join('\n');
-    if (serverSrc.trim() === '') return skip('server/ directory not found or has no .ts files');
+    if (serverSrc.trim() === '') return skip('backend/server/ directory not found or has no .ts files');
     const names = ['authRateLimiter', 'tutorRateLimiter'];
     const unreferenced = names.filter(
       (n) =>
@@ -153,9 +153,9 @@ function main() {
   });
 
   // AUDIT-03
-  runCheck('AUDIT-03', 'server/services/auth.ts JWT secret has no hardcoded string-literal fallback', () => {
-    const src = readSrc('server/services/auth.ts');
-    if (src === null) return skip('server/services/auth.ts not found');
+  runCheck('AUDIT-03', 'backend/server/services/auth.ts JWT secret has no hardcoded string-literal fallback', () => {
+    const src = readSrc('backend/server/services/auth.ts');
+    if (src === null) return skip('backend/server/services/auth.ts not found');
     const m = /\b\w*secret\w*\s*(?::\s*[^=;\n]+)?=\s*([^;\n]+)/i.exec(src);
     if (!m) return skip('no JWT secret assignment found');
     const expr = m[1].trim();
@@ -165,30 +165,30 @@ function main() {
 
   // AUDIT-04
   runCheck('AUDIT-04', 'check-update route does not send err.message in the response body', () => {
-    const src = readSrc('server/index.ts');
-    if (src === null) return skip('server/index.ts not found');
+    const src = readSrc('backend/server/index.ts');
+    if (src === null) return skip('backend/server/index.ts not found');
     const blocks = routeBlocks(src, '/api/app/check-update');
-    if (blocks.length === 0) return skip('/api/app/check-update route not found in server/index.ts');
+    if (blocks.length === 0) return skip('/api/app/check-update route not found in backend/server/index.ts');
     if (blocks.some((b) => /\b(err|error|e)\.message\b/.test(b))) return fail('check-update response includes err.message');
     return pass('check-update response does not include err.message');
   });
 
   // AUDIT-05
   runCheck('AUDIT-05', 'guardian token route handler reads expiresAt (SUSPECTED)', () => {
-    const src = readSrc('server/index.ts');
-    if (src === null) return skip('server/index.ts not found');
+    const src = readSrc('backend/server/index.ts');
+    if (src === null) return skip('backend/server/index.ts not found');
     const blocks = routeBlocks(src, '/api/guardian/:token');
-    if (blocks.length === 0) return skip('/api/guardian/:token route not found in server/index.ts');
+    if (blocks.length === 0) return skip('/api/guardian/:token route not found in backend/server/index.ts');
     if (blocks.some((b) => /expiresAt/.test(b))) return pass('guardian handler reads expiresAt');
     return fail('guardian handler block does not reference expiresAt');
   });
 
   // AUDIT-06
   runCheck('AUDIT-06', 'sponsor cohort threshold uses COUNT from learners table, not stored activeLearners', () => {
-    const src = readSrc('server/index.ts');
-    if (src === null) return skip('server/index.ts not found');
+    const src = readSrc('backend/server/index.ts');
+    if (src === null) return skip('backend/server/index.ts not found');
     const blocks = routeBlocks(src, '/api/sponsor/:cohort');
-    if (blocks.length === 0) return skip('/api/sponsor/:cohort route not found in server/index.ts');
+    if (blocks.length === 0) return skip('/api/sponsor/:cohort route not found in backend/server/index.ts');
     const text = blocks.join('\n');
     if (/COUNT\s*\(/i.test(text) && /learners/i.test(text)) return pass('cohort size computed with COUNT from learners');
     if (/activeLearners/.test(text)) return fail('route uses stored activeLearners field with no COUNT from learners');
@@ -196,29 +196,29 @@ function main() {
   });
 
   // AUDIT-07
-  runCheck('AUDIT-07', 'src/components/PinPadModal.tsx contains no literal 1234 comparison', () => {
-    const src = readSrc('src/components/PinPadModal.tsx');
-    if (src === null) return skip('src/components/PinPadModal.tsx not found');
+  runCheck('AUDIT-07', 'frontend/src/components/PinPadModal.tsx contains no literal 1234 comparison', () => {
+    const src = readSrc('frontend/src/components/PinPadModal.tsx');
+    if (src === null) return skip('frontend/src/components/PinPadModal.tsx not found');
     if (/['"`]1234['"`]/.test(src)) return fail("literal '1234' found in PinPadModal.tsx");
     return pass("no literal '1234' in PinPadModal.tsx");
   });
 
   // AUDIT-08
-  runCheck('AUDIT-08', 'src/db/indexedDb.ts getOutboxAttempts filters by learnerId', () => {
-    const src = readSrc('src/db/indexedDb.ts');
-    if (src === null) return skip('src/db/indexedDb.ts not found');
+  runCheck('AUDIT-08', 'frontend/src/db/indexedDb.ts getOutboxAttempts filters by learnerId', () => {
+    const src = readSrc('frontend/src/db/indexedDb.ts');
+    if (src === null) return skip('frontend/src/db/indexedDb.ts not found');
     const body = functionBody(src, 'getOutboxAttempts');
-    if (body === null) return skip('getOutboxAttempts declaration not found in src/db/indexedDb.ts');
+    if (body === null) return skip('getOutboxAttempts declaration not found in frontend/src/db/indexedDb.ts');
     if (/learnerId/.test(body)) return pass('getOutboxAttempts references learnerId');
     return fail('getOutboxAttempts does not filter by learnerId');
   });
 
   // AUDIT-09
-  runCheck('AUDIT-09', 'src/db/indexedDb.ts deleteLearner removes rows from skill states, attempts, outbox and doubts', () => {
-    const src = readSrc('src/db/indexedDb.ts');
-    if (src === null) return skip('src/db/indexedDb.ts not found');
+  runCheck('AUDIT-09', 'frontend/src/db/indexedDb.ts deleteLearner removes rows from skill states, attempts, outbox and doubts', () => {
+    const src = readSrc('frontend/src/db/indexedDb.ts');
+    if (src === null) return skip('frontend/src/db/indexedDb.ts not found');
     const body = functionBody(src, 'deleteLearner');
-    if (body === null) return skip('deleteLearner declaration not found in src/db/indexedDb.ts');
+    if (body === null) return skip('deleteLearner declaration not found in frontend/src/db/indexedDb.ts');
     const stores: [string, RegExp][] = [
       ['skill states', /skill/i],
       ['attempts', /attempt/i],
@@ -233,23 +233,23 @@ function main() {
   // AUDIT-10
   runCheck('AUDIT-10', 'S5_PracticeScreen and PracticeWeakTopicsScreen use randomUUID/uuid for attempt IDs, not Date.now()', () => {
     return combine([
-      attemptIdCheck('src/screens/S5_PracticeScreen.tsx'),
-      attemptIdCheck('src/screens/PracticeWeakTopicsScreen.tsx'),
+      attemptIdCheck('frontend/src/screens/S5_PracticeScreen.tsx'),
+      attemptIdCheck('frontend/src/screens/PracticeWeakTopicsScreen.tsx'),
     ]);
   });
 
   // AUDIT-11
   runCheck('AUDIT-11', 'DESIGN-DECISION: practiceEngine mastery update has no Math.max(0.05 floor', () => {
-    const src = readSrc('src/engine/practiceEngine.ts');
-    if (src === null) return skip('src/engine/practiceEngine.ts not found');
+    const src = readSrc('frontend/src/engine/practiceEngine.ts');
+    if (src === null) return skip('frontend/src/engine/practiceEngine.ts not found');
     if (/Math\.max\(\s*0\.05\b/.test(src)) return fail('Math.max(0.05 floor present in mastery update');
     return pass('no Math.max(0.05 floor in practiceEngine.ts');
   });
 
   // AUDIT-12
   runCheck('AUDIT-12', 'OfflineLearningCenter Sync-now handler references the outbox, not an empty events array', () => {
-    const src = readSrc('src/screens/offline/OfflineLearningCenter.tsx');
-    if (src === null) return skip('src/screens/offline/OfflineLearningCenter.tsx not found');
+    const src = readSrc('frontend/src/screens/offline/OfflineLearningCenter.tsx');
+    if (src === null) return skip('frontend/src/screens/offline/OfflineLearningCenter.tsx not found');
     let handler: string | null = null;
     for (const name of ['handleSyncNow', 'syncNow', 'handleSync', 'onSyncNow']) {
       handler = functionBody(src, name);
@@ -267,8 +267,8 @@ function main() {
 
   // AUDIT-13
   runCheck('AUDIT-13', 'S5_PracticeScreen answer handler has a try block around DB calls', () => {
-    const src = readSrc('src/screens/S5_PracticeScreen.tsx');
-    if (src === null) return skip('src/screens/S5_PracticeScreen.tsx not found');
+    const src = readSrc('frontend/src/screens/S5_PracticeScreen.tsx');
+    if (src === null) return skip('frontend/src/screens/S5_PracticeScreen.tsx not found');
     const names = ['handleAnswer', 'handleAnswerSelect', 'handleSubmit', 'submitAnswer', 'onAnswer', 'handleOptionSelect', 'handleSelect'];
     let handler: string | null = null;
     for (const n of names) {
@@ -284,8 +284,8 @@ function main() {
 
   // AUDIT-14
   runCheck('AUDIT-14', 'EnterpriseShell.tsx contains none of "Sign Out", "Demo Role Switcher", "Offline Learning Center"', () => {
-    const src = readSrc('src/components/EnterpriseShell.tsx');
-    if (src === null) return skip('src/components/EnterpriseShell.tsx not found');
+    const src = readSrc('frontend/src/components/EnterpriseShell.tsx');
+    if (src === null) return skip('frontend/src/components/EnterpriseShell.tsx not found');
     const literals = ['Sign Out', 'Demo Role Switcher', 'Offline Learning Center'];
     const found = literals.filter((l) => src.includes(l));
     if (found.length > 0) return fail(`literals present: ${found.map((f) => `"${f}"`).join(', ')}`);
@@ -294,8 +294,8 @@ function main() {
 
   // AUDIT-15
   runCheck('AUDIT-15', 'App.tsx hash-route branches for admin, guardian, syllabus contain a role check (SUSPECTED)', () => {
-    const src = readSrc('src/App.tsx');
-    if (src === null) return skip('src/App.tsx not found');
+    const src = readSrc('frontend/src/App.tsx');
+    if (src === null) return skip('frontend/src/App.tsx not found');
     const roleRe = /role|isAdmin|isTeacher|isGuardian|canAccess|permission|allowed|hasAccess/i;
     const checked: string[] = [];
     const unguarded: string[] = [];
@@ -310,7 +310,7 @@ function main() {
       const window = src.slice(Math.max(0, m.index - 200), m.index + 400);
       if (!roleRe.test(window)) unguarded.push(k);
     }
-    if (checked.length === 0) return skip('no admin/guardian/syllabus hash-route branches found in src/App.tsx');
+    if (checked.length === 0) return skip('no admin/guardian/syllabus hash-route branches found in frontend/src/App.tsx');
     const note = notFound.length ? ` (not found: ${notFound.join(', ')})` : '';
     if (unguarded.length > 0) return fail(`no role check near hash-route branch: ${unguarded.join(', ')}${note}`);
     return pass(`role check near hash-route branch: ${checked.join(', ')}${note}`);
@@ -318,8 +318,8 @@ function main() {
 
   // AUDIT-16
   runCheck('AUDIT-16', 'PracticeWeakTopicsScreen buttons use min-h-[56px] or h-14, not only min-h-[44px]', () => {
-    const src = readSrc('src/screens/PracticeWeakTopicsScreen.tsx');
-    if (src === null) return skip('src/screens/PracticeWeakTopicsScreen.tsx not found');
+    const src = readSrc('frontend/src/screens/PracticeWeakTopicsScreen.tsx');
+    if (src === null) return skip('frontend/src/screens/PracticeWeakTopicsScreen.tsx not found');
     if (/min-h-\[56px\]|\bh-14\b/.test(src)) return pass('buttons use min-h-[56px] or h-14');
     if (/min-h-\[44px\]/.test(src)) return fail('buttons only use min-h-[44px]');
     return skip('no button sizing class (min-h-[56px], h-14, min-h-[44px]) found');

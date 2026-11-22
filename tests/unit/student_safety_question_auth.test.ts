@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { SAFETY_QUESTIONS, getSafetyQuestionLabel } from '../../src/config/safetyQuestions';
-import { TRANSLATIONS } from '../../src/utils/translations';
+import { SAFETY_QUESTIONS, getSafetyQuestionLabel } from '../../frontend/src/config/safetyQuestions';
+import { TRANSLATIONS } from '../../frontend/src/utils/translations';
 
 describe('Student Zero-Email / Safety Question PIN Reset Suite', () => {
   it('provides all safety questions in Telugu, Hindi, and English', () => {

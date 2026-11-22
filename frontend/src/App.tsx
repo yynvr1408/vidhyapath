@@ -110,8 +110,6 @@ const AppContent: React.FC = () => {
     <>
       {routePath === '/portal' && user ? (
         <EnterprisePortalScreen
-          onReturnToStudentApp={() => navigate('/')}
-          onNavigateToLogin={() => openAuth('student', 'login')}
           onSignOut={() => {
             switchLearner();
             navigate('/');

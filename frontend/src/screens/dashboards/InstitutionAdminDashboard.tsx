@@ -21,6 +21,14 @@ export const InstitutionAdminDashboard: React.FC<InstitutionAdminDashboardProps>
   const [designation, setDesignation] = useState('Teacher');
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [structureForm, setStructureForm] = useState<'department' | 'programme' | null>(null);
+  const [departmentName, setDepartmentName] = useState('');
+  const [departmentCode, setDepartmentCode] = useState('');
+  const [programmeName, setProgrammeName] = useState('');
+  const [programmeCode, setProgrammeCode] = useState('');
+  const [programmeDepartmentId, setProgrammeDepartmentId] = useState('');
+  const [degreeType, setDegreeType] = useState<Programme['degreeType']>('B.Tech');
+  const [totalSemesters, setTotalSemesters] = useState(8);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -37,7 +45,7 @@ export const InstitutionAdminDashboard: React.FC<InstitutionAdminDashboardProps>
       const [departmentResponse, programmeResponse, subjectResponse] = await Promise.all([
         fetch(`/api/institution/${institutionId}/departments`, { headers }),
         fetch(`/api/institution/${institutionId}/programmes`, { headers }),
-        fetch('/api/academic/student-syllabus', { headers }),
+        fetch(`/api/academic/student-syllabus?institutionId=${encodeURIComponent(institutionId)}`, { headers }),
       ]);
       if (departmentResponse.ok) setDepartments(await departmentResponse.json());
       if (programmeResponse.ok) setProgrammes(await programmeResponse.json());
@@ -77,6 +85,32 @@ export const InstitutionAdminDashboard: React.FC<InstitutionAdminDashboardProps>
     }
   };
 
+  const createAcademicStructure = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!institutionId || !token || !structureForm) return;
+    setError(null);
+    setNotice(null);
+    const isDepartment = structureForm === 'department';
+    try {
+      const response = await fetch(`/api/institution/${encodeURIComponent(institutionId)}/${isDepartment ? 'departments' : 'programmes'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(isDepartment
+          ? { name: departmentName.trim(), code: departmentCode.trim() }
+          : { name: programmeName.trim(), code: programmeCode.trim(), departmentId: programmeDepartmentId, degreeType, totalSemesters }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Could not save the academic structure.');
+      setNotice(`${isDepartment ? 'Department' : 'Programme'} added.`);
+      if (isDepartment) { setDepartmentName(''); setDepartmentCode(''); }
+      else { setProgrammeName(''); setProgrammeCode(''); }
+      setStructureForm(null);
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || 'Could not save the academic structure.');
+    }
+  };
+
   return (
     <div className="space-y-5">
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-xs">
@@ -102,7 +136,11 @@ export const InstitutionAdminDashboard: React.FC<InstitutionAdminDashboardProps>
       </section>
 
       <section className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-xs">
-        <h2 className="mb-4 flex items-center gap-2 text-lg font-black text-[#0F172A]"><Building className="h-5 w-5 text-[#0F766E]" />Academic structure</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-lg font-black text-[#0F172A]"><Building className="h-5 w-5 text-[#0F766E]" />Academic structure</h2><div className="flex gap-2"><button type="button" onClick={() => setStructureForm('department')} className="min-h-9 rounded-lg border border-[#CBD5E1] px-3 text-sm font-bold text-[#334155] hover:bg-[#F8FAFC]">Add department</button><button type="button" onClick={() => setStructureForm('programme')} disabled={departments.length === 0} className="min-h-9 rounded-lg bg-[#0F766E] px-3 text-sm font-bold text-white hover:bg-[#115E59] disabled:cursor-not-allowed disabled:opacity-50">Add programme</button></div></div>
+        {structureForm && <form onSubmit={createAcademicStructure} className="mb-5 grid gap-3 rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] p-4 sm:grid-cols-2">
+          {structureForm === 'department' ? <><label className="text-sm font-bold text-[#334155]">Department name<input required minLength={2} maxLength={120} value={departmentName} onChange={(event) => setDepartmentName(event.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal" /></label><label className="text-sm font-bold text-[#334155]">Department code<input required pattern="[A-Za-z0-9_-]{2,32}" maxLength={32} value={departmentCode} onChange={(event) => setDepartmentCode(event.target.value.toUpperCase())} placeholder="CSE" className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal" /></label></> : <><label className="text-sm font-bold text-[#334155]">Programme name<input required minLength={2} maxLength={120} value={programmeName} onChange={(event) => setProgrammeName(event.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal" /></label><label className="text-sm font-bold text-[#334155]">Programme code<input required pattern="[A-Za-z0-9_-]{2,32}" maxLength={32} value={programmeCode} onChange={(event) => setProgrammeCode(event.target.value.toUpperCase())} placeholder="BTECH-CSE" className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal" /></label><label className="text-sm font-bold text-[#334155]">Department<select required value={programmeDepartmentId} onChange={(event) => setProgrammeDepartmentId(event.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal"><option value="">Choose department</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label><label className="text-sm font-bold text-[#334155]">Degree type<select value={degreeType} onChange={(event) => setDegreeType(event.target.value as Programme['degreeType'])} className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal">{(['B.Tech', 'B.Sc', 'M.Tech', 'Diploma', 'Secondary', 'Higher Secondary'] as const).map((degree) => <option key={degree} value={degree}>{degree}</option>)}</select></label><label className="text-sm font-bold text-[#334155]">Number of semesters<input required type="number" min={1} max={16} value={totalSemesters} onChange={(event) => setTotalSemesters(Number(event.target.value))} className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal" /></label></>}
+          <div className="flex items-end gap-2"><button type="submit" className="min-h-10 rounded-lg bg-[#0F766E] px-4 text-sm font-bold text-white hover:bg-[#115E59]">Save</button><button type="button" onClick={() => setStructureForm(null)} className="min-h-10 rounded-lg border border-[#CBD5E1] px-4 text-sm font-bold text-[#475569]">Cancel</button></div>
+        </form>}
         {loading ? <p role="status" className="py-8 text-center text-sm text-[#64748B]">Loading institution data…</p> : departments.length === 0 && programmes.length === 0 && subjects.length === 0 ? (
           <p className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-8 text-center text-sm text-[#64748B]">No departments, programmes, or subjects have been added for this institution.</p>
         ) : (

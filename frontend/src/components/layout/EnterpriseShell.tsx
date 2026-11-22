@@ -30,10 +30,6 @@ import { useApp } from '../../context/AppContext';
 import { UserRole, NotificationItem } from '../../types/enterprise';
 import { VidyapathLogo } from '../VidyapathLogo';
 import { LanguageSelector } from '../LanguageSelector';
-import { AppUpdateButton } from '../AppUpdateButton';
-import { AppUpdateHeaderPill } from '../AppUpdateHeaderPill';
-import { AppUpdateBanner } from '../AppUpdateBanner';
-import { AppUpdateModal } from '../AppUpdateModal';
 import { SCHEDULED_LANGUAGES } from '../../config/languages';
 import { SupportedLang, getTranslations } from '../../utils/translations';
 import { navigationManager } from '../../services/navigationManager';
@@ -200,7 +196,6 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         return [
           { id: 'DASHBOARD' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'अभिभावक पोर्टल' : currentLanguage === 'en' ? 'Guardian Portal' : 'తల్లిదండ్రుల పోర్టల్', icon: <Building className="w-5 h-5 shrink-0" /> },
           { id: 'GUARDIAN_DIGEST' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'साप्ताहिक ऑडियो सारांश' : currentLanguage === 'en' ? 'Weekly Audio Summary' : 'వారపు ఆడియో సారాంశం', icon: <FileText className="w-5 h-5 shrink-0" /> },
-          { id: 'FOUNDATION_MASCOTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'विद्यार्थी प्रोफ़ाइल' : currentLanguage === 'en' ? 'Mascot Learner Profiles' : 'విద్యార్థి ప్రొఫైల్స్', icon: <Users className="w-5 h-5 shrink-0" /> },
         ];
       case 'student':
       default:
@@ -208,9 +203,6 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
           { id: 'DASHBOARD' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'मेरा शैक्षणिक डैशबोर्ड' : currentLanguage === 'en' ? 'My Academic Dashboard' : 'నా విద్యా డ్యాష్‌బోర్డ్', icon: <BookOpen className="w-5 h-5 shrink-0" /> },
           { id: 'SUBJECT_VIEW' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'विषय कक्षा (LMS)' : currentLanguage === 'en' ? 'Subject Classroom (LMS)' : 'తరగతి గది & సిలబస్', icon: <Layers className="w-5 h-5 shrink-0" /> },
           { id: 'AI_TUTOR' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'AI गणित ट्यूटर' : currentLanguage === 'en' ? 'Socratic AI Tutor' : 'AI గణిత ట్యూటర్', icon: <HelpCircle className="w-5 h-5 shrink-0" /> },
-          { id: 'PRACTICE_ENGINE' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'अभ्यास एवं कमज़ोर विषय' : currentLanguage === 'en' ? 'Adaptive Practice Engine' : 'సాధన & బలహీన అంశాల పరీక్ష', icon: <Award className="w-5 h-5 shrink-0" /> },
-          { id: 'MY_PROGRESS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'प्रगति एवं लालटेन' : currentLanguage === 'en' ? 'Learner Progress & Lanterns' : 'నా ప్రగతి & లాంతర్లు', icon: <TrendingUp className="w-5 h-5 shrink-0" /> },
-          { id: 'FOUNDATION_MASCOTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'कक्षा 10 प्रोफ़ाइल (Zero-PII)' : currentLanguage === 'en' ? 'Class 10 Mascots (Zero-PII)' : '10వ తరగతి ప్రొఫైల్స్ (Zero-PII)', icon: <Users className="w-5 h-5 shrink-0" /> },
           { id: 'OFFLINE_CENTER' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'ऑफलाइन अध्ययन केंद्र' : currentLanguage === 'en' ? 'Offline Learning Center' : 'ఆఫ్‌లైన్ లెర్నింగ్ సెంటర్', icon: <FolderDown className="w-5 h-5 shrink-0" /> },
           { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'सूचनाएं एवं समय-सीमा' : currentLanguage === 'en' ? 'Notices & Deadlines' : 'నోటీసులు & గడువులు', icon: <Calendar className="w-5 h-5 shrink-0" /> },
         ];
@@ -294,10 +286,8 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         </nav>
       </div>
 
-      {/* Footer Area: App Update & Logout */}
+      {/* Footer Area: Logout */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2 mt-4">
-        <AppUpdateButton />
-
         <button
           type="button"
           onClick={() => {
@@ -340,11 +330,8 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
             </div>
           </div>
 
-          {/* Right Header Status Bar: Update Pill + Language Dropdown + Offline Toggle + Notifications */}
+          {/* Right Header Status Bar: Language, Offline Status, and Notifications */}
           <div className="flex items-center gap-2">
-            {/* In-App Release & Update Checker Pill */}
-            <AppUpdateHeaderPill />
-
             {/* Language Dropdown (Telugu, Hindi, English) */}
             <LanguageSelector variant="compact" />
 
@@ -419,9 +406,6 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
           </div>
         </header>
 
-        {/* Global Floating App Update Notification Banner */}
-        <AppUpdateBanner />
-
         {/* Mobile Slide-out Drawer */}
         {mobileDrawerOpen && (
           <div className="md:hidden fixed inset-0 z-50 animate-fadeIn">
@@ -449,8 +433,6 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
           {children}
         </main>
 
-        {/* Global Interactive In-App Update Modal */}
-        <AppUpdateModal />
       </div>
     </div>
   );

@@ -1,14 +1,21 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
 import { Server } from 'http';
-import { enterpriseApiRouter } from '../../server/routes/api.js';
+import { enterpriseApiRouter } from '../../backend/server/routes/api.js';
+import { authHeaders, createTestAccount } from '../helpers/enterprise_auth';
 
 describe('Phase 3: Institution Dynamic Paid Course Builder (Classes 11+)', () => {
   let app: express.Application;
   let server: Server;
   let baseUrl: string;
+  let adminToken: string;
+  let studentToken: string;
 
   beforeAll(async () => {
+    adminToken = createTestAccount('institution_admin', 'unit_paid_courses_admin', 'inst_ait_hyd').token;
+    const student = createTestAccount('student', 'unit_paid_courses_student', 'inst_ait_hyd');
+    student.user.studentProfile!.classGrade = 12;
+    studentToken = student.token;
     app = express();
     app.use(express.json());
     app.use('/api', enterpriseApiRouter);
@@ -34,7 +41,7 @@ describe('Phase 3: Institution Dynamic Paid Course Builder (Classes 11+)', () =>
   it('1. POST /api/institution/courses strictly forces isFree=true and feeAmount=0 if classGrade <= 10', async () => {
     const res = await fetch(`${baseUrl}/api/institution/courses`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(adminToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         code: 'AIT-09-SCI',
         title: 'Class 9 Integrated Science',
@@ -61,7 +68,7 @@ describe('Phase 3: Institution Dynamic Paid Course Builder (Classes 11+)', () =>
   it('2. POST /api/institution/courses permits dynamic paid plans for Class 11 and Class 12', async () => {
     const res = await fetch(`${baseUrl}/api/institution/courses`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(adminToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         code: 'AIT-12-PHY',
         title: 'Class 12 Advanced Physics & JEE Foundations',
@@ -88,7 +95,7 @@ describe('Phase 3: Institution Dynamic Paid Course Builder (Classes 11+)', () =>
   });
 
   it('3. GET /api/institution/:institutionId/courses lists all offerings for an institution', async () => {
-    const res = await fetch(`${baseUrl}/api/institution/inst_ait_hyd/courses`);
+    const res = await fetch(`${baseUrl}/api/institution/inst_ait_hyd/courses`, { headers: authHeaders(adminToken) });
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.success).toBe(true);
@@ -97,16 +104,15 @@ describe('Phase 3: Institution Dynamic Paid Course Builder (Classes 11+)', () =>
 
   it('4. POST /api/institution/courses/:id/enroll marks status as pending_payment when unpaid for Class 12 paid course', async () => {
     // 1. Fetch Class 12 course
-    const listRes = await fetch(`${baseUrl}/api/institution/inst_ait_hyd/courses?classGrade=12`);
+    const listRes = await fetch(`${baseUrl}/api/institution/inst_ait_hyd/courses?classGrade=12`, { headers: authHeaders(adminToken) });
     const listData = await listRes.json();
     const paidCourseId = listData.courses[0].id;
 
     // 2. Enroll without payment
     const enrollRes = await fetch(`${baseUrl}/api/institution/courses/${paidCourseId}/enroll`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(studentToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
-        studentId: 'student_aditya_12th',
         paymentConfirmed: false,
       }),
     });
@@ -118,26 +124,25 @@ describe('Phase 3: Institution Dynamic Paid Course Builder (Classes 11+)', () =>
     expect(enrollData.enrollment.status).toBe('pending_payment');
   });
 
-  it('5. POST /api/institution/courses/:id/enroll grants active status when payment is confirmed', async () => {
-    const listRes = await fetch(`${baseUrl}/api/institution/inst_ait_hyd/courses?classGrade=12`);
+  it('5. POST /api/institution/courses/:id/enroll never trusts a client payment confirmation', async () => {
+    const listRes = await fetch(`${baseUrl}/api/institution/inst_ait_hyd/courses?classGrade=12`, { headers: authHeaders(adminToken) });
     const listData = await listRes.json();
     const paidCourseId = listData.courses[0].id;
 
     const enrollRes = await fetch(`${baseUrl}/api/institution/courses/${paidCourseId}/enroll`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(studentToken, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
-        studentId: 'student_vikram_paid',
         paymentConfirmed: true,
-        paymentReference: 'UPI_TXN_9876543210',
+        paymentReference: 'client-supplied-reference',
       }),
     });
 
-    expect(enrollRes.status).toBe(201);
+    expect(enrollRes.status).toBe(200);
     const enrollData = await enrollRes.json();
     expect(enrollData.success).toBe(true);
-    expect(enrollData.paymentRequired).toBe(false);
-    expect(enrollData.enrollment.status).toBe('active');
-    expect(enrollData.enrollment.paymentReference).toBe('UPI_TXN_9876543210');
+    expect(enrollData.paymentRequired).toBe(true);
+    expect(enrollData.enrollment.status).toBe('pending_payment');
+    expect(enrollData.enrollment.paymentReference).toBeUndefined();
   });
 });

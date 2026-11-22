@@ -3,6 +3,7 @@ import '../env.js';
 import crypto from 'crypto';
 import { Router, Request, Response, NextFunction } from 'express';
 import { dataStore } from '../db/store.js';
+import { isNeonConnected, saveDepartmentToNeon, saveProgrammeToNeon, saveSubjectToNeon } from '../db/neon.js';
 import { AuthService, requireAuth, requireRole, AuthenticatedRequest, TokenPayload } from '../services/auth.js';
 import { EmailService } from '../services/email.js';
 import { AiGuardrailService } from '../services/aiGuardrails.js';
@@ -26,6 +27,8 @@ import {
   QuizAttempt,
   QuizQuestion,
   Announcement,
+  Department,
+  Programme,
 } from '../types/enterprise.js';
 
 const router = Router();
@@ -102,18 +105,6 @@ router.post('/auth/login', (req: Request, res: Response) => {
     details: { role: matchedUser.role },
   });
 
-  // Role-based dashboard redirect guidance
-  const dashboardRoutes: Record<UserRole, string> = {
-    super_admin: '/dashboard/super-admin',
-    institution_admin: '/dashboard/institution-admin',
-    academic_admin: '/dashboard/academic-admin',
-    teacher: '/dashboard/teacher',
-    student: '/learn',
-    guardian: '/guardian',
-    coordinator: '/dashboard/academic-admin',
-    exam_admin: '/dashboard/academic-admin',
-  };
-
   return res.json({
     success: true,
     token,
@@ -127,7 +118,7 @@ router.post('/auth/login', (req: Request, res: Response) => {
       studentProfile: matchedUser.studentProfile,
       teacherProfile: matchedUser.teacherProfile,
     },
-    redirectTo: dashboardRoutes[matchedUser.role] || '/learn',
+    redirectTo: '/portal',
   });
 });
 
@@ -279,8 +270,12 @@ router.post('/auth/student/reset-pin', (req: Request, res: Response) => {
   const storedAnswer = matchedStudent.studentProfile?.securityAnswerHash || '';
   const inputHash = crypto.createHash('sha256').update(inputAnswer).digest('hex');
   const storedIsHash = /^[a-f0-9]{64}$/i.test(storedAnswer);
+  const acceptedAnswers = acceptedMath.includes(inputAnswer) ? acceptedMath : [inputAnswer];
   const isMatch = storedIsHash
-    ? crypto.timingSafeEqual(Buffer.from(inputHash, 'hex'), Buffer.from(storedAnswer, 'hex'))
+    ? acceptedAnswers.some((answer) => crypto.timingSafeEqual(
+      Buffer.from(crypto.createHash('sha256').update(answer).digest('hex'), 'hex'),
+      Buffer.from(storedAnswer, 'hex')
+    ))
     : Boolean(storedAnswer) && (inputAnswer === storedAnswer.toLowerCase() || (storedAnswer.toLowerCase().includes('math') && acceptedMath.includes(inputAnswer)));
 
   if (!isMatch) {
@@ -704,7 +699,7 @@ router.post(['/auth/register/student', '/api/auth/register/student'], async (req
       institutionName: newStudent.institutionName,
       studentProfile: newStudent.studentProfile,
     },
-    redirectTo: '/learn',
+    redirectTo: '/portal',
   });
 });
 
@@ -742,7 +737,6 @@ router.post('/super-admin/institutions/:id/approve', requireAuth, requireRole(['
   const instId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const inst = dataStore.institutions.get(instId);
   if (!inst) return res.status(404).json({ error: 'Institution not found.' });
-
   inst.status = 'approved';
   inst.approvedAt = Date.now();
 
@@ -829,15 +823,65 @@ router.get('/institution/public/list', (req: Request, res: Response) => {
 });
 
 // GET /api/institution/:id/departments
-router.get('/institution/:id/departments', (req: Request, res: Response) => {
+router.get('/institution/:id/departments', requireAuth, requireInstitutionScope((req) => req.params.id), (req: Request, res: Response) => {
   const depts = Array.from(dataStore.departments.values()).filter((d) => d.institutionId === req.params.id);
   return res.json(depts);
 });
 
 // GET /api/institution/:id/programmes
-router.get('/institution/:id/programmes', (req: Request, res: Response) => {
+router.get('/institution/:id/programmes', requireAuth, requireInstitutionScope((req) => req.params.id), (req: Request, res: Response) => {
   const progs = Array.from(dataStore.programmes.values()).filter((p) => p.institutionId === req.params.id);
   return res.json(progs);
+});
+
+router.post('/institution/:id/departments', requireAuth, requireRole(['super_admin', 'institution_admin', 'academic_admin']), requireInstitutionScope((req) => req.params.id), async (req: AuthenticatedRequest, res: Response) => {
+  const institutionId = String(req.params.id || '');
+  const institution = dataStore.institutions.get(institutionId);
+  const name = String(req.body?.name || '').trim();
+  const code = String(req.body?.code || '').trim().toUpperCase();
+  if (!institution || institution.status !== 'approved') return res.status(404).json({ error: 'Approved institution not found.' });
+  if (name.length < 2 || name.length > 120 || !/^[A-Z0-9_-]{2,32}$/.test(code)) {
+    return res.status(400).json({ error: 'Enter a department name and a code using 2–32 letters, numbers, hyphens, or underscores.' });
+  }
+  if (Array.from(dataStore.departments.values()).some((item) => item.institutionId === institutionId && item.code.toUpperCase() === code)) {
+    return res.status(409).json({ error: 'A department with this code already exists.' });
+  }
+
+  const department: Department = { id: `dept_${crypto.randomUUID()}`, institutionId, name, code, createdAt: Date.now() };
+  if (isNeonConnected() && !(await saveDepartmentToNeon(department))) {
+    return res.status(503).json({ error: 'The department could not be saved to the database. Try again.' });
+  }
+  dataStore.departments.set(department.id, department);
+  dataStore.logAudit({ institutionId, category: 'academic', action: 'DEPARTMENT_CREATED', details: { departmentId: department.id, code } });
+  return res.status(201).json({ success: true, department });
+});
+
+router.post('/institution/:id/programmes', requireAuth, requireRole(['super_admin', 'institution_admin', 'academic_admin']), requireInstitutionScope((req) => req.params.id), async (req: AuthenticatedRequest, res: Response) => {
+  const institutionId = String(req.params.id || '');
+  const institution = dataStore.institutions.get(institutionId);
+  const departmentId = String(req.body?.departmentId || '');
+  const department = dataStore.departments.get(departmentId);
+  const name = String(req.body?.name || '').trim();
+  const code = String(req.body?.code || '').trim().toUpperCase();
+  const degreeType = String(req.body?.degreeType || '');
+  const totalSemesters = Number(req.body?.totalSemesters);
+  const degreeTypes = ['B.Tech', 'B.Sc', 'M.Tech', 'Diploma', 'Secondary', 'Higher Secondary'];
+  if (!institution || institution.status !== 'approved') return res.status(404).json({ error: 'Approved institution not found.' });
+  if (!department || department.institutionId !== institutionId) return res.status(400).json({ error: 'Select a department from this institution.' });
+  if (name.length < 2 || name.length > 120 || !/^[A-Z0-9_-]{2,32}$/.test(code) || !degreeTypes.includes(degreeType) || !Number.isInteger(totalSemesters) || totalSemesters < 1 || totalSemesters > 16) {
+    return res.status(400).json({ error: 'Enter a programme name, valid code, degree type, and 1–16 semesters.' });
+  }
+  if (Array.from(dataStore.programmes.values()).some((item) => item.institutionId === institutionId && item.code.toUpperCase() === code)) {
+    return res.status(409).json({ error: 'A programme with this code already exists.' });
+  }
+
+  const programme: Programme = { id: `prog_${crypto.randomUUID()}`, institutionId, departmentId, name, code, degreeType: degreeType as Programme['degreeType'], totalSemesters, createdAt: Date.now() };
+  if (isNeonConnected() && !(await saveProgrammeToNeon(programme))) {
+    return res.status(503).json({ error: 'The programme could not be saved to the database. Try again.' });
+  }
+  dataStore.programmes.set(programme.id, programme);
+  dataStore.logAudit({ institutionId, category: 'academic', action: 'PROGRAMME_CREATED', details: { programmeId: programme.id, departmentId, code } });
+  return res.status(201).json({ success: true, programme });
 });
 
 // POST /api/institution/:id/invite-teacher
@@ -851,6 +895,9 @@ router.post('/institution/:id/invite-teacher', requireAuth, requireRole(['super_
   const inst = dataStore.institutions.get(instId);
   if (!inst) return res.status(404).json({ error: 'Institution not found.' });
   const teacherEmail = String(email).trim().toLowerCase();
+  if (departmentId && !Array.from(dataStore.departments.values()).some((department) => department.id === departmentId && department.institutionId === inst.id)) {
+    return res.status(400).json({ error: 'Select a department from this institution.' });
+  }
   if (!teacherEmail.includes('@')) return res.status(400).json({ error: 'A valid teacher email is required.' });
   if (Array.from(dataStore.users.values()).some((u) => u.email.toLowerCase() === teacherEmail)) {
     return res.status(409).json({ error: 'An account with this email address already exists.' });
@@ -883,7 +930,11 @@ router.post('/institution/:id/invite-teacher', requireAuth, requireRole(['super_
 
   dataStore.users.set(teacherId, newTeacher);
 
-  await EmailService.sendTeacherInviteEmail(newTeacher.email, fullName, inst.name, departmentId || 'Institution teaching team', initialPassword);
+  const invitationSent = await EmailService.sendTeacherInviteEmail(newTeacher.email, fullName, inst.name, departmentId || 'Institution teaching team', initialPassword);
+  if (!invitationSent) {
+    dataStore.users.delete(teacherId);
+    return res.status(503).json({ error: 'The teacher account was not created because the invitation email could not be delivered.' });
+  }
 
   return res.json({ success: true, message: `Invitation sent to ${email}`, teacherId });
 });
@@ -904,9 +955,7 @@ router.get('/academic/student-syllabus', requireAuth, (req: AuthenticatedRequest
     const institutionId = String(req.query.institutionId || req.user!.institutionId || '');
     const programmeId = String(req.query.programmeId || '');
     const semester = parseInt(String(req.query.semester || ''), 10);
-    if (!institutionId || !programmeId || !Number.isFinite(semester)) {
-      return res.status(400).json({ error: 'Institution, programme, and semester are required for staff syllabus lookup.' });
-    }
+    if (!institutionId) return res.status(400).json({ error: 'Institution is required for staff syllabus lookup.' });
     if (req.user!.role !== 'super_admin' && req.user!.institutionId !== institutionId) {
       return res.status(403).json({ error: 'Access is limited to your institution.' });
     }
@@ -915,8 +964,10 @@ router.get('/academic/student-syllabus', requireAuth, (req: AuthenticatedRequest
       return res.status(403).json({ error: 'The institution is not approved.' });
     }
 
-    let subjects = Array.from(dataStore.subjects.values()).filter(
-      (s) => s.institutionId === institutionId && s.programmeId === programmeId && s.semester === semester
+    let subjects = Array.from(dataStore.subjects.values()).filter((s) =>
+      s.institutionId === institutionId &&
+      (!programmeId || s.programmeId === programmeId) &&
+      (!Number.isFinite(semester) || s.semester === semester)
     );
     if (user.role === 'teacher') subjects = subjects.filter((s) => s.assignedTeacherIds.includes(user.id));
 
@@ -950,38 +1001,75 @@ router.get('/academic/student-syllabus', requireAuth, (req: AuthenticatedRequest
 // POST /api/academic/syllabus/parse - Extract structured units from syllabus text/document
 router.post('/academic/syllabus/parse', requireAuth, requireRole(['super_admin', 'institution_admin', 'academic_admin']), requireInstitutionScope((req) => req.body?.institutionId || (req as AuthenticatedRequest).user?.institutionId), (req: Request, res: Response) => {
   const { text, institutionId, departmentId, programmeId, semester, syllabusVersion } = req.body;
-  if (!text) {
-    return res.status(400).json({ error: 'Syllabus content text is required for processing.' });
-  }
   const activeUser = (req as AuthenticatedRequest).user!;
   const targetInstitutionId = String(institutionId || activeUser.institutionId || '');
   if (!targetInstitutionId) return res.status(400).json({ error: 'Institution ID is required for a platform administrator.' });
+  const selectedDepartment = dataStore.departments.get(String(departmentId || ''));
+  const selectedProgramme = dataStore.programmes.get(String(programmeId || ''));
+  const semesterNumber = Number(semester);
+  const version = String(syllabusVersion || '').trim();
+  if (typeof text !== 'string' || text.trim().length < 20 || text.length > 1_000_000) {
+    return res.status(400).json({ error: 'Paste syllabus content between 20 characters and 1 MB.' });
+  }
+  if (!selectedDepartment || selectedDepartment.institutionId !== targetInstitutionId || !selectedProgramme || selectedProgramme.institutionId !== targetInstitutionId || selectedProgramme.departmentId !== selectedDepartment.id) {
+    return res.status(400).json({ error: 'Select a department and programme from this institution.' });
+  }
+  if (!Number.isInteger(semesterNumber) || semesterNumber < 1 || semesterNumber > selectedProgramme.totalSemesters) {
+    return res.status(400).json({ error: 'Select a semester that exists in this programme.' });
+  }
+  if (!version || version.length > 60) return res.status(400).json({ error: 'Enter the official curriculum version (up to 60 characters).' });
 
   const draft = SyllabusProcessorService.processSyllabusText(text, {
     institutionId: targetInstitutionId,
-    departmentId: departmentId || '',
-    programmeId: programmeId || '',
-    semester: parseInt(semester, 10) || 1,
-    syllabusVersion,
+    departmentId: selectedDepartment.id,
+    programmeId: selectedProgramme.id,
+    semester: semesterNumber,
+    syllabusVersion: version,
   });
+  if (!draft.subjectName || !/^[A-Z0-9_-]{2,32}$/.test(draft.subjectCode) || !Number.isFinite(draft.credits) || draft.credits <= 0 || draft.credits > 40) {
+    return res.status(422).json({ error: 'Add a subject title, subject code, and credits to the syllabus text before processing.' });
+  }
+  if (!draft.units.length || draft.units.some((unit) => unit.topics.length === 0)) {
+    return res.status(422).json({ error: 'The syllabus must contain at least one UNIT, CHAPTER, or MODULE heading with one or more bullet-point topics.' });
+  }
 
   return res.json({ success: true, draft });
 });
 
 // POST /api/academic/syllabus/publish - Admin approves & publishes syllabus to active DB
-router.post('/academic/syllabus/publish', requireAuth, requireRole(['super_admin', 'institution_admin', 'academic_admin']), requireInstitutionScope((req) => req.body?.institutionId || (req as AuthenticatedRequest).user?.institutionId), (req: AuthenticatedRequest, res: Response) => {
-  const { draft, institutionId, departmentId } = req.body;
+router.post('/academic/syllabus/publish', requireAuth, requireRole(['super_admin', 'institution_admin', 'academic_admin']), requireInstitutionScope((req) => req.body?.institutionId || (req as AuthenticatedRequest).user?.institutionId), async (req: AuthenticatedRequest, res: Response) => {
+  const { draft, institutionId, departmentId, programmeId } = req.body;
   if (!draft || !draft.subjectName || !draft.units) {
     return res.status(400).json({ error: 'Invalid syllabus draft format.' });
   }
   const targetInstitutionId = String(institutionId || req.user!.institutionId || '');
   if (!targetInstitutionId) return res.status(400).json({ error: 'Institution ID is required for a platform administrator.' });
+  const selectedDepartment = dataStore.departments.get(String(departmentId || ''));
+  const selectedProgramme = dataStore.programmes.get(String(programmeId || ''));
+  const semester = Number(draft.semester);
+  if (!selectedDepartment || selectedDepartment.institutionId !== targetInstitutionId || !selectedProgramme || selectedProgramme.institutionId !== targetInstitutionId || selectedProgramme.departmentId !== selectedDepartment.id || draft.programmeId !== selectedProgramme.id) {
+    return res.status(400).json({ error: 'The selected department and programme do not match this syllabus.' });
+  }
+  if (!Number.isInteger(semester) || semester < 1 || semester > selectedProgramme.totalSemesters) {
+    return res.status(400).json({ error: 'The syllabus semester is outside this programme.' });
+  }
+  if (!/^[A-Z0-9_-]{2,32}$/.test(String(draft.subjectCode || '').toUpperCase()) || !Number.isFinite(Number(draft.credits)) || Number(draft.credits) <= 0 || !Array.isArray(draft.units) || !draft.units.length || draft.units.some((unit: any) => !Array.isArray(unit.topics) || unit.topics.length === 0)) {
+    return res.status(400).json({ error: 'The syllabus draft is missing a valid subject code, credits, or unit topics.' });
+  }
+  if (Array.from(dataStore.subjects.values()).some((subject) => subject.institutionId === targetInstitutionId && subject.code.toUpperCase() === String(draft.subjectCode).toUpperCase())) {
+    return res.status(409).json({ error: 'A subject with this code already exists in the institution.' });
+  }
 
   const newSubject = SyllabusProcessorService.publishSyllabus(
     targetInstitutionId,
-    departmentId || '',
+    selectedDepartment.id,
     draft
   );
+
+  if (isNeonConnected() && !(await saveSubjectToNeon(newSubject))) {
+    dataStore.subjects.delete(newSubject.id);
+    return res.status(503).json({ error: 'The syllabus could not be saved to the database. Try again.' });
+  }
 
   return res.json({
     success: true,
@@ -1482,13 +1570,23 @@ router.post('/lms/quizzes/:id/attempt', requireAuth, requireRole(['student']), r
 });
 
 // POST /api/lms/topics/:topicId/toggle-complete
-router.post('/lms/topics/:topicId/toggle-complete', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+router.post('/lms/topics/:topicId/toggle-complete', requireAuth, requireRole(['student']), requireInstitutionScope((req) => {
+  const topicId = String(req.params.topicId || '');
+  for (const subject of dataStore.subjects.values()) {
+    if (subject.units.some((unit) => unit.topics.some((topic) => topic.id === topicId))) return subject.institutionId;
+  }
+  return undefined;
+}), (req: AuthenticatedRequest, res: Response) => {
   const user = dataStore.users.get(req.user!.userId);
   if (!user || !user.studentProfile) {
     return res.status(400).json({ error: 'Only student accounts can track topic completion.' });
   }
 
   const topicId = Array.isArray(req.params.topicId) ? req.params.topicId[0] : req.params.topicId;
+  const subject = Array.from(dataStore.subjects.values()).find((candidate) => candidate.units.some((unit) => unit.topics.some((topic) => topic.id === topicId)));
+  if (!subject || user.studentProfile.institutionId !== subject.institutionId || user.studentProfile.programmeId !== subject.programmeId || user.studentProfile.semester !== subject.semester) {
+    return res.status(403).json({ error: 'This topic is outside your enrolled programme.' });
+  }
   const completed = user.studentProfile.completedTopicIds || [];
   const idx = completed.indexOf(topicId);
 
@@ -1639,7 +1737,9 @@ router.get('/announcements', requireAuth, (req: AuthenticatedRequest, res: Respo
     .filter((announcement) =>
       user.role === 'super_admin' ||
       (announcement.institutionId === user.institutionId &&
-        (!announcement.targetRole || announcement.targetRole === 'all' || announcement.targetRole === user.role))
+        (!announcement.targetRole || announcement.targetRole === 'all' ||
+          (announcement.targetRole === 'teachers' && user.role === 'teacher') ||
+          (announcement.targetRole === 'students' && user.role === 'student')))
     )
     .sort((a, b) => b.createdAt - a.createdAt);
   return res.json(annList);
@@ -2508,6 +2608,7 @@ router.post('/courses/global/:id/enroll', requireAuth, requireRole(['student']),
   if (existing) {
     return res.json({
       success: true,
+      paymentRequired: existing.status === 'pending_payment',
       message: 'Student is already enrolled in this course.',
       enrollment: existing,
       course,
@@ -2746,6 +2847,7 @@ router.post('/institution/courses/:id/enroll', requireAuth, requireRole(['studen
   if (existing) {
     return res.json({
       success: true,
+      paymentRequired: existing.status === 'pending_payment',
       message: 'Student is already enrolled in this course.',
       enrollment: existing,
       course,

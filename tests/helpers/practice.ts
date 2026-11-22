@@ -1,8 +1,8 @@
 // Drives the REAL PracticeWeakTopicsScreen by clicking its option buttons.
 import { screen, waitFor, within } from '@testing-library/react';
 import type userEvent from '@testing-library/user-event';
-import type { ContentPack, Question } from '../../src/types';
-import { getTranslations } from '../../src/utils/translations';
+import type { ContentPack, Question } from '../../frontend/src/types';
+import { getTranslations } from '../../frontend/src/utils/translations';
 
 type User = ReturnType<typeof userEvent.setup>;
 

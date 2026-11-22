@@ -3,8 +3,8 @@ import {
   getAdminRegistrationEmail,
   getPasswordResetEmail,
   getPasswordResetSuccessEmail,
-} from '../../server/templates/emailTemplates';
-import { EmailService } from '../../server/services/email';
+} from '../../backend/server/templates/emailTemplates';
+import { EmailService } from '../../backend/server/services/email';
 
 describe('Admin Panel Email Templates & Delivery Suite', () => {
   it('renders admin registration and institutional onboarding email template properly', () => {

@@ -1,252 +1,146 @@
-// Syllabus Ingestion, Structured Document Extraction & Publication Console
-import React, { useState } from 'react';
-import {
-  FileText,
-  Upload,
-  CheckCircle2,
-  Layers,
-  ArrowRight,
-  BookOpen,
-  Sparkles,
-  AlertCircle,
-  RefreshCw,
-  Plus,
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, FileText, RefreshCw, Sparkles } from 'lucide-react';
 import { useEnterpriseAuth } from '../../context/EnterpriseAuthContext';
 import { useAcademic } from '../../context/AcademicContext';
+import type { Department, Programme } from '../../types/enterprise';
+
+interface ExtractedSyllabusDraft {
+  subjectName: string;
+  subjectCode: string;
+  credits: number;
+  programmeId: string;
+  semester: number;
+  syllabusVersion: string;
+  units: Array<{ unitNumber: number; title: string; description: string; topics: Array<{ topicNumber: number; title: string; description: string; learningOutcomes: string[] }> }>;
+}
 
 export const SyllabusManagerScreen: React.FC = () => {
   const { user, token } = useEnterpriseAuth();
   const { refreshSyllabus } = useAcademic();
-
-  const [rawText, setRawText] = useState('');
-
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [programmes, setProgrammes] = useState<Programme[]>([]);
+  const [departmentId, setDepartmentId] = useState('');
+  const [programmeId, setProgrammeId] = useState('');
   const [semester, setSemester] = useState('');
   const [syllabusVersion, setSyllabusVersion] = useState('');
+  const [rawText, setRawText] = useState('');
+  const [isLoadingStructure, setIsLoadingStructure] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [extractedDraft, setExtractedDraft] = useState<any>(null);
-  const [publishStatus, setPublishStatus] = useState<string | null>(null);
+  const [extractedDraft, setExtractedDraft] = useState<ExtractedSyllabusDraft | null>(null);
+  const [notice, setNotice] = useState<{ message: string; error: boolean } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadStructure = async () => {
+      if (!user?.institutionId || !token) {
+        setDepartments([]);
+        setProgrammes([]);
+        setIsLoadingStructure(false);
+        return;
+      }
+      setIsLoadingStructure(true);
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const [departmentResponse, programmeResponse] = await Promise.all([
+          fetch(`/api/institution/${encodeURIComponent(user.institutionId)}/departments`, { headers }),
+          fetch(`/api/institution/${encodeURIComponent(user.institutionId)}/programmes`, { headers }),
+        ]);
+        if (!departmentResponse.ok || !programmeResponse.ok) throw new Error('Could not load your institution’s academic structure.');
+        const [departmentData, programmeData] = await Promise.all([departmentResponse.json(), programmeResponse.json()]);
+        if (!cancelled) {
+          setDepartments(Array.isArray(departmentData) ? departmentData : []);
+          setProgrammes(Array.isArray(programmeData) ? programmeData : []);
+        }
+      } catch (error) {
+        if (!cancelled) setNotice({ message: error instanceof Error ? error.message : 'Could not load academic structure.', error: true });
+      } finally {
+        if (!cancelled) setIsLoadingStructure(false);
+      }
+    };
+    void loadStructure();
+    return () => { cancelled = true; };
+  }, [user?.institutionId, token]);
+
+  const availableProgrammes = useMemo(() => programmes.filter((programme) => programme.departmentId === departmentId), [programmes, departmentId]);
+  const selectedProgramme = availableProgrammes.find((programme) => programme.id === programmeId);
+  const semesterOptions = selectedProgramme ? Array.from({ length: selectedProgramme.totalSemesters }, (_, index) => index + 1) : [];
+  const canProcess = Boolean(user?.institutionId && departmentId && programmeId && semester && syllabusVersion.trim() && rawText.trim());
 
   const handleParse = async () => {
-    if (!rawText.trim() || !user?.institutionId || !semester || !syllabusVersion.trim()) {
-      setPublishStatus('Add syllabus content, semester, curriculum version, and sign in with an institution account before processing.');
-      return;
-    }
+    if (!canProcess || !user?.institutionId || !token) return;
     setIsProcessing(true);
-    setPublishStatus(null);
-
+    setNotice(null);
+    setExtractedDraft(null);
     try {
-      const res = await fetch('/api/academic/syllabus/parse', {
+      const response = await fetch('/api/academic/syllabus/parse', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          text: rawText,
-          institutionId: user.institutionId,
-          semester: parseInt(semester, 10),
-          syllabusVersion,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text: rawText, institutionId: user.institutionId, departmentId, programmeId, semester: Number(semester), syllabusVersion: syllabusVersion.trim() }),
       });
-
-      const data = await res.json();
-      if (res.ok && data.draft) {
-        setExtractedDraft(data.draft);
-      }
-    } catch (err: any) {
-      alert('Extraction failed: ' + err.message);
+      const data = await response.json();
+      if (!response.ok || !data.draft) throw new Error(data.error || 'Could not process this syllabus.');
+      setExtractedDraft(data.draft);
+      setNotice({ message: 'Review the extracted subject and units, then publish when they match the official syllabus.', error: false });
+    } catch (error) {
+      setNotice({ message: error instanceof Error ? error.message : 'Could not process this syllabus.', error: true });
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handlePublish = async () => {
-    if (!extractedDraft || !user?.institutionId) return;
+    if (!extractedDraft || !user?.institutionId || !token) return;
     setIsProcessing(true);
-
+    setNotice(null);
     try {
-      const res = await fetch('/api/academic/syllabus/publish', {
+      const response = await fetch('/api/academic/syllabus/publish', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          draft: extractedDraft,
-          institutionId: user.institutionId,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ draft: extractedDraft, institutionId: user.institutionId, departmentId, programmeId }),
       });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setPublishStatus(`Success! "${extractedDraft.subjectName}" (${extractedDraft.subjectCode}) has been officially published and is now live for all enrolled students in Semester ${semester}!`);
-        await refreshSyllabus();
-      } else {
-        setPublishStatus('Error: ' + data.error);
-      }
-    } catch (err: any) {
-      setPublishStatus('Publication error: ' + err.message);
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Could not publish this syllabus.');
+      setNotice({ message: `${data.subject.name} (${data.subject.code}) is now published for ${selectedProgramme?.name}, semester ${semester}.`, error: false });
+      setExtractedDraft(null);
+      setRawText('');
+      await refreshSyllabus();
+    } catch (error) {
+      setNotice({ message: error instanceof Error ? error.message : 'Could not publish this syllabus.', error: true });
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn max-w-5xl mx-auto">
-      {/* Top Banner */}
-      <div className="bg-white p-6 rounded-[12px] border border-[#E2E8F0] shadow-xs">
-        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-bold bg-[#E0F2FE] text-[#0369A1] mb-2">
-          <FileText className="w-3.5 h-3.5" />
-          <span>Central Academic Management • Curriculum Engineering</span>
-        </div>
-        <h2 className="text-xl font-black text-[#0F172A] tracking-tight">
-          Syllabus Ingestion, Structured Extraction &amp; Publication
-        </h2>
-        <p className="text-xs text-[#64748B] mt-0.5">
-          Upload or paste official university syllabi. The extraction engine automatically categorizes Units, Topics, Learning Outcomes, and Reference Materials before publication.
-        </p>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-5">
+      <section className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-xs">
+        <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#E0F2FE] px-2.5 py-1 text-xs font-bold text-[#0369A1]"><FileText className="h-3.5 w-3.5" />Academic management</div>
+        <h1 className="text-xl font-black tracking-tight text-[#0F172A]">Publish a syllabus</h1>
+        <p className="mt-1 text-sm text-[#64748B]">Choose a department and programme, paste the official text, review the extracted units, then publish.</p>
+      </section>
 
-      {publishStatus && (
-        <div className="p-4 bg-[#DCFCE7] text-[#166534] border border-[#86EFAC] rounded-[10px] text-xs font-bold flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" />
-            <span>{publishStatus}</span>
+      {notice && <div role={notice.error ? 'alert' : 'status'} className={`rounded-xl border p-3 text-sm ${notice.error ? 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]' : 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]'}`}>{notice.message}</div>}
+
+      <section className="space-y-4 rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-xs">
+        {departments.length === 0 || programmes.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-4 text-sm text-[#64748B]">{isLoadingStructure ? 'Loading institution structure…' : 'Add a department and programme in the Institution dashboard before publishing a syllabus.'}</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="text-sm font-bold text-[#334155]">Department<select value={departmentId} onChange={(event) => { setDepartmentId(event.target.value); setProgrammeId(''); setSemester(''); setExtractedDraft(null); }} className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal"><option value="">Choose department</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
+            <label className="text-sm font-bold text-[#334155]">Programme<select value={programmeId} onChange={(event) => { setProgrammeId(event.target.value); setSemester(''); setExtractedDraft(null); }} disabled={!departmentId} className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal"><option value="">Choose programme</option>{availableProgrammes.map((programme) => <option key={programme.id} value={programme.id}>{programme.name}</option>)}</select></label>
+            <label className="text-sm font-bold text-[#334155]">Semester<select value={semester} onChange={(event) => setSemester(event.target.value)} disabled={!selectedProgramme} className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] bg-white px-3 font-normal"><option value="">Choose semester</option>{semesterOptions.map((item) => <option key={item} value={item}>Semester {item}</option>)}</select></label>
+            <label className="text-sm font-bold text-[#334155]">Curriculum version<input value={syllabusVersion} onChange={(event) => setSyllabusVersion(event.target.value)} maxLength={60} placeholder="For example: 2026 revision" className="mt-1 min-h-10 w-full rounded-lg border border-[#CBD5E1] px-3 font-normal" /></label>
           </div>
-          <button type="button" onClick={() => setPublishStatus(null)} className="text-[#166534] hover:underline">
-            Dismiss
-          </button>
-        </div>
-      )}
+        )}
 
-      {/* INPUT FORM: PASTE / UPLOAD SYLLABUS */}
-      <div className="bg-white rounded-[12px] border border-[#E2E8F0] shadow-xs p-5 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-[#475569] mb-1">Target Semester</label>
-            <select
-              value={semester}
-              onChange={(e) => setSemester(e.target.value)}
-              className="w-full text-xs p-2.5 rounded-[8px] border border-[#CBD5E1] bg-white font-bold"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                <option key={s} value={s}>
-                  Semester {s}
-                </option>
-              ))}
-            </select>
-          </div>
+        <label className="block text-sm font-bold text-[#334155]">Official syllabus text<textarea rows={10} value={rawText} onChange={(event) => setRawText(event.target.value)} placeholder={'Course Title: Data Structures\nSubject Code: CS301\nCredits: 4\n\nUNIT 1: Foundations\n- Arrays and linked lists'} className="mt-1 w-full rounded-lg border border-[#CBD5E1] p-3 font-mono text-sm focus:border-[#0F766E] focus:outline-hidden" /></label>
+        <div className="flex justify-end"><button type="button" onClick={() => void handleParse()} disabled={isProcessing || !canProcess || departments.length === 0 || programmes.length === 0} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#0F766E] px-4 text-sm font-bold text-white hover:bg-[#115E59] disabled:cursor-not-allowed disabled:opacity-50">{isProcessing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Process syllabus</button></div>
+      </section>
 
-          <div>
-            <label className="block text-xs font-bold text-[#475569] mb-1">Curriculum Version</label>
-            <input
-              type="text"
-              value={syllabusVersion}
-              onChange={(e) => setSyllabusVersion(e.target.value)}
-              className="w-full text-xs p-2.5 rounded-[8px] border border-[#CBD5E1] font-medium"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-[#475569] mb-1">Target Department</label>
-            <input
-              type="text"
-              disabled
-              value={user?.institutionName || 'Set on your institution account'}
-              className="w-full text-xs p-2.5 rounded-[8px] border border-[#CBD5E1] bg-[#F8FAFC] text-[#64748B] font-medium"
-            />
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-bold text-[#0F172A]">
-              Syllabus Text / Document Content:
-            </label>
-            <span className="text-[11px] text-[#64748B]">Auto-detects Subject Code, Units &amp; Topics</span>
-          </div>
-          <textarea
-            rows={8}
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-            placeholder="Paste the official syllabus text here."
-            className="w-full text-xs font-mono p-3 rounded-[8px] border border-[#CBD5E1] focus:outline-hidden focus:border-[#0F766E]"
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={handleParse}
-            disabled={isProcessing || !user?.institutionId || !semester || !syllabusVersion.trim() || !rawText.trim()}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-[8px] bg-[#0F766E] hover:bg-[#0D655E] text-white text-xs font-bold shadow-xs active:scale-95 transition-all"
-          >
-            {isProcessing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-            <span>Process &amp; Extract Structured Units</span>
-          </button>
-        </div>
-      </div>
-
-      {/* EXTRACTED PREVIEW & PUBLISH STAGE */}
-      {extractedDraft && (
-        <div className="bg-white rounded-[12px] border-2 border-[#0F766E]/30 shadow-md p-6 space-y-5 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E2E8F0]">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#DCFCE7] text-[#166534] mb-1">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>Structured Extraction Ready for Review</span>
-              </div>
-              <h3 className="font-black text-lg text-[#0F172A]">
-                {extractedDraft.subjectName} ({extractedDraft.subjectCode})
-              </h3>
-              <p className="text-xs text-[#64748B]">
-                {extractedDraft.credits} Credits • Semester {extractedDraft.semester} • {extractedDraft.units?.length} Units Extracted
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled={isProcessing}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-[8px] bg-[#16A34A] hover:bg-[#15803D] text-white text-xs font-black shadow-sm active:scale-95 transition-all"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Publish Official Syllabus to Students</span>
-            </button>
-          </div>
-
-          {/* Unit-wise Extracted Preview */}
-          <div className="space-y-4">
-            {extractedDraft.units?.map((unit: any, uIdx: number) => (
-              <div key={uIdx} className="p-4 rounded-[10px] bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
-                <div className="font-extrabold text-sm text-[#0F172A] flex items-center justify-between">
-                  <span>{unit.title}</span>
-                  <span className="text-[10px] font-bold text-[#0F766E] bg-[#F0FDFA] px-2 py-0.5 rounded-full border border-[#99F6E4]">
-                    {unit.topics?.length} Topics
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 pt-1">
-                  {unit.topics?.map((topic: any, tIdx: number) => (
-                    <div key={tIdx} className="p-2.5 rounded-[6px] bg-white border border-[#CBD5E1] text-xs">
-                      <div className="font-bold text-[#0F172A]">
-                        Topic {topic.topicNumber}: {topic.title}
-                      </div>
-                      <div className="text-[11px] text-[#475569] mt-0.5">{topic.description}</div>
-                      {topic.learningOutcomes && (
-                        <div className="text-[10px] text-[#0F766E] font-medium mt-1">
-                          Outcomes: {topic.learningOutcomes.join(' • ')}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {extractedDraft && <section className="space-y-4 rounded-2xl border-2 border-[#0F766E]/30 bg-white p-5 shadow-md">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E2E8F0] pb-3"><div><div className="mb-1 inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2 py-0.5 text-xs font-bold text-[#166534]"><CheckCircle2 className="h-3 w-3" />Review before publishing</div><h2 className="text-lg font-black text-[#0F172A]">{extractedDraft.subjectName} ({extractedDraft.subjectCode})</h2><p className="text-sm text-[#64748B]">{extractedDraft.credits} credits · Semester {extractedDraft.semester} · {extractedDraft.units.length} units</p></div><button type="button" onClick={() => void handlePublish()} disabled={isProcessing} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#15803D] px-4 text-sm font-bold text-white hover:bg-[#166534] disabled:opacity-50"><CheckCircle2 className="h-4 w-4" />Publish to students</button></div>
+        <div className="space-y-3">{extractedDraft.units.map((unit) => <article key={`${unit.unitNumber}-${unit.title}`} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4"><h3 className="font-bold text-[#0F172A]">{unit.title}</h3>{unit.description && <p className="mt-1 text-sm text-[#64748B]">{unit.description}</p>}<ul className="mt-2 list-inside list-disc space-y-1 text-sm text-[#334155]">{unit.topics.map((topic) => <li key={`${unit.unitNumber}-${topic.topicNumber}`}>{topic.title}</li>)}</ul></article>)}</div>
+      </section>}
     </div>
   );
 };

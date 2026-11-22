@@ -1,7 +1,7 @@
 // Tests for Phone Navigation Controls, Hardware Back-Button & Mobile Touch Tabs
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { navigationManager } from '../../src/services/navigationManager';
-import { getTranslations } from '../../src/utils/translations';
+import { navigationManager } from '../../frontend/src/services/navigationManager';
+import { getTranslations } from '../../frontend/src/utils/translations';
 
 describe('Phone Navigation Controls Suite', () => {
   beforeEach(() => {

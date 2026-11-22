@@ -4,10 +4,10 @@ import React from 'react';
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AppShell } from '../../src/components/AppShell';
-import { PracticeWeakTopicsScreen } from '../../src/screens/PracticeWeakTopicsScreen';
-import { localDb } from '../../src/db/indexedDb';
-import { getTranslations } from '../../src/utils/translations';
+import { AppShell } from '../../frontend/src/components/AppShell';
+import { PracticeWeakTopicsScreen } from '../../frontend/src/screens/PracticeWeakTopicsScreen';
+import { localDb } from '../../frontend/src/db/indexedDb';
+import { getTranslations } from '../../frontend/src/utils/translations';
 import { AppTestRoot, Captured, installFetchMock, loadPack, makeLearner, resetAppState } from '../helpers/harness';
 import { answerCurrentQuestion } from '../helpers/practice';
 

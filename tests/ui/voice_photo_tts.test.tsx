@@ -5,11 +5,11 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { VoiceInputButton } from '../../src/components/VoiceInputButton';
-import { AudioButton } from '../../src/components/AudioButton';
-import { AiTutorScreen } from '../../src/screens/AiTutorScreen';
-import { SpeechService } from '../../src/services/speech';
-import { getTranslations } from '../../src/utils/translations';
+import { VoiceInputButton } from '../../frontend/src/components/VoiceInputButton';
+import { AudioButton } from '../../frontend/src/components/AudioButton';
+import { AiTutorScreen } from '../../frontend/src/screens/AiTutorScreen';
+import { SpeechService } from '../../frontend/src/services/speech';
+import { getTranslations } from '../../frontend/src/utils/translations';
 import { AppTestRoot, installFetchMock, makeLearner, resetAppState } from '../helpers/harness';
 
 const en = getTranslations('en');

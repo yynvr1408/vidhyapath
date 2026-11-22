@@ -5,8 +5,8 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PinPadModal } from '../../src/components/PinPadModal';
-import { getTranslations } from '../../src/utils/translations';
+import { PinPadModal } from '../../frontend/src/components/PinPadModal';
+import { getTranslations } from '../../frontend/src/utils/translations';
 import { AppTestRoot, makeLearner, resetAppState } from '../helpers/harness';
 
 const en = getTranslations('en');

@@ -1,15 +1,15 @@
 // Strict Unit & Backend End-to-End Language Enforcement Test Suite
 // Verifies ONLY and STRICTLY three languages: Telugu (te), Hindi (hi), and English (en)
 import { describe, it, expect, vi } from 'vitest';
-import { TRANSLATIONS } from '../../src/utils/translations';
-import { SUPPORTED_LANGUAGES, getLanguageByCode } from '../../src/config/languages';
+import { TRANSLATIONS } from '../../frontend/src/utils/translations';
+import { SUPPORTED_LANGUAGES, getLanguageByCode } from '../../frontend/src/config/languages';
 import {
   SpeechService,
   getSpeechLocale,
   getSpeechLangFromLocale,
   SPEECH_ERROR_MESSAGES,
-} from '../../src/services/speech';
-import { TutorService } from '../../src/services/tutor';
+} from '../../frontend/src/services/speech';
+import { TutorService } from '../../frontend/src/services/tutor';
 import { installFetchMock, loadPack, resetAppState } from '../helpers/harness';
 
 describe('Strict Language Suite - Unit & Backend E2E', () => {

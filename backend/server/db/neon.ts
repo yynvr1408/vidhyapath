@@ -460,6 +460,8 @@ export async function initNeonDb(): Promise<boolean> {
         onLogAudit: (entry) => { logAuditToNeon(entry).catch((e) => console.error('[Neon] sync audit error:', e.message)); },
       });
 
+      await removeLegacySeedAccounts(client);
+
       // Check if DB is already seeded
       const countRes = await client.query('SELECT COUNT(*) as cnt FROM institutions');
       const instCount = parseInt(countRes.rows[0]?.cnt || '0', 10);
@@ -482,6 +484,45 @@ export async function initNeonDb(): Promise<boolean> {
     isConnected = false;
     return false;
   }
+}
+
+async function removeLegacySeedAccounts(client: any): Promise<void> {
+  const configuredEmail = process.env.BOOTSTRAP_SUPER_ADMIN_EMAIL?.trim().toLowerCase() || null;
+  const legacyEmails = ['admin@vidyapath.edu', 'adminvidyapath@edu.in', 'admin@vidyapath.edu.in'];
+  await client.query(
+    `DELETE FROM users
+     WHERE lower(email) = ANY($1::text[])
+       AND ($2::text IS NULL OR lower(email) <> $2)`,
+    [legacyEmails, configuredEmail]
+  );
+
+  const bootstrap = dataStore.users.get('user_super_admin');
+  if (!configuredEmail || !bootstrap || bootstrap.email.toLowerCase() !== configuredEmail) return;
+
+  const existing = await client.query('SELECT id FROM users WHERE lower(email) = $1 LIMIT 1', [configuredEmail]);
+  const existingId = existing.rows[0]?.id as string | undefined;
+  const bootstrapId = existingId || bootstrap.id;
+  const passwordHash = bootstrap.passwordHash;
+  const salt = bootstrap.salt;
+  if (existingId) {
+    await client.query(
+      `UPDATE users SET institution_id = NULL, institution_name = NULL, role = 'super_admin',
+       full_name = $2, password_hash = $3, salt = $4, status = 'active'
+       WHERE id = $1`,
+      [existingId, bootstrap.fullName, passwordHash, salt]
+    );
+    if (existingId !== bootstrap.id) {
+      dataStore.users.delete(bootstrap.id);
+      dataStore.users.set(existingId, { ...bootstrap, id: existingId });
+    }
+    return;
+  }
+
+  await client.query(
+    `INSERT INTO users (id, institution_id, institution_name, role, full_name, email, phone, password_hash, salt, status, avatar_url, student_profile, teacher_profile, created_at, last_login_at)
+     VALUES ($1, NULL, NULL, 'super_admin', $2, $3, NULL, $4, $5, 'active', NULL, NULL, NULL, $6, NULL)`,
+    [bootstrapId, bootstrap.fullName, configuredEmail, passwordHash, salt, bootstrap.createdAt]
+  );
 }
 
 export function isNeonConnected(): boolean {
@@ -752,7 +793,36 @@ async function hydrateStoreFromNeon(client: any) {
       });
     }
 
-    // 2. Users
+    // 2. Academic hierarchy. Load it before subjects so the portal and
+    // syllabus workflow can validate every programme against its institution.
+    const deptRes = await client.query('SELECT * FROM departments');
+    for (const row of deptRes.rows) {
+      dataStore.departments.set(row.id, {
+        id: row.id,
+        institutionId: row.institution_id,
+        name: row.name,
+        code: row.code,
+        hodUserId: row.hod_user_id || undefined,
+        hodName: row.hod_name || undefined,
+        createdAt: Number(row.created_at),
+      });
+    }
+
+    const programmeRes = await client.query('SELECT * FROM programmes');
+    for (const row of programmeRes.rows) {
+      dataStore.programmes.set(row.id, {
+        id: row.id,
+        institutionId: row.institution_id,
+        departmentId: row.department_id,
+        name: row.name,
+        code: row.code,
+        degreeType: row.degree_type,
+        totalSemesters: Number(row.total_semesters),
+        createdAt: Number(row.created_at),
+      });
+    }
+
+    // 3. Users
     const userRes = await client.query('SELECT * FROM users');
     for (const row of userRes.rows) {
       dataStore.users.set(row.id, {
@@ -1008,6 +1078,42 @@ export async function saveInstitutionToNeon(inst: Institution): Promise<boolean>
     return true;
   } catch (err: any) {
     console.error('[Neon DB] saveInstitution error:', err.message);
+    return false;
+  }
+}
+
+export async function saveDepartmentToNeon(department: Department): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO departments (id, institution_id, name, code, hod_user_id, hod_name, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, code = EXCLUDED.code,
+         hod_user_id = EXCLUDED.hod_user_id, hod_name = EXCLUDED.hod_name`,
+      [department.id, department.institutionId, department.name, department.code, department.hodUserId || null, department.hodName || null, department.createdAt]
+    );
+    return true;
+  } catch (error: any) {
+    console.error('[Neon DB] saveDepartment error:', error.message);
+    return false;
+  }
+}
+
+export async function saveProgrammeToNeon(programme: Programme): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO programmes (id, institution_id, department_id, name, code, degree_type, total_semesters, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (id) DO UPDATE SET department_id = EXCLUDED.department_id, name = EXCLUDED.name,
+         code = EXCLUDED.code, degree_type = EXCLUDED.degree_type, total_semesters = EXCLUDED.total_semesters`,
+      [programme.id, programme.institutionId, programme.departmentId, programme.name, programme.code, programme.degreeType, programme.totalSemesters, programme.createdAt]
+    );
+    return true;
+  } catch (error: any) {
+    console.error('[Neon DB] saveProgramme error:', error.message);
     return false;
   }
 }

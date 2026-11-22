@@ -4,7 +4,6 @@ import {
   Users,
   Search,
   Filter,
-  Plus,
   ArrowLeft,
   RefreshCw,
   Mail,
@@ -12,7 +11,6 @@ import {
   GraduationCap,
   Building,
   UserCheck,
-  X,
   CheckCircle2,
 } from 'lucide-react';
 import { User, UserRole } from '../../types/enterprise';
@@ -23,20 +21,11 @@ interface UsersDirectoryScreenProps {
 }
 
 export const UsersDirectoryScreen: React.FC<UsersDirectoryScreenProps> = ({ onBack }) => {
-  const { token, activeRole } = useEnterpriseAuth();
+  const { token } = useEnterpriseAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-  // New User Form State
-  const [newEmail, setNewEmail] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newRole, setNewRole] = useState<UserRole>('student');
-  const [newPassword, setNewPassword] = useState('Password@2026');
-  const [creating, setCreating] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -57,38 +46,6 @@ export const UsersDirectoryScreen: React.FC<UsersDirectoryScreenProps> = ({ onBa
   useEffect(() => {
     fetchUsers();
   }, [token]);
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreating(true);
-    setStatusMessage(null);
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: newEmail,
-          password: newPassword,
-          fullName: newName,
-          role: newRole,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setStatusMessage(`User ${newName} (${newRole}) registered successfully!`);
-        setShowAddModal(false);
-        setNewEmail('');
-        setNewName('');
-        await fetchUsers();
-      } else {
-        setStatusMessage(data.error || 'Failed to create user');
-      }
-    } catch (err: any) {
-      setStatusMessage('Error creating user: ' + err.message);
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
@@ -152,27 +109,8 @@ export const UsersDirectoryScreen: React.FC<UsersDirectoryScreenProps> = ({ onBa
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
 
-          {['super_admin', 'institution_admin', 'academic_admin'].includes(activeRole) && (
-            <button
-              type="button"
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-bold active:scale-95 transition-all shadow-2xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create User</span>
-            </button>
-          )}
         </div>
       </div>
-
-      {statusMessage && (
-        <div className="p-3 rounded-xl bg-[#F0FDFA] border border-[#0F766E]/40 text-xs font-bold text-[#0F766E] flex items-center justify-between animate-fadeIn">
-          <span>{statusMessage}</span>
-          <button type="button" onClick={() => setStatusMessage(null)}>
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -266,92 +204,6 @@ export const UsersDirectoryScreen: React.FC<UsersDirectoryScreenProps> = ({ onBa
         </div>
       )}
 
-      {/* Add User Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-[#CBD5E1] shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
-              <h3 className="font-extrabold text-base text-[#0F172A]">Create New User Account</h3>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="text-xs text-[#64748B] hover:text-[#0F172A]"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateUser} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. Ramesh Chandra"
-                  className="w-full text-xs p-2.5 rounded-xl border border-[#CBD5E1] font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="ramesh@institution.edu"
-                  className="w-full text-xs p-2.5 rounded-xl border border-[#CBD5E1] font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1">Assigned Role</label>
-                <select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as UserRole)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-[#CBD5E1] font-bold bg-white"
-                >
-                  <option value="student">Student (Level 5)</option>
-                  <option value="teacher">Faculty / Teacher (Level 4)</option>
-                  <option value="academic_admin">Academic Coordinator (Level 3)</option>
-                  <option value="institution_admin">Institution Admin (Level 2)</option>
-                  <option value="guardian">Parent / Guardian</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1">Temporary Password</label>
-                <input
-                  type="text"
-                  required
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-[#CBD5E1] font-mono font-bold"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E2E8F0]">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[#F1F5F9] text-xs font-bold text-[#475569]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="px-4 py-2 rounded-xl bg-[#0F766E] text-white text-xs font-bold shadow-2xs active:scale-95 transition-all"
-                >
-                  {creating ? 'Creating...' : 'Register User'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

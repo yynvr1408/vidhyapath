@@ -167,7 +167,7 @@ export const SuperAdminDashboard: React.FC = () => {
         <div className="p-4 bg-white rounded-[12px] border border-[#E2E8F0] shadow-xs">
           <div className="text-[11px] font-bold text-[#64748B]">Registered Students</div>
           <div className="text-2xl font-black text-[#2563EB] mt-1">
-            {stats?.studentsCount ?? 1}
+            {stats?.studentsCount ?? 0}
           </div>
           <div className="text-[10px] text-[#1D4ED8] font-medium mt-1">Verified academic profiles</div>
         </div>

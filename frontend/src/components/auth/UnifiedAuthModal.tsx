@@ -1133,7 +1133,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
             <form onSubmit={handleStaffRegisterSubmit} className="space-y-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
                 <h3 className="text-sm font-bold text-[#0F172A]">
-                  Register as {activeTab === 'guardian' ? 'Parent / Guardian' : activeTab === 'teacher' ? 'Faculty / Teacher' : 'Institution Head'}
+                  Register as {activeTab === 'guardian' ? 'Parent / Guardian' : 'Institution Head'}
                 </h3>
                 <button
                   type="button"

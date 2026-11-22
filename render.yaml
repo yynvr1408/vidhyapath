@@ -48,15 +48,15 @@ services:
         sync: false
       - key: EMAILJS_PRIVATE_KEY
         sync: false
-      - key: EMAILJS_OTP_SERVICE_ID
+      - key: EMAILJS_SERVICE_ID_VERIFICATION
         sync: false
-      - key: EMAILJS_OTP_PUBLIC_KEY
+      - key: EMAILJS_PUBLIC_KEY_VERIFICATION
         sync: false
-      - key: EMAILJS_OTP_PRIVATE_KEY
+      - key: EMAILJS_PRIVATE_KEY_VERIFICATION
         sync: false
-      - key: EMAILJS_OTP_TEMPLATE_ID
-        value: template_vn8akfi
-      - key: EMAILJS_RESET_TEMPLATE_ID
-        value: template_ut8bwdc
-      - key: EMAILJS_INVITE_TEMPLATE_ID
-        value: template_2e14nac
+      - key: EMAILJS_TEMPLATE_VERIFICATION
+        sync: false
+      - key: EMAILJS_TEMPLATE_PASSWORD_RESET
+        sync: false
+      - key: EMAILJS_TEMPLATE_NOTIFICATION
+        sync: false

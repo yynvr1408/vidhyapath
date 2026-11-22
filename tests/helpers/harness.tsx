@@ -1,16 +1,17 @@
-// Shared test harness. Renders the REAL AppProvider (src/context/AppContext.tsx)
-// and the REAL IndexedDB layer (src/db/indexedDb.ts, backed by fake-indexeddb).
+// Shared test harness. Renders the REAL AppProvider (frontend/src/context/AppContext.tsx)
+// and the REAL IndexedDB layer (frontend/src/db/indexedDb.ts, backed by fake-indexeddb).
 // Only the network boundary is replaced: fetch('/packs/*.json') is served from
 // public/packs on disk, and other URLs return 404.
 import React, { useEffect, useState } from 'react';
 import { vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { AppProvider, useApp } from '../../src/context/AppContext';
-import { localDb } from '../../src/db/indexedDb';
-import type { ContentPack, LearnerProfile } from '../../src/types';
+import { AppProvider, useApp } from '../../frontend/src/context/AppContext';
+import { EnterpriseAuthProvider } from '../../frontend/src/context/EnterpriseAuthContext';
+import { localDb } from '../../frontend/src/db/indexedDb';
+import type { ContentPack, LearnerProfile } from '../../frontend/src/types';
 
-export const PACK_DIR = path.resolve(process.cwd(), 'public', 'packs');
+export const PACK_DIR = path.resolve(process.cwd(), 'frontend', 'public', 'packs');
 
 export type AppCtx = ReturnType<typeof useApp>;
 export interface Captured {
@@ -52,11 +53,13 @@ export function AppTestRoot({
   learner?: LearnerProfile;
 }) {
   return (
-    <AppProvider>
-      <Bridge captured={captured} learner={learner}>
-        {children}
-      </Bridge>
-    </AppProvider>
+    <EnterpriseAuthProvider>
+      <AppProvider>
+        <Bridge captured={captured} learner={learner}>
+          {children}
+        </Bridge>
+      </AppProvider>
+    </EnterpriseAuthProvider>
   );
 }
 
@@ -70,6 +73,9 @@ const nativeFetch = globalThis.fetch;
 export function installFetchMock() {
   const spy = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (url.startsWith('https://api.emailjs.com/')) {
+      return new Response(JSON.stringify({ status: 200, text: 'test-only delivery stub' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if (url.startsWith('http://127.0.0.1:') || url.startsWith('http://localhost:')) {
       try {
         return await nativeFetch(input, _init);

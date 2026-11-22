@@ -4,13 +4,13 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
-import { AppShell } from '../../src/components/AppShell';
-import { MySyllabusScreen } from '../../src/screens/MySyllabusScreen';
-import { AiTutorScreen } from '../../src/screens/AiTutorScreen';
-import { PracticeWeakTopicsScreen } from '../../src/screens/PracticeWeakTopicsScreen';
-import { MyProgressScreen } from '../../src/screens/MyProgressScreen';
-import { ParentTeacherViewScreen } from '../../src/screens/ParentTeacherViewScreen';
-import { TRANSLATIONS } from '../../src/utils/translations';
+import { AppShell } from '../../frontend/src/components/AppShell';
+import { MySyllabusScreen } from '../../frontend/src/screens/MySyllabusScreen';
+import { AiTutorScreen } from '../../frontend/src/screens/AiTutorScreen';
+import { PracticeWeakTopicsScreen } from '../../frontend/src/screens/PracticeWeakTopicsScreen';
+import { MyProgressScreen } from '../../frontend/src/screens/MyProgressScreen';
+import { ParentTeacherViewScreen } from '../../frontend/src/screens/ParentTeacherViewScreen';
+import { TRANSLATIONS } from '../../frontend/src/utils/translations';
 import {
   AppTestRoot,
   Captured,

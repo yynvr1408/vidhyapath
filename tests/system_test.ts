@@ -1,7 +1,7 @@
-import { DeterministicAnswerChecker } from '../src/engine/answerChecker';
-import { PracticeEngine } from '../src/engine/practiceEngine';
-import { TutorService } from '../src/services/tutor';
-import { ContentPack, Question } from '../src/types';
+import { DeterministicAnswerChecker } from '../frontend/src/engine/answerChecker';
+import { PracticeEngine } from '../frontend/src/engine/practiceEngine';
+import { TutorService } from '../frontend/src/services/tutor';
+import { ContentPack, Question } from '../frontend/src/types';
 import fs from 'fs';
 import path from 'path';
 
@@ -9,9 +9,9 @@ function runTests() {
   console.log('=== Vidyapath Verification & Test Suite ===\n');
 
   // Load Packs: Telugu, English, Hindi
-  const tePackPath = path.resolve(process.cwd(), 'public/packs/te-10-maths-ap.json');
-  const enPackPath = path.resolve(process.cwd(), 'public/packs/en-10-maths-cbse.json');
-  const hiPackPath = path.resolve(process.cwd(), 'public/packs/hi-10-maths-cbse.json');
+  const tePackPath = path.resolve(process.cwd(), 'frontend/public/packs/te-10-maths-ap.json');
+  const enPackPath = path.resolve(process.cwd(), 'frontend/public/packs/en-10-maths-cbse.json');
+  const hiPackPath = path.resolve(process.cwd(), 'frontend/public/packs/hi-10-maths-cbse.json');
 
   const tePack: ContentPack = JSON.parse(fs.readFileSync(tePackPath, 'utf-8'));
   const enPack: ContentPack = JSON.parse(fs.readFileSync(enPackPath, 'utf-8'));

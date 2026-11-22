@@ -1,8 +1,8 @@
 // Unit: mastery update formula and the deterministic answer checker.
 import { describe, it, expect } from 'vitest';
-import { PracticeEngine } from '../../src/engine/practiceEngine';
-import { DeterministicAnswerChecker } from '../../src/engine/answerChecker';
-import type { ContentPack, Question } from '../../src/types';
+import { PracticeEngine } from '../../frontend/src/engine/practiceEngine';
+import { DeterministicAnswerChecker } from '../../frontend/src/engine/answerChecker';
+import type { ContentPack, Question } from '../../frontend/src/types';
 
 describe('PracticeEngine.calculateNewMastery', () => {
   const cases: [number, boolean, number, number][] = [
