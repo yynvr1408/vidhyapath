@@ -71,8 +71,6 @@ describe('Strict Language Suite - UI End-to-End Switching', () => {
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navAiTutor) }).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navPractice) }).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navProgress) }).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navParentView) }).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByRole('button', { name: (c) => c.includes(t.adminPortal) }).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navSwitchProfile) }).length).toBeGreaterThanOrEqual(1);
 
       // Verify language label
@@ -106,8 +104,6 @@ describe('Strict Language Suite - UI End-to-End Switching', () => {
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navAiTutor) }).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navPractice) }).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navProgress) }).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navParentView) }).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByRole('button', { name: (c) => c.includes(t.adminPortal) }).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navSwitchProfile) }).length).toBeGreaterThanOrEqual(1);
 
       expect(screen.getByText(t.languageLabel)).toBeInTheDocument();
@@ -140,8 +136,6 @@ describe('Strict Language Suite - UI End-to-End Switching', () => {
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navAiTutor) }).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navPractice) }).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navProgress) }).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navParentView) }).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByRole('button', { name: (c) => c.includes(t.adminPortal) }).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByRole('button', { name: (c) => c.includes(t.navSwitchProfile) }).length).toBeGreaterThanOrEqual(1);
 
       expect(screen.getByText(t.languageLabel)).toBeInTheDocument();

@@ -246,49 +246,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               </button>
             );
           })}
-
-          {/* Visual Divider */}
-          <div className="border-t border-[#E2E8F0] my-2 pt-1" />
-
-          {/* 5. Parent / Teacher View */}
-          <button
-            type="button"
-            onClick={() => handleNavClick('PARENT_VIEW')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-[12px] text-base font-semibold transition-all min-h-[48px] text-left ${
-              isItemActive('PARENT_VIEW')
-                ? 'bg-[#0F766E] text-white shadow-xs'
-                : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
-            }`}
-          >
-            <span
-              className={
-                isItemActive('PARENT_VIEW') ? 'text-white' : 'text-[#16A34A]'
-              }
-            >
-              <ShieldCheck className="w-5 h-5 shrink-0" />
-            </span>
-            <span className="truncate">{t.navParentView}</span>
-          </button>
-
-          {/* 6. Admin & Teacher Portal */}
-          <button
-            type="button"
-            onClick={() => handleNavClick('ADMIN')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-[12px] text-base font-semibold transition-all min-h-[48px] text-left ${
-              isItemActive('ADMIN')
-                ? 'bg-[#0F766E] text-white shadow-xs'
-                : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
-            }`}
-          >
-            <span
-              className={
-                isItemActive('ADMIN') ? 'text-white' : 'text-[#0F766E]'
-              }
-            >
-              <Lock className="w-5 h-5 shrink-0" />
-            </span>
-            <span className="truncate">{t.adminPortal}</span>
-          </button>
         </nav>
       </div>
 

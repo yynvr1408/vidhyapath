@@ -132,7 +132,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <button
           type="button"
           onClick={() => {
-            window.location.hash = '#mascots';
+            if (subjects.length > 0) onOpenSubject(subjects[0]);
           }}
           className="p-4 rounded-[12px] bg-white border border-[#E2E8F0] hover:border-[#7C3AED] shadow-2xs hover:shadow-xs transition-all text-left flex items-center justify-between group"
         >

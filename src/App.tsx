@@ -48,15 +48,6 @@ const AppContent: React.FC = () => {
     }
   }, [setScreen]);
 
-  // Keep browser URL hash synchronized with active screen for bookmarking and back history
-  useEffect(() => {
-    if (currentScreen !== 'ADMIN') {
-      const screenHash = '#' + currentScreen.toLowerCase();
-      if (window.location.hash !== screenHash) {
-        window.history.pushState({ screen: currentScreen }, '', screenHash);
-      }
-    }
-  }, [currentScreen]);
 
   // If on Enterprise Admin / Teacher / Multi-Tier LMS portal
   if (currentScreen === 'ADMIN' || currentScreen === 'ADMIN_PANEL') {

@@ -255,16 +255,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loginWithCode = async (code: string): Promise<{ success: boolean; learner?: LearnerProfile; message?: string }> => {
     const clean = code.trim().toUpperCase();
     if (!clean) {
-      return { success: false, message: 'దయచేసి మీ ప్రత్యేక కోడ్‌ను నమోదు చేయండి.' };
+      return {
+        success: false,
+        message: currentLanguage === 'te'
+          ? 'దయచేసి మీ ప్రత్యేక విద్యార్థి కోడ్‌ను నమోదు చేయండి.'
+          : currentLanguage === 'hi'
+          ? 'कृपया अपना विशेष छात्र कोड दर्ज करें।'
+          : 'Please enter your unique student code.',
+      };
     }
     const matched = await localDb.findLearnerByLoginCode(clean);
     if (matched) {
       selectLearner(matched);
       return { success: true, learner: matched };
     }
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loginCode: clean, pin: '' }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.user) {
+        const remoteProfile: LearnerProfile = {
+          id: data.user.id || 'learner_' + Date.now(),
+          nickname: data.user.fullName || clean,
+          loginCode: clean,
+          classGrade: data.user.studentProfile?.grade || 10,
+          avatarEmoji: '🧑‍🎓',
+          avatarColor: '#0F766E',
+          packId: 'te-10-maths-ap',
+          createdAt: Date.now(),
+        };
+        await localDb.saveLearner(remoteProfile);
+        const updated = await localDb.getLearners();
+        setLearners(updated);
+        selectLearner(remoteProfile);
+        return { success: true, learner: remoteProfile };
+      }
+    } catch (_) {}
+
     return {
       success: false,
-      message: 'ఈ కోడ్‌తో ఏ ప్రొఫైల్ కనుగొనబడలేదు. దయచేసి కోడ్‌ను సరిచూసుకోండి.'
+      message: currentLanguage === 'te'
+        ? 'ఈ కోడ్‌తో ఏ విద్యార్థి ప్రొఫైల్ కనుగొనబడలేదు. దయచేసి కోడ్‌ను సరిచూసుకోండి.'
+        : currentLanguage === 'hi'
+        ? 'इस कोड के साथ कोई छात्र प्रोफ़ाइल नहीं मिली। कृपया कोड जांचें।'
+        : 'No student profile found with this code. Please check your student code.',
     };
   };
 

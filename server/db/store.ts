@@ -121,7 +121,7 @@ class InMemoryDataStore {
   }
 
   private seedDefaultData() {
-    // 1. Platform Super Administrator (Clean Production Master Account)
+    // 1. Platform Super Administrator (Clean Master Operational Account)
     const pwd = this.hashPassword('SuperAdmin@2026');
     const userSuperAdmin: User & { passwordHash: string; salt: string } = {
       id: 'user_super_admin',
@@ -137,7 +137,7 @@ class InMemoryDataStore {
     };
     this.users.set(userSuperAdmin.id, userSuperAdmin);
 
-    // 2. Global Academy Institution (For Independent Pan-India Learners)
+    // 2. System tenant used by independent learner enrollment
     const instGlobal: Institution = {
       id: 'inst_global',
       name: 'Vidyapath Global Academy (Independent Learning)',

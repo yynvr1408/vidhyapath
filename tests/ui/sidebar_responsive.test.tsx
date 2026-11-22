@@ -34,7 +34,6 @@ describe('sidebar at 360px', () => {
       [en.navAiTutor, en.navAiTutor],
       [en.navPractice, en.navPractice],
       [en.navProgress, en.navProgress],
-      [en.navParentView, en.navParentView],
     ];
 
     for (const [label, expectedTitle] of views) {

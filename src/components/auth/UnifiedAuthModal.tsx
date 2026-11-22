@@ -37,6 +37,7 @@ interface UnifiedAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialRole?: AuthRoleTab;
+  initialMode?: 'login' | 'register' | 'forgot_pin';
 }
 
 const STUDENT_MASCOTS = [
@@ -52,12 +53,22 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
   isOpen,
   onClose,
   initialRole = 'student',
+  initialMode = 'login',
 }) => {
-  const { login } = useEnterpriseAuth();
+  const { login, refreshProfile } = useEnterpriseAuth();
   const { setScreen, learners, selectLearner, createLearner, currentLanguage } = useApp();
 
   const [activeTab, setActiveTab] = useState<AuthRoleTab>(initialRole);
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot_pin'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot_pin'>(initialMode);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialRole) setActiveTab(initialRole);
+      if (initialMode) setAuthMode(initialMode);
+      setError(null);
+      setSuccessMessage(null);
+    }
+  }, [isOpen, initialRole, initialMode]);
 
   // Student 5-step registration state
   const [registrationStep, setRegistrationStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -160,18 +171,37 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
         throw new Error(data.error || 'Invalid login credentials.');
       }
 
-      // Store JWT token
+      // Store JWT token & update enterprise auth context
       localStorage.setItem('vidyapath_token', data.token);
+      if (refreshProfile) {
+        await refreshProfile();
+      }
 
       // Route based on role
       if (activeTab === 'student') {
         const matched = learners.find(
           (l) =>
             l.nickname.toUpperCase() === identifier.trim().toUpperCase() ||
-            l.id === data.user.id
+            l.loginCode?.toUpperCase() === identifier.trim().toUpperCase() ||
+            l.id === data.user?.id
         );
         if (matched) {
           selectLearner(matched);
+        } else if (data.user) {
+          const studentProfile: LearnerProfile = {
+            id: data.user.id || 'learner_' + Date.now(),
+            nickname: data.user.fullName || identifier.trim(),
+            loginCode: data.user.studentProfile?.rollNumber || identifier.trim().toUpperCase(),
+            pin: credential.trim(),
+            pinHash: credential.trim(),
+            avatarEmoji: '🧑‍🎓',
+            avatarColor: '#0F766E',
+            classGrade: data.user.studentProfile?.grade || 10,
+            packId: 'te-10-maths-ap',
+            createdAt: Date.now(),
+          };
+          await createLearner(studentProfile);
+          selectLearner(studentProfile);
         }
         setScreen('MY_SYLLABUS');
       } else if (activeTab === 'guardian') {

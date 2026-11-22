@@ -25,7 +25,7 @@ import {
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
-import { useEnterpriseAuth, DEMO_USERS } from '../../context/EnterpriseAuthContext';
+import { useEnterpriseAuth } from '../../context/EnterpriseAuthContext';
 import { useApp } from '../../context/AppContext';
 import { UserRole, NotificationItem } from '../../types/enterprise';
 import { VidyapathLogo } from '../VidyapathLogo';
@@ -61,7 +61,7 @@ interface EnterpriseShellProps {
 }
 
 export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen, setScreen, children }) => {
-  const { user, activeRole, switchRoleDemo, logout } = useEnterpriseAuth();
+  const { user, activeRole, logout } = useEnterpriseAuth();
   const {
     currentLanguage,
     switchLanguage,
@@ -180,6 +180,8 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
           { id: 'ANNOUNCEMENTS' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'संस्थान घोषणाएं' : currentLanguage === 'en' ? 'Announcements' : 'ప్రకటనలు', icon: <Send className="w-5 h-5 shrink-0" /> },
         ];
       case 'academic_admin':
+      case 'coordinator':
+      case 'exam_admin':
         return [
           { id: 'DASHBOARD' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'विभाग अवलोकन' : currentLanguage === 'en' ? 'Department Overview' : 'విభాగం అవలోకనం', icon: <Layers className="w-5 h-5 shrink-0" /> },
           { id: 'SYLLABUS_MANAGER' as EnterpriseScreenId, label: currentLanguage === 'hi' ? 'पाठ्यक्रम एवं विषय' : currentLanguage === 'en' ? 'Curriculum & Syllabi' : 'సిలబస్ & అంశాలు', icon: <FileText className="w-5 h-5 shrink-0" /> },

@@ -10,56 +10,12 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectTo?: string }>;
   logout: () => void;
-  switchRoleDemo: (role: UserRole) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const EnterpriseAuthContext = createContext<AuthContextValue | null>(null);
 
 // Demo seed accounts for quick testing of all 5 tiers
-export const DEMO_USERS: Record<UserRole, { email: string; name: string; title: string }> = {
-  super_admin: {
-    email: 'admin@vidyapath.edu',
-    name: 'Dr. K. S. Murthy',
-    title: 'Platform Super Administrator (Level 1)',
-  },
-  institution_admin: {
-    email: 'principal@apextech.edu',
-    name: 'Prof. R. Venkatesh',
-    title: 'Institution Administrator (Level 2)',
-  },
-  academic_admin: {
-    email: 'hod.cse@apextech.edu',
-    name: 'Dr. Sunita Rao',
-    title: 'Department Head / Academic Admin (Level 3)',
-  },
-  teacher: {
-    email: 'anil.kumar@apextech.edu',
-    name: 'Prof. Anil Kumar',
-    title: 'Faculty / Teacher (Level 4)',
-  },
-  student: {
-    email: 'aditya.23cs042@apextech.edu',
-    name: 'Aditya Verma',
-    title: 'Student (Level 5 - B.Tech CSE Sem 5)',
-  },
-  guardian: {
-    email: 'm.verma.parent@gmail.com',
-    name: 'Mohan Verma',
-    title: 'Parent / Guardian',
-  },
-  coordinator: {
-    email: 'hod.cse@apextech.edu',
-    name: 'Dr. Sunita Rao',
-    title: 'Academic Coordinator',
-  },
-  exam_admin: {
-    email: 'admin@vidyapath.edu',
-    name: 'Dr. K. S. Murthy',
-    title: 'Examination Administrator',
-  },
-};
-
 export const EnterpriseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('vidyapath_token'));
   const [user, setUser] = useState<User | null>(null);
@@ -128,16 +84,6 @@ export const EnterpriseAuthProvider: React.FC<{ children: React.ReactNode }> = (
     localStorage.removeItem('vidyapath_token');
   };
 
-  // Switch Role Demo Helper for rapid testing across all 5 tiers
-  const switchRoleDemo = async (role: UserRole) => {
-    setLoading(true);
-    const demo = DEMO_USERS[role];
-    if (demo) {
-      await login(demo.email, 'password123');
-    }
-    setLoading(false);
-  };
-
   const refreshProfile = async () => {
     if (token) {
       await fetchCurrentUser(token);
@@ -154,7 +100,6 @@ export const EnterpriseAuthProvider: React.FC<{ children: React.ReactNode }> = (
         loading,
         login,
         logout,
-        switchRoleDemo,
         refreshProfile,
       }}
     >

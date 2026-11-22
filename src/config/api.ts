@@ -1,14 +1,105 @@
 /**
- * Global API URL resolver for Vidyapath.
- * - When deployed on Netlify: Relative URLs (e.g. `/api/...`) are automatically proxied
- *   to the Render backend by Netlify Edge CDN via netlify.toml, avoiding all CORS preflights.
- * - When running in standalone mode, Android APK, or custom domain: VITE_API_BASE_URL can
- *   be specified to point directly to Render (e.g. `https://vidyapath.onrender.com`).
+ * Global API URL resolver & Network Client for Vidyapath.
+ * - When running in Android / iOS Capacitor APK: Automatically routes all `/api/...` calls
+ *   to the Render cloud backend (https://vidyapath.onrender.com).
+ * - When deployed on Netlify: Relative URLs (/api/...) are proxied to Render by Netlify Edge CDN.
+ * - When running Vite dev server locally: Proxies to http://localhost:3001.
+ * - In all environments: Safely wraps `fetch` and `.json()` so that HTML error responses
+ *   (e.g. Render waking up from sleep, 502/503) never crash the app with "<!DOCTYPE" JSON parse errors.
  */
-export const API_BASE_URL = (((import.meta as any).env?.VITE_API_BASE_URL as string) || '').replace(/\/+$/, '');
+
+export const REMOTE_BACKEND_URL = 'https://vidyapath.onrender.com';
+
+export const isCapacitor = typeof window !== 'undefined' && Boolean(
+  (window as any).Capacitor?.isNativePlatform?.() ||
+  window.location.protocol === 'capacitor:' ||
+  window.location.origin.includes('capacitor://') ||
+  (window.location.hostname === 'localhost' && window.location.port !== '3000' && window.location.port !== '5173')
+);
+
+// Determine base URL: environment variable overrides all, followed by Capacitor detection
+const rawEnvUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || '';
+export const API_BASE_URL = (
+  rawEnvUrl || (isCapacitor ? REMOTE_BACKEND_URL : '')
+).replace(/\/+$/, '');
 
 export function getApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   if (!API_BASE_URL) return cleanPath;
   return `${API_BASE_URL}${cleanPath}`;
+}
+
+// Global window.fetch patch to guarantee all /api calls reach the right host and parse safely
+if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+  const originalFetch = window.fetch.bind(window);
+
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    let url: string = '';
+    if (typeof input === 'string') {
+      url = input;
+    } else if (input instanceof URL) {
+      url = input.toString();
+    } else if (input instanceof Request) {
+      url = input.url;
+    }
+
+    // Rewrite relative /api/... calls if API_BASE_URL is set (e.g. on Android / Capacitor)
+    if (API_BASE_URL && (url.startsWith('/api/') || url === '/api')) {
+      const resolved = getApiUrl(url);
+      if (typeof input === 'string' || input instanceof URL) {
+        input = resolved;
+      } else {
+        input = new Request(resolved, input);
+      }
+    }
+
+    try {
+      const res = await originalFetch(input, init);
+
+      // Wrap .json() safely so HTML responses (such as Render cold-start or 502/503)
+      // return a structured error instead of throwing a SyntaxError for "<!DOCTYPE"
+      const originalJson = res.json.bind(res);
+      res.json = async () => {
+        try {
+          const clone = res.clone();
+          const contentType = res.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            return await originalJson();
+          }
+
+          const text = await clone.text();
+          if (text.trim().startsWith('<') || text.includes('<!DOCTYPE')) {
+            if (res.status === 502 || res.status === 503 || res.status === 504) {
+              return {
+                success: false,
+                error: 'Vidyapath cloud server is currently waking up on Render. Please retry in 10-15 seconds.',
+              };
+            }
+            if (res.status === 404) {
+              return {
+                success: false,
+                error: 'API endpoint not found (HTTP 404). Please ensure backend is reachable.',
+              };
+            }
+            return {
+              success: false,
+              error: `Server responded with HTML (Status ${res.status}). Please check server connection.`,
+            };
+          }
+
+          return JSON.parse(text);
+        } catch (err: any) {
+          return {
+            success: false,
+            error: err.message || 'Could not parse response from server.',
+          };
+        }
+      };
+
+      return res;
+    } catch (networkErr: any) {
+      // Re-throw or handle connection refused
+      throw networkErr;
+    }
+  };
 }

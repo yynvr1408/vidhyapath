@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Mic, MicOff, AlertCircle } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Mic, MicOff, AlertCircle, X } from 'lucide-react';
 import { SpeechService, getSpeechLocale, getSpeechLangFromLocale, SPEECH_ERROR_MESSAGES } from '../services/speech';
 import { useApp } from '../context/AppContext';
 import { getTranslations } from '../utils/translations';
@@ -35,6 +35,12 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const stoppingRef = useRef(false);
+
+  useEffect(() => {
+    if (!errorNotice) return;
+    const timer = setTimeout(() => setErrorNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [errorNotice]);
 
   const isSupported = SpeechService.isSttSupported();
 
@@ -129,10 +135,20 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
         {errorNotice && (
           <div
             role="status"
-            className="basis-full flex items-center gap-1.5 text-xs text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] px-3 py-1.5 rounded-xl font-medium"
+            className="basis-full flex items-center justify-between gap-1.5 text-xs text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA] px-3 py-1.5 rounded-xl font-medium"
           >
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorNotice}</span>
+            <div className="flex items-center gap-1.5 truncate">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span className="truncate">{errorNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setErrorNotice(null)}
+              className="p-0.5 text-[#DC2626] hover:bg-[#FEE2E2] rounded-full shrink-0 cursor-pointer"
+              aria-label="Dismiss error"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
         {isListening && (

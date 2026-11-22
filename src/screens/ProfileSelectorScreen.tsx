@@ -7,8 +7,12 @@ import {
   Lock,
   ArrowRight,
   Sparkles,
-  Download,
   RefreshCw,
+  GraduationCap,
+  Users,
+  Building2,
+  KeyRound,
+  BookOpen,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { LearnerProfile } from '../types';
@@ -20,7 +24,7 @@ import { getTranslations, SupportedLang } from '../utils/translations';
 import { AppUpdateHeaderPill } from '../components/AppUpdateHeaderPill';
 import { AppUpdateBanner } from '../components/AppUpdateBanner';
 import { AppUpdateModal } from '../components/AppUpdateModal';
-import { UnifiedAuthModal } from '../components/auth/UnifiedAuthModal';
+import { UnifiedAuthModal, AuthRoleTab } from '../components/auth/UnifiedAuthModal';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useAppUpdate } from '../hooks/useAppUpdate';
 
@@ -60,7 +64,17 @@ export const ProfileSelectorScreen: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [studentCodeInput, setStudentCodeInput] = useState('');
   const [codeLoginError, setCodeLoginError] = useState<string | null>(null);
+  
+  // Unified Auth Modal State
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalRole, setAuthModalRole] = useState<AuthRoleTab>('student');
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+
+  const openAuth = (role: AuthRoleTab, mode: 'login' | 'register' = 'login') => {
+    setAuthModalRole(role);
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
 
   const handleProfileClick = (learner: LearnerProfile) => {
     setSelectedLearnerForPin(learner);
@@ -109,37 +123,115 @@ export const ProfileSelectorScreen: React.FC = () => {
       {/* Floating In-App Update Alert Banner (If update or new PWA service worker is available) */}
       <AppUpdateBanner />
 
-      {/* 2. Clean Hero Header (Centered Logo & Vernacular Title) */}
-      <div className="text-center pt-5 pb-3 flex flex-col items-center">
-        <div className="flex justify-center mb-3">
-          <VidyapathLogo size="lg" showWordmark={false} />
+      {/* 2. Hero Header (Centered Logo & Vernacular Title) */}
+      <div className="text-center pt-4 pb-2 flex flex-col items-center">
+        <div className="flex justify-center mb-2">
+          <VidyapathLogo size="md" showWordmark={false} />
         </div>
-        <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight mt-1">
+        <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">
           {t.landingTitle}
         </h1>
-        <p className="text-xs sm:text-sm text-[#475569] font-medium mt-1 max-w-xs">
+        <p className="text-xs sm:text-sm text-[#475569] font-medium mt-0.5 max-w-xs">
           {t.landingSubtitle}
         </p>
       </div>
 
-      {/* 3. Main Operational Section (Onboarding Gateway or Multi-Sibling Profile Grid) */}
-      <div className="flex-1 py-3">
-        {learners.length === 0 ? (
-          /* Clean Onboarding Gateway when zero student profiles registered */
-          <div className="space-y-3.5 max-w-sm mx-auto py-2">
-            {/* Card 1: Register Student Profile (Classes 1–10 100% Free) */}
+      {/* 3. Section 1: Student Profiles & Quick Login */}
+      <div className="flex-1 py-3 space-y-4">
+        {/* If profiles exist on device: Grid of Student Profiles */}
+        {learners.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-black uppercase tracking-wider text-[#475569]">
+                {currentLanguage === 'te' ? 'విద్యార్థి ప్రొఫైల్స్' : currentLanguage === 'hi' ? 'छात्र प्रोफ़ाइल' : 'Student Profiles'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="text-xs font-bold text-[#0F766E] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{currentLanguage === 'te' ? 'కొత్త విద్యార్థి' : currentLanguage === 'hi' ? 'नया छात्र' : 'New Student'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {learners.map((learner) => {
+                const displayName = getCleanDisplayName(learner.nickname, currentLanguage);
+                const classLabelText = learner.classGrade
+                  ? `${learner.classGrade} ${t.classText}`
+                  : `10 ${t.classText}`;
+
+                return (
+                  <button
+                    key={learner.id}
+                    type="button"
+                    onClick={() => handleProfileClick(learner)}
+                    className="bg-[#FFFFFF] hover:bg-[#F0FDFA] p-3 rounded-[12px] border border-[#E2E8F0] hover:border-[#0F766E] transition-all flex flex-col items-center text-center shadow-xs active:scale-98 group justify-between cursor-pointer"
+                  >
+                    <div className="w-full flex justify-center items-center pt-1">
+                      <StudentAvatar learner={learner} size="md" />
+                    </div>
+                    <div className="w-full flex flex-col items-center justify-center my-1.5 px-1">
+                      <div className="font-extrabold text-sm text-[#0F172A] group-hover:text-[#0F766E] transition-colors truncate w-full">
+                        {displayName.primary}
+                      </div>
+                      <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1]">
+                        {classLabelText}
+                      </div>
+                    </div>
+                    <div className="w-full py-1.5 px-2 rounded-[8px] bg-[#F8FAFC] group-hover:bg-[#0F766E] border border-[#E2E8F0] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1 text-[11px] font-bold text-[#475569] group-hover:text-white">
+                      <Lock className="w-3 h-3 text-[#0F766E] group-hover:text-white shrink-0" />
+                      <span className="truncate">{t.tapToEnter}</span>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* Add Student / Sibling Profile Card */}
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="bg-[#FFFFFF] hover:bg-[#F0FDFA] p-3 rounded-[12px] border-2 border-dashed border-[#CBD5E1] hover:border-[#0F766E] transition-all flex flex-col items-center text-center shadow-xs active:scale-98 group justify-between cursor-pointer"
+              >
+                <div className="w-full flex justify-center items-center pt-2">
+                  <div className="w-11 h-11 rounded-full bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1] flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <UserPlus className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                </div>
+                <div className="w-full flex flex-col items-center justify-center my-1.5 px-1">
+                  <div className="font-extrabold text-sm text-[#0F172A] group-hover:text-[#0F766E] transition-colors">
+                    {currentLanguage === 'te' ? 'సహోదరుడి ప్రొఫైల్' : currentLanguage === 'hi' ? 'सहोदर प्रोफ़ाइल' : 'Add Sibling Profile'}
+                  </div>
+                  <div className="text-[11px] text-[#64748B] font-medium mt-0.5">
+                    {currentLanguage === 'te' ? 'తరగతి 1-12' : currentLanguage === 'hi' ? 'कक्षा 1-12' : 'Classes 1–12'}
+                  </div>
+                </div>
+                <div className="w-full py-1.5 px-2 rounded-[8px] bg-[#F0FDFA] group-hover:bg-[#0F766E] border border-[#CCFBF1] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1 text-[11px] font-bold text-[#0F766E] group-hover:text-white">
+                  <Plus className="w-3 h-3 stroke-[2.5]" />
+                  <span>{currentLanguage === 'te' ? 'చేర్చండి' : currentLanguage === 'hi' ? 'जोड़ें' : 'Add Profile'}</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* If no profiles exist yet: Primary Student Action Cards */}
+        {learners.length === 0 && (
+          <div className="space-y-2.5">
+            {/* Create Student Profile (Free Classes 1-10 SSC/CBSE, 11-12) */}
             <button
               type="button"
-              onClick={() => setShowAddModal(true)}
-              className="w-full bg-white hover:bg-[#F0FDFA] p-4 sm:p-5 rounded-2xl border-2 border-[#0F766E]/40 hover:border-[#0F766E] shadow-xs hover:shadow-md transition-all text-left flex items-start gap-3.5 active:scale-98 group cursor-pointer"
+              onClick={() => openAuth('student', 'register')}
+              className="w-full bg-white hover:bg-[#F0FDFA] p-4 rounded-2xl border-2 border-[#0F766E]/50 hover:border-[#0F766E] shadow-xs hover:shadow-md transition-all text-left flex items-start gap-3.5 active:scale-98 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-xl bg-[#0F766E] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                <UserPlus className="w-6 h-6 stroke-[2.2]" />
+                <GraduationCap className="w-6 h-6 stroke-[2.2]" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
                   <h3 className="font-extrabold text-base text-[#0F172A] group-hover:text-[#0F766E] transition-colors leading-tight">
-                    {currentLanguage === 'te' ? 'విద్యార్థి ప్రొఫైల్ నమోదు' : currentLanguage === 'hi' ? 'छात्र प्रोफ़ाइल पंजीकरण' : 'Register Student Profile'}
+                    {currentLanguage === 'te' ? 'విద్యార్థి ప్రొఫైల్ సృష్టించండి' : currentLanguage === 'hi' ? 'छात्र प्रोफ़ाइल बनाएं' : 'Create Student Profile'}
                   </h3>
                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D]">
                     {currentLanguage === 'te' ? 'ఉచితం' : currentLanguage === 'hi' ? 'निःशुल्क' : 'Free'}
@@ -147,122 +239,43 @@ export const ProfileSelectorScreen: React.FC = () => {
                 </div>
                 <p className="text-xs text-[#64748B] font-medium mt-1 leading-snug">
                   {currentLanguage === 'te'
-                    ? '1-10 తరగతులు (SSC & CBSE). రహస్య 4-అంకెల పిన్ మరియు భద్రతా ప్రశ్నను ఎంచుకోండి.'
+                    ? '1-10 తరగతులు (SSC & CBSE ఉచితం), 11-12 తరగతులు. సురక్షితమైన 4-అంకెల పిన్.'
                     : currentLanguage === 'hi'
-                    ? 'कक्षा 1-10 (SSC और CBSE)। 4-अंकीय गोपनीय पिन एवं सुरक्षा प्रश्न सेट करें।'
-                    : 'Classes 1–10 (State & CBSE). Confidential 4-digit PIN & safety question.'}
+                    ? 'कक्षा 1-10 (SSC और CBSE निःशुल्क), 11-12। सुरक्षित 4-अंकीय पिन।'
+                    : 'Classes 1–10 (SSC & CBSE Free), 11–12 Streams. Safe 4-digit PIN.'}
                 </p>
               </div>
             </button>
 
-            {/* Card 2: Portal Sign In & Registration (Students, Parents, Teachers, Admins) */}
+            {/* Direct Student Login (Enter PIN or Login Code) */}
             <button
               type="button"
-              onClick={() => setAuthModalOpen(true)}
-              className="w-full bg-white hover:bg-[#F8FAFC] p-4 rounded-2xl border border-[#CBD5E1] hover:border-[#0F766E] shadow-2xs transition-all text-left flex items-start gap-3.5 active:scale-98 group cursor-pointer"
+              onClick={() => openAuth('student', 'login')}
+              className="w-full bg-white hover:bg-[#F8FAFC] p-3.5 rounded-2xl border border-[#CBD5E1] hover:border-[#0F766E] shadow-2xs transition-all text-left flex items-center gap-3.5 active:scale-98 group cursor-pointer"
             >
-              <div className="w-11 h-11 rounded-xl bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1] flex items-center justify-center shrink-0">
-                <Lock className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1] flex items-center justify-center shrink-0">
+                <KeyRound className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-bold text-sm text-[#0F172A] group-hover:text-[#0F766E] transition-colors">
-                  {currentLanguage === 'te' ? 'పోర్టల్ లాగిన్ & రిజిస్ట్రేషన్' : currentLanguage === 'hi' ? 'पोर्टल लॉगिन एवं पंजीकरण' : 'Portal Sign In & Register'}
+                  {currentLanguage === 'te' ? 'విద్యార్థి లాగిన్' : currentLanguage === 'hi' ? 'छात्र लॉगिन' : 'Student Login'}
                 </h3>
-                <p className="text-xs text-[#64748B] font-medium mt-0.5">
+                <p className="text-xs text-[#64748B] font-medium">
                   {currentLanguage === 'te'
-                    ? 'విద్యార్థులు, తల్లిదండ్రులు, ఉపాధ్యాయులు & సూపర్ అడ్మిన్'
+                    ? 'స్టూడెంట్ రోల్ నంబర్ / కోడ్ మరియు పిన్ ద్వారా లాగిన్ అవ్వండి'
                     : currentLanguage === 'hi'
-                    ? 'विद्यार्थी, अभिभावक, शिक्षक एवं सुपर व्यवस्थापक'
-                    : 'Students, Parents, Teachers, Institutions & Super Admin'}
+                    ? 'छात्र रोल नंबर / कोड एवं पिन से तुरंत लॉगिन करें'
+                    : 'Sign in with your Student Roll Number / Code & PIN'}
                 </p>
               </div>
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3.5 sm:gap-4">
-            {learners.map((learner) => {
-              const displayName = getCleanDisplayName(learner.nickname, currentLanguage);
-              const classLabelText = learner.classGrade
-                ? `${learner.classGrade} ${t.classText}`
-                : `10 ${t.classText}`;
-
-              return (
-                <button
-                  key={learner.id}
-                  type="button"
-                  onClick={() => handleProfileClick(learner)}
-                  className="bg-[#FFFFFF] hover:bg-[#F0FDFA] p-3.5 rounded-[12px] border border-[#E2E8F0] hover:border-[#0F766E] transition-all flex flex-col items-center text-center shadow-xs hover:shadow-sm active:scale-98 group h-[192px] justify-between relative overflow-hidden cursor-pointer"
-                >
-                  {/* Top Slot: Avatar */}
-                  <div className="w-full flex justify-center items-center h-[56px] pt-1">
-                    <StudentAvatar learner={learner} size="md" />
-                  </div>
-
-                  {/* Middle Slot: Clean Name & Class Badge */}
-                  <div className="w-full flex flex-col items-center justify-center min-h-[50px] px-1">
-                    <div className="font-extrabold text-base text-[#0F172A] group-hover:text-[#0F766E] transition-colors truncate w-full leading-tight">
-                      {displayName.primary}
-                    </div>
-                    {displayName.secondary ? (
-                      <div className="text-xs text-[#64748B] font-medium truncate w-full mt-0.5">
-                        {displayName.secondary}
-                      </div>
-                    ) : (
-                      <div className="h-[16px]" />
-                    )}
-                    <div className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1]">
-                      {classLabelText}
-                    </div>
-                  </div>
-
-                  {/* Bottom Slot: Action Pill */}
-                  <div className="w-full pt-1">
-                    <div className="w-full py-2 px-2.5 rounded-[8px] bg-[#F8FAFC] group-hover:bg-[#0F766E] border border-[#E2E8F0] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1.5 text-xs font-bold text-[#475569] group-hover:text-white min-h-[38px]">
-                      <Lock className="w-3.5 h-3.5 text-[#0F766E] group-hover:text-white shrink-0" />
-                      <span className="truncate">{t.tapToEnter}</span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-
-            {/* Add Sibling Profile Card - Clean, Elegant Visual Hierarchy */}
-            <button
-              type="button"
-              onClick={() => setShowAddModal(true)}
-              className="bg-[#FFFFFF] hover:bg-[#F0FDFA] p-3.5 rounded-[12px] border-2 border-dashed border-[#CBD5E1] hover:border-[#0F766E] transition-all flex flex-col items-center text-center shadow-xs hover:shadow-sm active:scale-98 group h-[192px] justify-between relative cursor-pointer"
-            >
-              {/* Top Slot: Distinctive UserPlus icon */}
-              <div className="w-full flex justify-center items-center h-[56px] pt-1">
-                <div className="w-12 h-12 rounded-full bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1] flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <UserPlus className="w-5 h-5 stroke-[2.2]" />
-                </div>
-              </div>
-
-              {/* Middle Slot: Clean Title & Descriptive Subtitle (Zero redundant '+' badges) */}
-              <div className="w-full flex flex-col items-center justify-center min-h-[50px] px-1">
-                <div className="font-extrabold text-base text-[#0F172A] group-hover:text-[#0F766E] transition-colors truncate w-full leading-tight">
-                  {currentLanguage === 'te' ? 'విద్యార్థి ప్రొఫైల్' : currentLanguage === 'hi' ? 'छात्र प्रोफ़ाइल' : 'Student Profile'}
-                </div>
-                <div className="text-xs text-[#64748B] font-medium truncate w-full mt-1">
-                  {currentLanguage === 'te' ? 'సహోదరుడిని చేర్చండి' : currentLanguage === 'hi' ? 'सहोदर को जोड़ें' : 'Add Sibling Profile'}
-                </div>
-              </div>
-
-              {/* Bottom Slot: Action Button */}
-              <div className="w-full pt-1">
-                <div className="w-full py-2 px-2.5 rounded-[8px] bg-[#F0FDFA] group-hover:bg-[#0F766E] border border-[#CCFBF1] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1.5 text-xs font-bold text-[#0F766E] group-hover:text-white min-h-[38px]">
-                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span className="truncate">{currentLanguage === 'te' ? 'ప్రొఫైల్ నమోదు' : currentLanguage === 'hi' ? 'प्रोफ़ाइल जोड़ें' : 'Add Profile'}</span>
-                </div>
-              </div>
+              <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#0F766E] transition-colors shrink-0" />
             </button>
           </div>
         )}
 
-        {/* Student Code Direct Login */}
-        <div className="mt-4 pt-3 border-t border-[#E2E8F0]">
-          <form onSubmit={handleDirectCodeLogin} className="flex items-center gap-2 max-w-sm mx-auto">
+        {/* Student Code Instant Form */}
+        <div className="bg-white p-3 rounded-xl border border-[#E2E8F0] shadow-2xs">
+          <form onSubmit={handleDirectCodeLogin} className="flex items-center gap-2">
             <input
               type="text"
               value={studentCodeInput}
@@ -271,13 +284,13 @@ export const ProfileSelectorScreen: React.FC = () => {
                 setCodeLoginError(null);
               }}
               placeholder={currentLanguage === 'te' ? 'స్టూడెంట్ కోడ్ (ఉదా: RAVI-10)' : currentLanguage === 'hi' ? 'छात्र कोड (उदा: RAVI-10)' : 'Student Code (e.g. RAVI-10)'}
-              className="flex-1 text-sm font-mono font-bold p-3 rounded-[12px] bg-white border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden uppercase min-h-[48px]"
+              className="flex-1 text-sm font-mono font-bold px-3 py-2.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#0F766E] focus:outline-hidden uppercase"
             />
             <button
               type="submit"
-              className="py-3 px-4 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold active:scale-95 transition-all shadow-2xs min-h-[48px] cursor-pointer"
+              className="py-2.5 px-4 rounded-lg bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-bold active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
             >
-              {currentLanguage === 'te' ? 'లాగిన్' : currentLanguage === 'hi' ? 'लॉगिन' : 'Login'}
+              {currentLanguage === 'te' ? 'ప్రవేశించు' : currentLanguage === 'hi' ? 'प्रवेश करें' : 'Enter'}
             </button>
           </form>
           {codeLoginError && (
@@ -286,46 +299,136 @@ export const ProfileSelectorScreen: React.FC = () => {
             </p>
           )}
         </div>
+
+        {/* 4. Section 2: Dedicated Role Gateways (Teacher, Guardian, Institution, Super Admin) */}
+        <div className="pt-2 border-t border-[#E2E8F0] space-y-2.5">
+          <div className="text-[11px] font-black uppercase tracking-wider text-[#64748B]">
+            {currentLanguage === 'te' ? 'ఉపాధ్యాయులు, తల్లిదండ్రులు & సంస్థల పోర్టల్' : currentLanguage === 'hi' ? 'शिक्षक, अभिभावक एवं संस्थान पोर्टल' : 'Staff, Guardian & Institution Access'}
+          </div>
+
+          {/* Card 1: Teacher & Guardian Access */}
+          <div className="bg-white p-3.5 rounded-xl border border-[#E2E8F0] hover:border-[#0F766E] transition-all shadow-2xs">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#DCFCE7] text-[#15803D] flex items-center justify-center shrink-0 mt-0.5">
+                <Users className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-sm text-[#0F172A] leading-tight">
+                  {currentLanguage === 'te' ? 'తల్లిదండ్రులు & ఉపాధ్యాయుల పోర్టల్' : currentLanguage === 'hi' ? 'अभिभावक एवं शिक्षक पोर्टल' : 'Guardian & Teacher Portal'}
+                </h4>
+                <p className="text-xs text-[#64748B] font-medium mt-0.5 leading-snug">
+                  {currentLanguage === 'te'
+                    ? 'ఇంటి అభ్యాసం పర్యవేక్షణ, విద్యార్థి పురోగతి, మరియు అసైన్‌మెంట్లు'
+                    : currentLanguage === 'hi'
+                    ? 'गृह अध्ययन निगरानी, छात्र प्रगति रिपोर्ट एवं शिक्षण सामग्री'
+                    : 'Monitor home study progress, weekly digests & classroom materials'}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => openAuth('guardian', 'login')}
+                    className="py-1.5 px-3 rounded-lg bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
+                  >
+                    {currentLanguage === 'te' ? 'లాగిన్' : currentLanguage === 'hi' ? 'लॉगिन' : 'Sign In'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAuth('guardian', 'register')}
+                    className="py-1.5 px-3 rounded-lg bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] border border-[#CCFBF1] text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  >
+                    {currentLanguage === 'te' ? 'నమోదు' : currentLanguage === 'hi' ? 'पंजीकरण' : 'Register'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScreen('PARENT_VIEW')}
+                    className="ml-auto text-xs font-bold text-[#0F766E] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>{t.parentViewTitle}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Institution & School Administration */}
+          <div className="bg-white p-3.5 rounded-xl border border-[#E2E8F0] hover:border-[#0F766E] transition-all shadow-2xs">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shrink-0 mt-0.5">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-sm text-[#0F172A] leading-tight">
+                  {currentLanguage === 'te' ? 'పాఠశాల & కళాశాల సంస్థ పోర్టల్' : currentLanguage === 'hi' ? 'संस्थान एवं विद्यालय प्रशासन' : 'Institution & School Admin'}
+                </h4>
+                <p className="text-xs text-[#64748B] font-medium mt-0.5 leading-snug">
+                  {currentLanguage === 'te'
+                    ? '1-10 తరగతులు ఉచితం (SSC/CBSE), పై తరగతులకు కోర్సులు & విద్యా ప్రణాళిక'
+                    : currentLanguage === 'hi'
+                    ? 'कक्षा 1-10 निःशुल्क, उच्च कक्षाओं के लिए पाठ्यक्रम कैटलॉग एवं नियम'
+                    : 'Setup classes 1-10 free, dynamic paid courses & syllabus catalogue'}
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => openAuth('admin', 'login')}
+                    className="py-1.5 px-3 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
+                  >
+                    {currentLanguage === 'te' ? 'సంస్థ లాగిన్' : currentLanguage === 'hi' ? 'संस्थान लॉगिन' : 'Institution Login'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAuth('admin', 'register')}
+                    className="py-1.5 px-3 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#2563EB] border border-[#CBD5E1] text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  >
+                    {currentLanguage === 'te' ? 'సంస్థ నమోదు' : currentLanguage === 'hi' ? 'संस्थान पंजीकरण' : 'Register School'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Platform Super Administrator Panel */}
+          <div className="bg-linear-to-r from-[#FFFBEB] to-[#FEF3C7]/40 p-3 rounded-xl border border-[#FDE68A] transition-all flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-[#D97706] text-white flex items-center justify-center shrink-0">
+                <Shield className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-extrabold text-xs text-[#92400E] leading-tight">
+                  {currentLanguage === 'te' ? 'సూపర్ అడ్మిన్ ప్యానెల్' : currentLanguage === 'hi' ? 'सुपर एडमिन पैनल' : 'Platform Super Admin'}
+                </div>
+                <div className="text-[11px] text-[#B45309] font-medium truncate">
+                  admin@vidyapath.edu • Master Platform Oversight
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => openAuth('admin', 'login')}
+              className="py-1.5 px-3 rounded-lg bg-[#D97706] hover:bg-[#B45309] text-white text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-2xs shrink-0"
+            >
+              {currentLanguage === 'te' ? 'ప్రవేశం' : currentLanguage === 'hi' ? 'लॉगिन' : 'Sign In'}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* 4. Minimal Footer with Guardian Link, Portal Access, App Update Action & Privacy Note */}
+      {/* 5. Clean Footer with App Version, APK Update Action & Privacy Note */}
       <footer className="pt-3 border-t border-[#E2E8F0] flex flex-col items-center text-center gap-2">
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm font-bold text-[#0F766E]">
-          <button
-            type="button"
-            onClick={() => setScreen('PARENT_VIEW')}
-            className="hover:underline inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg hover:bg-[#F0FDFA] transition-colors"
-          >
-            <ShieldCheck className="w-4 h-4 text-[#0F766E]" />
-            <span>{t.parentViewTitle}</span>
-          </button>
-
-          <span className="text-[#CBD5E1]">·</span>
-
-          <button
-            type="button"
-            onClick={() => setAuthModalOpen(true)}
-            className="hover:underline inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg hover:bg-[#F0FDFA] transition-colors"
-          >
-            <Lock className="w-4 h-4 text-[#0F766E]" />
-            <span>Portal Login (Student/Parent/Staff/Admin)</span>
-          </button>
-
-          <span className="text-[#CBD5E1]">·</span>
-
-          {/* Dedicated Landing Page App Update Action */}
+        <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#0F766E]">
           <button
             type="button"
             onClick={openModal}
-            className="hover:underline inline-flex items-center gap-1.5 py-1.5 px-2.5 rounded-lg hover:bg-[#FEF3C7] text-[#D97706] transition-colors"
+            className="hover:underline inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-[#FEF3C7] text-[#D97706] transition-colors"
             title="Check for App Updates & APK Downloads"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>{hasUpdate ? `Update to v${currentVersion}` : `App Version: v${currentVersion}`}</span>
+            <span>{hasUpdate ? `Update Available (v${currentVersion})` : `App Version: v${currentVersion}`}</span>
           </button>
         </div>
 
-        <p className="text-xs text-[#64748B] font-medium flex items-center justify-center gap-1.5 mt-1">
+        <p className="text-[11px] text-[#64748B] font-medium flex items-center justify-center gap-1.5">
           <Shield className="w-3.5 h-3.5 text-[#0F766E]" />
           <span>{t.zeroPiiNotice}</span>
         </p>
@@ -335,6 +438,8 @@ export const ProfileSelectorScreen: React.FC = () => {
       <UnifiedAuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
+        initialRole={authModalRole}
+        initialMode={authModalMode}
       />
 
       {/* 4-Digit PIN Pad Modal */}

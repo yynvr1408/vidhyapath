@@ -383,45 +383,43 @@ export const AiTutorScreen: React.FC = () => {
         <div ref={chatBottomRef} />
       </div>
 
-      {/* Pre-Loaded Instant Common Doubts Pills */}
-      {pack?.commonDoubts && pack.commonDoubts.length > 0 && (
-        <div className="bg-[#FFFFFF] px-3.5 py-2.5 border-t border-[#E2E8F0]">
-          <div className="text-xs font-bold text-[#475569] mb-1.5 flex items-center gap-1">
-            <MessageSquare className="w-4 h-4 text-[#0F766E]" />
-            <span>{t.frequentDoubtsHeader}</span>
-          </div>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            {pack.commonDoubts
-              .filter((cd) => cd.topicId === activeTopicId)
-              .map((cd) => (
-                <button
-                  key={cd.id}
-                  type="button"
-                  onClick={() => handleSubmitDoubt(cd.q)}
-                  className="px-3.5 py-2 rounded-full bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:text-[#0F766E] text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] whitespace-nowrap active:scale-95 shrink-0 min-h-[38px]"
-                >
-                  {cd.q}
-                </button>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Horizontally Scrollable Quick-Tap Prompt Chips */}
-      <div className="bg-[#FFFFFF] px-3.5 py-2.5 border-t border-[#E2E8F0] flex gap-2 overflow-x-auto no-scrollbar">
+      {/* Unified Fast-Action Chips & Topic Doubts Bar */}
+      <div className="bg-[#FFFFFF] px-3 py-2 border-t border-[#E2E8F0] flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+        {/* Quick prompt chips */}
         {quickChips.map((chip, idx) => (
           <button
-            key={idx}
+            key={`qc-${idx}`}
             type="button"
             onClick={() => {
               setDoubtText(chip);
               handleSubmitDoubt(chip);
             }}
-            className="px-3.5 py-2 rounded-full bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] text-sm font-bold border border-[#E2E8F0] whitespace-nowrap active:scale-95 shrink-0 transition-colors min-h-[38px]"
+            className="px-3 py-1.5 rounded-full bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] text-xs font-bold border border-[#CCFBF1] whitespace-nowrap active:scale-95 shrink-0 transition-colors min-h-[34px] flex items-center gap-1 cursor-pointer"
           >
-            ⚡ {chip}
+            <span>⚡</span>
+            <span>{chip}</span>
           </button>
         ))}
+
+        {/* Separator if both exist */}
+        {pack?.commonDoubts && pack.commonDoubts.some((cd) => cd.topicId === activeTopicId) && (
+          <span className="text-[#CBD5E1] shrink-0 font-light">|</span>
+        )}
+
+        {/* Topic frequent doubts */}
+        {pack?.commonDoubts
+          ?.filter((cd) => cd.topicId === activeTopicId)
+          .map((cd) => (
+            <button
+              key={cd.id}
+              type="button"
+              onClick={() => handleSubmitDoubt(cd.q)}
+              className="px-3 py-1.5 rounded-full bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:text-[#0F766E] text-xs font-semibold text-[#0F172A] border border-[#E2E8F0] whitespace-nowrap active:scale-95 shrink-0 min-h-[34px] flex items-center gap-1 cursor-pointer"
+            >
+              <span>📖</span>
+              <span>{cd.q}</span>
+            </button>
+          ))}
       </div>
 
       {/* Sticky Bottom Input Bar: large Speak (amber) + large Photo (teal) + compact text + Send */}

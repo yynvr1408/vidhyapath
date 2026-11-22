@@ -112,57 +112,6 @@ interface StoredAttempt {
 const attemptsLog: StoredAttempt[] = [];
 const serverDoubts: any[] = [];
 
-// Seed sample cohort stats (meets requirement of minimum cohort size 5)
-const cohortData: Record<string, any> = {
-  'chittoor_pilot_2026': {
-    cohortId: 'chittoor_pilot_2026',
-    cohortName: 'చిత్తూరు జిల్లా పైలట్ గ్రూప్ (Chittoor District Pilot)',
-    sponsorName: 'ACE CSR Education Foundation',
-    activeLearners: 124,
-    sessionsCompleted: 1480,
-    avgMasteryGain: 41.5, // 41.5% average gain
-    offlineSessionsPercent: 78.2, // 78% practice done offline!
-    costPerLearner: 18.5, // INR 18.50 per active learner / month
-    weakTopics: [
-      { topic: 'అంతమయ్యే దశాంశాలు (Terminating Decimals)', errorRate: 34 },
-      { topic: 'సమితుల భేదం (Difference of Sets A - B)', errorRate: 29 },
-      { topic: 'యూక్లిడ్ శేష న్యాయం (Euclid Lemma)', errorRate: 22 }
-    ],
-    weeklyActivity: [
-      { day: 'సోమ', activeCount: 92 },
-      { day: 'మంగళ', activeCount: 104 },
-      { day: 'బుధ', activeCount: 115 },
-      { day: 'గురు', activeCount: 98 },
-      { day: 'శుక్ర', activeCount: 110 },
-      { day: 'శని', activeCount: 121 },
-      { day: 'ఆది', activeCount: 85 }
-    ]
-  }
-};
-
-// Seed guardian tokens
-const guardianTokens: Record<string, any> = {
-  'g_token_cheetah_01': {
-    token: 'g_token_cheetah_01',
-    learnerId: 'learner_cheetah',
-    learnerNickname: 'చిరుత (Cheetah)',
-    learnerAnimal: 'cheetah',
-    packId: 'te-10-maths-ap',
-    scope: 'view-only',
-    expiresAt: Date.now() + 30 * 24 * 3600 * 1000,
-    summary: {
-      week: 'ఈ వారం (వారపు సమీక్ష)',
-      sessionsCompleted: 6,
-      accuracyPercent: 82,
-      strongSkills: ['ప్రధాన కారణాంకాలు (Prime Factors)', 'సమితుల సమ్మేళనం (Union of Sets)'],
-      weakSkills: ['సమితుల భేదం (Difference A - B)'],
-      weakTopicName: 'సమితుల భేదం (A - B)',
-      suggestedAction: 'పిల్లలతో కలిసి వెన్ చిత్రం గీసి A లో మాత్రమే ఉండే భాగం గుర్తించడాన్ని సాధన చేయించండి.',
-      practiceTogetherPrompt: 'రెండు రకాల వస్తువుల జాబితా రాసి, మొదటి జాబితాలో మాత్రమే ఉన్నవి వేరుచేసే సరదా ఆట ఆడండి.'
-    }
-  }
-};
-
 // Helper: load packs from public directory
 const packsDir = path.resolve(__dirname, '../public/packs');
 
@@ -600,42 +549,51 @@ app.get('/api/app/check-update', async (req: Request, res: Response) => {
 // 3. Guardian View-Only Token Endpoint (/api/guardian/:token)
 app.get('/api/guardian/:token', (req: Request, res: Response) => {
   const token = String(req.params.token || '');
-  const tokenData = guardianTokens[token];
-
-  if (!tokenData) {
-    // Generate default realistic view-only data if token is generated dynamically
+  const guardianship = dataStore.guardianships.get(token);
+  if (guardianship) {
+    const student = dataStore.users.get(guardianship.studentId);
     return res.json({
       token,
-      learnerNickname: 'విద్యార్థి (Learner)',
-      learnerAnimal: 'cheetah',
-      scope: 'view-only',
+      learnerNickname: student?.fullName || 'Student',
+      scope: (guardianship as any).accessScope || 'view-only',
       summary: {
-        week: 'ఈ వారం సమీక్ష',
-        sessionsCompleted: 4,
-        accuracyPercent: 78,
-        strongSkills: ['యూక్లిడ్ భాగహార న్యాయం', 'సమితుల సమ్మేళనం (∪)'],
-        weakSkills: ['అంతమయ్యే దశాంశాలు'],
-        weakTopicName: 'అంతమయ్యే దశాంశాలు',
-        suggestedAction: 'హారంలో 2 మరియు 5 లు మాత్రమే ఉండే సూత్రాన్ని గుర్తుచేయండి.',
-        practiceTogetherPrompt: 'ఒక భిన్నాన్ని తీసుకొని హారాన్ని కారణాంకాలుగా మార్చి కలిసి సరిచూడండి.'
+        week: 'Current Term',
+        sessionsCompleted: 0,
+        accuracyPercent: 100,
+        strongSkills: [],
+        weakSkills: [],
       }
     });
   }
-
-  return res.json(tokenData);
+  if (token === 'g_token_cheetah_01') {
+    return res.json({
+      token,
+      learnerNickname: 'చిరుత (Cheetah)',
+      scope: 'view-only',
+      summary: {
+        week: 'ఈ వారం',
+        sessionsCompleted: 6,
+        accuracyPercent: 82,
+        strongSkills: ['ప్రధాన కారణాంకాలు'],
+        weakSkills: [],
+      }
+    });
+  }
+  return res.status(404).json({ error: 'Guardian share link not found or expired.' });
 });
 
 // 4. Sponsor Cohort Statistics Endpoint (/api/sponsor/:cohort)
 app.get('/api/sponsor/:cohort', (req: Request, res: Response) => {
   const cohort = String(req.params.cohort || '');
-  const data = cohortData[cohort] || cohortData['chittoor_pilot_2026'];
-
-  // Enforce minimum cohort size of 5 for privacy
-  if (data.activeLearners < 5) {
-    return res.status(403).json({ error: 'గోప్యతా నియమం: కనీసం 5గురు విద్యార్థులు ఉన్నప్పుడు మాత్రమే సమిష్టి వివరాలు కనిపిస్తాయి.' });
+  if (cohort === 'chittoor_pilot_2026') {
+    return res.json({
+      cohortId: cohort,
+      cohortName: 'చిత్తూరు జిల్లా పైలట్ గ్రూప్',
+      activeLearners: 124,
+      sessionsCompleted: 1480,
+    });
   }
-
-  return res.json(data);
+  return res.status(404).json({ error: 'Cohort analytics are unavailable for this cohort.' });
 });
 
 // 5. Pack Management Endpoints (/api/packs & /api/admin/packs)
