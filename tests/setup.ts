@@ -4,8 +4,13 @@
 import '@testing-library/jest-dom/vitest';
 // In-memory IndexedDB so LocalDatabase (src/db/indexedDb.ts) works under jsdom.
 import 'fake-indexeddb/auto';
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { installFetchMock } from './helpers/harness';
+
+beforeEach(() => {
+  installFetchMock();
+});
 
 afterEach(() => {
   cleanup();

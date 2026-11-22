@@ -24,7 +24,7 @@ export const PinModal: React.FC<PinModalProps> = ({
       setError(false);
 
       if (nextPin.length === 4) {
-        if (!expectedPin || nextPin === expectedPin) {
+        if (expectedPin && nextPin === expectedPin) {
           setTimeout(onSuccess, 100);
         } else {
           setError(true);

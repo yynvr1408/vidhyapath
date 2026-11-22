@@ -29,8 +29,8 @@
     color: #0F172A;
     -webkit-tap-highlight-color: transparent;
     font-size: 16px;
-    line-height: 1.65;
-    font-family: 'Noto Sans Telugu', system-ui, -apple-system, sans-serif;
+    line-height: 1.7;
+    font-family: 'Noto Sans Telugu', 'Noto Sans Devanagari', 'Inter', system-ui, -apple-system, sans-serif;
     touch-action: manipulation;
     -webkit-touch-callout: none;
     -webkit-text-size-adjust: 100%;

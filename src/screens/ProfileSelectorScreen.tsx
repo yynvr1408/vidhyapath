@@ -151,25 +151,25 @@ export const ProfileSelectorScreen: React.FC = () => {
 
                 {/* Middle Slot: Clean Name & Class Badge */}
                 <div className="w-full flex flex-col items-center justify-center min-h-[50px] px-1">
-                  <div className="font-extrabold text-[15px] text-[#0F172A] group-hover:text-[#0F766E] transition-colors truncate w-full leading-tight">
+                  <div className="font-extrabold text-base text-[#0F172A] group-hover:text-[#0F766E] transition-colors truncate w-full leading-tight">
                     {displayName.primary}
                   </div>
                   {displayName.secondary ? (
-                    <div className="text-[11px] text-[#64748B] font-medium truncate w-full mt-0.5">
+                    <div className="text-xs text-[#64748B] font-medium truncate w-full mt-0.5">
                       {displayName.secondary}
                     </div>
                   ) : (
                     <div className="h-[16px]" />
                   )}
-                  <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1]">
+                  <div className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1]">
                     {classLabelText}
                   </div>
                 </div>
 
                 {/* Bottom Slot: Action Pill */}
                 <div className="w-full pt-1">
-                  <div className="w-full py-1.5 px-2 rounded-[8px] bg-[#F8FAFC] group-hover:bg-[#0F766E] border border-[#E2E8F0] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1.5 text-[11px] font-bold text-[#475569] group-hover:text-white">
-                    <Lock className="w-3 h-3 text-[#0F766E] group-hover:text-white shrink-0" />
+                  <div className="w-full py-2 px-2.5 rounded-[8px] bg-[#F8FAFC] group-hover:bg-[#0F766E] border border-[#E2E8F0] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1.5 text-xs font-bold text-[#475569] group-hover:text-white min-h-[38px]">
+                    <Lock className="w-3.5 h-3.5 text-[#0F766E] group-hover:text-white shrink-0" />
                     <span className="truncate">{t.tapToEnter}</span>
                   </div>
                 </div>
@@ -192,19 +192,19 @@ export const ProfileSelectorScreen: React.FC = () => {
 
             {/* Middle Slot: Matching Title & Badge */}
             <div className="w-full flex flex-col items-center justify-center min-h-[50px] px-1">
-              <div className="font-extrabold text-[15px] text-[#0F172A] group-hover:text-[#0F766E] transition-colors truncate w-full leading-tight">
+              <div className="font-extrabold text-base text-[#0F172A] group-hover:text-[#0F766E] transition-colors truncate w-full leading-tight">
                 {t.newStudentLabel}
               </div>
               <div className="h-[16px]" />
-              <div className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]">
+              <div className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]">
                 + ప్రొఫైల్
               </div>
             </div>
 
             {/* Bottom Slot: Matching Action Button */}
             <div className="w-full pt-1">
-              <div className="w-full py-1.5 px-2 rounded-[8px] bg-[#F8FAFC] group-hover:bg-[#0F766E] border border-[#E2E8F0] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1.5 text-[11px] font-bold text-[#475569] group-hover:text-white">
-                <Plus className="w-3 h-3 text-[#0F766E] group-hover:text-white shrink-0" />
+              <div className="w-full py-2 px-2.5 rounded-[8px] bg-[#F8FAFC] group-hover:bg-[#0F766E] border border-[#E2E8F0] group-hover:border-[#0F766E] transition-colors flex items-center justify-center gap-1.5 text-xs font-bold text-[#475569] group-hover:text-white min-h-[38px]">
+                <Plus className="w-3.5 h-3.5 text-[#0F766E] group-hover:text-white shrink-0" />
                 <span className="truncate">{t.addSampleProfile}</span>
               </div>
             </div>
@@ -221,50 +221,39 @@ export const ProfileSelectorScreen: React.FC = () => {
                 setStudentCodeInput(e.target.value.toUpperCase());
                 setCodeLoginError(null);
               }}
-              placeholder="Enter Student Code (e.g. CHTR-10)"
-              className="flex-1 text-xs font-mono font-bold p-2.5 rounded-[10px] bg-white border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden uppercase"
+              placeholder={currentLanguage === 'te' ? 'స్టూడెంట్ కోడ్ (ఉదా: RAVI-10)' : currentLanguage === 'hi' ? 'छात्र कोड (उदा: RAVI-10)' : 'Student Code (e.g. RAVI-10)'}
+              className="flex-1 text-sm font-mono font-bold p-3 rounded-[12px] bg-white border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden uppercase min-h-[48px]"
             />
             <button
               type="submit"
-              className="py-2.5 px-3 rounded-[10px] bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-bold active:scale-95 transition-all shadow-2xs"
+              className="py-3 px-4 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold active:scale-95 transition-all shadow-2xs min-h-[48px]"
             >
-              Login
+              {currentLanguage === 'te' ? 'లాగిన్' : currentLanguage === 'hi' ? 'लॉगिन' : 'Login'}
             </button>
           </form>
           {codeLoginError && (
-            <p className="text-[11px] text-[#DC2626] font-semibold text-center mt-1.5">
+            <p className="text-xs text-[#DC2626] font-semibold text-center mt-1.5">
               {codeLoginError}
             </p>
           )}
         </div>
       </div>
 
-      {/* 4. Minimal Footer with Guardian Link, Admin Portal & Privacy Note */}
+      {/* 4. Minimal Footer with Guardian Link & Privacy Note */}
       <footer className="pt-3 border-t border-[#E2E8F0] flex flex-col items-center text-center gap-2">
         <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => setScreen('PARENT_VIEW')}
-            className="text-xs text-[#0F766E] hover:underline font-bold inline-flex items-center gap-1.5 py-1"
+            className="text-sm text-[#0F766E] hover:underline font-bold inline-flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-[#F0FDFA] min-h-[48px]"
           >
-            <ShieldCheck className="w-4 h-4 text-[#0F766E]" />
+            <ShieldCheck className="w-5 h-5 text-[#0F766E]" />
             <span>{t.parentViewTitle}</span>
-          </button>
-
-          <span className="text-[#CBD5E1]">·</span>
-
-          <button
-            type="button"
-            onClick={() => setScreen('ADMIN')}
-            className="text-xs text-[#475569] hover:text-[#0F172A] hover:underline font-bold inline-flex items-center gap-1.5 py-1"
-          >
-            <Lock className="w-3.5 h-3.5 text-[#0F766E]" />
-            <span>Admin &amp; Teacher Portal</span>
           </button>
         </div>
 
-        <p className="text-[11px] text-[#64748B] font-medium flex items-center justify-center gap-1">
-          <Shield className="w-3 h-3 text-[#0F766E]" />
+        <p className="text-xs text-[#64748B] font-medium flex items-center justify-center gap-1.5">
+          <Shield className="w-3.5 h-3.5 text-[#0F766E]" />
           <span>{t.zeroPiiNotice}</span>
         </p>
       </footer>

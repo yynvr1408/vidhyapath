@@ -88,7 +88,7 @@ describe('adaptive weak topic', () => {
         <ParentTeacherViewScreen />
       </AppTestRoot>
     );
-    await user.type(screen.getByPlaceholderText('1234'), '1234');
+    await user.type(screen.getByPlaceholderText('1234'), '3333');
     await user.click(screen.getByRole('button', { name: /Unlock/ }));
     expect(await screen.findByText(topicTitleFor(pack, q))).toBeInTheDocument();
   });

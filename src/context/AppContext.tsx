@@ -79,7 +79,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lowDataMode, setLowDataMode] = useState<boolean>(false);
   const [fontSize, setFontSizeState] = useState<'normal' | 'large' | 'xlarge'>('normal');
   const [dataUsedKb, setDataUsedKb] = useState<number>(34);
-  const savedLang = (typeof window !== 'undefined' ? (localStorage.getItem('vidyapath_language') as SupportedLang) : null) || 'en';
+  const savedPack = typeof window !== 'undefined' ? localStorage.getItem('vidyapath_language_pack') : null;
+  const savedLang = (typeof window !== 'undefined' ? (localStorage.getItem('vidyapath_language') as SupportedLang) : null)
+    || (savedPack?.startsWith('hi') ? 'hi' : savedPack?.startsWith('en') ? 'en' : 'te');
   const [syncTick, setSyncTick] = useState<boolean>(false);
   const [queuedDoubtsCount, setQueuedDoubtsCount] = useState<number>(0);
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLang>(savedLang);
@@ -90,8 +92,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Load active pack
   const loadPack = async (packId?: string) => {
     try {
-      const targetPack = packId || localStorage.getItem('vidyapath_language_pack') || (savedLang === 'hi' ? 'hi-10-maths-cbse' : savedLang === 'te' ? 'te-10-maths-ap' : 'en-10-maths-cbse');
-      const res = await fetch(`/packs/${targetPack}.json`);
+      const activePackId = packId || localStorage.getItem('vidyapath_language_pack') || (savedLang === 'hi' ? 'hi-10-maths-cbse' : savedLang === 'en' ? 'en-10-maths-cbse' : 'te-10-maths-ap');
+      const res = await fetch(`/packs/${activePackId}.json`);
       if (res.ok) {
         const data: ContentPack = await res.json();
         setPack(data);
@@ -129,59 +131,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const existing = await localDb.getLearners();
 
-      // The core multi-sibling profiles (Mascots & Human students sharing phone)
+      // The core multi-sibling profiles (Class 10 students sharing phone)
       const defaultLearnersList: LearnerProfile[] = [
         {
           id: 'learner_cheetah',
-          nickname: 'Cheetah / చిరుత',
-          animal: 'cheetah',
+          nickname: 'Ravi / రవి',
           classGrade: 10,
           avatarType: 'icon',
           avatarColor: '#0F766E', // Primary Educational Teal
-          avatarEmoji: '🐆', // Cheetah Mascot
-          packId: 'en-10-maths-cbse',
-          loginCode: 'CHTR-10',
+          avatarEmoji: '👦', // School Boy
+          packId: 'te-10-maths-ap',
+          loginCode: 'RAVI-10',
           pin: '1234',
           pinHash: '1234',
           createdAt: Date.now() - 3600 * 1000 * 24 * 5,
         },
         {
           id: 'learner_elephant',
-          nickname: 'Elephant / ఏనుగు',
-          animal: 'elephant',
+          nickname: 'Priya / ప్రియ',
           classGrade: 10,
           avatarType: 'icon',
           avatarColor: '#D97706', // Warm Amber
-          avatarEmoji: '🐘', // Elephant Mascot
-          packId: 'en-10-maths-cbse',
-          loginCode: 'ELPH-10',
+          avatarEmoji: '👧', // School Girl
+          packId: 'te-10-maths-ap',
+          loginCode: 'PRIY-10',
           pin: '1234',
           pinHash: '1234',
           createdAt: Date.now() - 3600 * 1000 * 24 * 4,
         },
         {
           id: 'learner_lion',
-          nickname: 'Lion / సింహం',
-          animal: 'lion',
+          nickname: 'Kiran / కిరణ్',
           classGrade: 10,
           avatarType: 'icon',
           avatarColor: '#16A34A', // Leaf Green
-          avatarEmoji: '🦁', // Lion Mascot
-          packId: 'en-10-maths-cbse',
-          loginCode: 'LION-10',
+          avatarEmoji: '🧑‍🎓', // Student
+          packId: 'te-10-maths-ap',
+          loginCode: 'KIRN-10',
           pin: '1234',
           pinHash: '1234',
           createdAt: Date.now() - 3600 * 1000 * 24 * 3,
         },
         {
           id: 'learner_ravi',
-          nickname: 'Ravi / రవి',
+          nickname: 'Ananya / అనన్య',
           classGrade: 10,
           avatarType: 'icon',
           avatarColor: '#2563EB', // Blue
-          avatarEmoji: '👦', // School Boy
-          packId: 'en-10-maths-cbse',
-          loginCode: 'RAVI-10',
+          avatarEmoji: '👩‍🎓', // Student
+          packId: 'te-10-maths-ap',
+          loginCode: 'ANAN-10',
           pin: '1234',
           pinHash: '1234',
           createdAt: Date.now() - 3600 * 1000 * 24 * 2,
@@ -189,8 +188,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ];
 
       const currentList = [...existing];
+      // Automatically migrate any legacy animal mascots to human student profiles
+      for (let i = 0; i < currentList.length; i++) {
+        const item = currentList[i];
+        if (item.avatarEmoji === '🐆' || item.avatarEmoji === '🐘' || item.avatarEmoji === '🦁' || item.animal) {
+          const replacement = defaultLearnersList[i % defaultLearnersList.length];
+          const updated: LearnerProfile = {
+            ...item,
+            nickname: replacement.nickname,
+            avatarEmoji: replacement.avatarEmoji,
+            avatarColor: replacement.avatarColor,
+            packId: 'te-10-maths-ap',
+            animal: undefined,
+          };
+          currentList[i] = updated;
+          await localDb.saveLearner(updated);
+        }
+      }
+
       for (const def of defaultLearnersList) {
-        const found = currentList.find((c) => c.loginCode === def.loginCode || c.id === def.id || (def.animal && c.animal === def.animal));
+        const found = currentList.find((c) => c.loginCode === def.loginCode || c.id === def.id);
         if (!found) {
           await localDb.saveLearner(def);
           currentList.push(def);
@@ -307,6 +324,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveLearner(learner);
     setSkillStates(new Map());
     loadLearnerSkills(learner.id);
+    if (learner.packId) {
+      loadPack(learner.packId);
+    }
     setCurrentScreen('MY_SYLLABUS'); // Default landing page after unlocking profile!
   };
 

@@ -237,17 +237,17 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
       {/* Main Question Card */}
       <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-[#0F766E] uppercase tracking-wide">
+          <span className="text-sm font-bold text-[#0F766E] uppercase tracking-wide">
             {t.questionNumber} {currentIndex + 1}
           </span>
           <AudioButton
             text={`${currentQ.text}. ${currentLanguage === 'hi' ? 'विकल्प' : currentLanguage === 'en' ? 'Options' : 'ఆప్షన్లు'}: A. ${currentQ.options[0]}, B. ${currentQ.options[1]}, C. ${currentQ.options[2]}, D. ${currentQ.options[3]}`}
             label={t.listen}
-            size="sm"
+            size="md"
           />
         </div>
 
-        <h2 className="text-base sm:text-lg font-extrabold text-[#0F172A] leading-relaxed">
+        <h2 className="text-lg sm:text-xl font-extrabold text-[#0F172A] leading-relaxed">
           {currentQ.text}
         </h2>
       </div>
@@ -262,12 +262,12 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
               type="button"
               disabled={!!activeFeedback}
               onClick={() => handleSelectAnswer(optKey, 'tap')}
-              className="bg-[#FFFFFF] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] rounded-[12px] p-3.5 flex items-center gap-3 text-left transition-all active:scale-98 shadow-2xs min-h-[56px] group"
+              className="bg-[#FFFFFF] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] rounded-[12px] p-4 flex items-center gap-3.5 text-left transition-all active:scale-98 shadow-2xs min-h-[58px] group"
             >
-              <span className="w-9 h-9 rounded-[8px] bg-[#F8FAFC] group-hover:bg-[#0F766E] group-hover:text-white text-[#0F766E] border border-[#E2E8F0] font-extrabold text-sm flex items-center justify-center shrink-0 transition-colors">
+              <span className="w-10 h-10 rounded-[10px] bg-[#F8FAFC] group-hover:bg-[#0F766E] group-hover:text-white text-[#0F766E] border border-[#E2E8F0] font-extrabold text-base flex items-center justify-center shrink-0 transition-colors">
                 {optKey}
               </span>
-              <span className="font-semibold text-sm text-[#0F172A] leading-snug">
+              <span className="font-semibold text-base text-[#0F172A] leading-snug">
                 {optText}
               </span>
             </button>
@@ -285,7 +285,7 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-sm">
+            <div className="flex items-center gap-2 font-bold text-base">
               {activeFeedback.isCorrect ? (
                 <>
                   <CheckCircle2 className="w-5 h-5 text-[#16A34A]" />
@@ -305,13 +305,13 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
                   : `${t.tryAgain}. ${activeFeedback.remedyText || ''}`
               }
               label=""
-              size="sm"
+              size="md"
             />
           </div>
 
           {/* Gentle Misconception Explanation */}
           {!activeFeedback.isCorrect && (
-            <div className="bg-[#FFFFFF] p-3 rounded-[8px] border border-[#FECACA] text-xs text-[#0F172A] font-medium leading-relaxed">
+            <div className="bg-[#FFFFFF] p-3.5 rounded-[10px] border border-[#FECACA] text-sm text-[#0F172A] font-medium leading-relaxed">
               <strong className="text-[#DC2626] font-bold block mb-1">
                 {t.remedyHeading}
               </strong>
@@ -323,17 +323,17 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
           <button
             type="button"
             onClick={handleNextQuestion}
-            className="w-full py-3 px-4 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all min-h-[48px]"
+            className="w-full py-3.5 px-4 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] text-white font-bold text-base flex items-center justify-center gap-2 shadow-xs transition-all min-h-[48px]"
           >
             <span>{t.nextQuestion}</span>
-            <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+            <ArrowRight className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
       )}
 
       {/* 3-Tier Hint Ladder */}
       {hintLevel > 0 && currentHintText && (
-        <div className="bg-[#FEF3C7] border border-[#D97706]/30 rounded-[12px] p-3.5 text-xs text-[#92400E] space-y-1.5 animate-fadeIn shadow-2xs">
+        <div className="bg-[#FEF3C7] border border-[#D97706]/30 rounded-[12px] p-4 text-sm text-[#92400E] space-y-1.5 animate-fadeIn shadow-2xs">
           <div className="flex items-center justify-between font-bold">
             <span className="flex items-center gap-1.5">
               <Lightbulb className="w-4 h-4 text-[#D97706]" />
@@ -343,7 +343,7 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
             </span>
             <AudioButton text={currentHintText} label="" size="sm" />
           </div>
-          <p className="font-semibold text-sm leading-relaxed text-[#0F172A]">
+          <p className="font-semibold text-base leading-relaxed text-[#0F172A]">
             {currentHintText}
           </p>
         </div>
@@ -357,7 +357,7 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
             if (hintLevel < 3) setHintLevel((p) => p + 1);
           }}
           disabled={hintLevel >= 3 || !!activeFeedback}
-          className="flex-1 flex items-center justify-center gap-2 py-3 px-3 rounded-[12px] bg-[#FFFFFF] hover:bg-[#F8FAFC] border border-[#E2E8F0] font-bold text-xs text-[#475569] hover:text-[#0F766E] disabled:opacity-40 min-h-[48px] shadow-2xs"
+          className="flex-1 flex items-center justify-center gap-2 py-3 px-3 rounded-[12px] bg-[#FFFFFF] hover:bg-[#F8FAFC] border border-[#E2E8F0] font-bold text-sm text-[#475569] hover:text-[#0F766E] disabled:opacity-40 min-h-[48px] shadow-2xs"
         >
           <Lightbulb className="w-4 h-4 text-[#D97706]" />
           <span>

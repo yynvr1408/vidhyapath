@@ -251,7 +251,7 @@ export const AiTutorScreen: React.FC = () => {
                   </div>
                 )}
 
-                <div className="text-sm font-medium leading-relaxed whitespace-pre-line">
+                <div className="text-base font-medium leading-relaxed whitespace-pre-line">
                   {msg.text}
                 </div>
               </div>
@@ -261,7 +261,7 @@ export const AiTutorScreen: React.FC = () => {
 
         {/* Loading Spinner */}
         {isLoading && (
-          <div className="flex items-center gap-2 text-xs font-bold text-[#0F766E] bg-[#F0FDFA] p-3 rounded-[12px] border border-[#E2E8F0] max-w-xs animate-pulse">
+          <div className="flex items-center gap-2 text-sm font-bold text-[#0F766E] bg-[#F0FDFA] p-3 rounded-[12px] border border-[#E2E8F0] max-w-xs animate-pulse">
             <Sparkles className="w-4 h-4 animate-spin" />
             <span>{t.thinking}</span>
           </div>
@@ -272,9 +272,9 @@ export const AiTutorScreen: React.FC = () => {
 
       {/* Pre-Loaded Instant Common Doubts Pills */}
       {pack?.commonDoubts && pack.commonDoubts.length > 0 && (
-        <div className="bg-[#FFFFFF] px-3 py-2 border-t border-[#E2E8F0]">
-          <div className="text-[11px] font-bold text-[#475569] mb-1.5 flex items-center gap-1">
-            <MessageSquare className="w-3.5 h-3.5 text-[#0F766E]" />
+        <div className="bg-[#FFFFFF] px-3.5 py-2.5 border-t border-[#E2E8F0]">
+          <div className="text-xs font-bold text-[#475569] mb-1.5 flex items-center gap-1">
+            <MessageSquare className="w-4 h-4 text-[#0F766E]" />
             <span>{t.frequentDoubtsHeader}</span>
           </div>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -285,7 +285,7 @@ export const AiTutorScreen: React.FC = () => {
                   key={cd.id}
                   type="button"
                   onClick={() => handleSubmitDoubt(cd.q)}
-                  className="px-3 py-1.5 rounded-full bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:text-[#0F766E] text-xs font-semibold text-[#0F172A] border border-[#E2E8F0] whitespace-nowrap active:scale-95 shrink-0"
+                  className="px-3.5 py-2 rounded-full bg-[#F8FAFC] hover:bg-[#F0FDFA] hover:text-[#0F766E] text-sm font-semibold text-[#0F172A] border border-[#E2E8F0] whitespace-nowrap active:scale-95 shrink-0 min-h-[38px]"
                 >
                   {cd.q}
                 </button>
@@ -295,7 +295,7 @@ export const AiTutorScreen: React.FC = () => {
       )}
 
       {/* Horizontally Scrollable Quick-Tap Prompt Chips */}
-      <div className="bg-[#FFFFFF] px-3 py-2 border-t border-[#E2E8F0] flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="bg-[#FFFFFF] px-3.5 py-2.5 border-t border-[#E2E8F0] flex gap-2 overflow-x-auto no-scrollbar">
         {quickChips.map((chip, idx) => (
           <button
             key={idx}
@@ -304,7 +304,7 @@ export const AiTutorScreen: React.FC = () => {
               setDoubtText(chip);
               handleSubmitDoubt(chip);
             }}
-            className="px-3 py-1.5 rounded-full bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] text-xs font-bold border border-[#E2E8F0] whitespace-nowrap active:scale-95 shrink-0 transition-colors"
+            className="px-3.5 py-2 rounded-full bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] text-sm font-bold border border-[#E2E8F0] whitespace-nowrap active:scale-95 shrink-0 transition-colors min-h-[38px]"
           >
             ⚡ {chip}
           </button>
@@ -347,7 +347,7 @@ export const AiTutorScreen: React.FC = () => {
             if (e.key === 'Enter') handleSubmitDoubt();
           }}
           placeholder={t.typeDoubtPlaceholder}
-          className="flex-1 text-sm text-[#0F172A] placeholder-[#94A3B8] p-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden font-medium min-h-[48px]"
+          className="flex-1 text-base text-[#0F172A] placeholder-[#94A3B8] p-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden font-medium min-h-[48px]"
         />
 
         {/* Send Button */}

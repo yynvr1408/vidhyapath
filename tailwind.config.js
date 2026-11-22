@@ -50,7 +50,8 @@ export default {
         },
       },
       fontFamily: {
-        telugu: ['Noto Sans Telugu', 'Tenali Ramakrishna', 'system-ui', '-apple-system', 'sans-serif'],
+        telugu: ['Noto Sans Telugu', 'Noto Sans Devanagari', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Noto Sans Telugu', 'Noto Sans Devanagari', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       minHeight: {
         touch: '48px',

@@ -52,7 +52,7 @@ export const AdminPanelScreen: React.FC = () => {
   const [newNickname, setNewNickname] = useState('');
   const [newGrade, setNewGrade] = useState<number>(10);
   const [newEmoji, setNewEmoji] = useState('🐆');
-  const [newPin, setNewPin] = useState('1234');
+  const [newPin, setNewPin] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Pack validation
@@ -86,7 +86,8 @@ export const AdminPanelScreen: React.FC = () => {
 
   const handleAdminUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPin === '9999' || adminPin === '1234') {
+    const configuredAdminPin = (import.meta as any).env?.VITE_ADMIN_PIN as string | undefined;
+    if (!!configuredAdminPin && adminPin === configuredAdminPin) {
       setIsAdminUnlocked(true);
       setPinError(false);
     } else {
@@ -108,8 +109,8 @@ export const AdminPanelScreen: React.FC = () => {
       avatarEmoji: newEmoji,
       avatarColor: '#0F766E',
       loginCode: candidateCode,
-      pin: newPin.length === 4 ? newPin : '1234',
-      pinHash: newPin.length === 4 ? newPin : '1234',
+      pin: newPin.length === 4 ? newPin : '',
+      pinHash: newPin.length === 4 ? newPin : '',
       packId: pack?.id || 'en-10-maths-cbse',
       createdAt: Date.now(),
     };
@@ -149,10 +150,6 @@ export const AdminPanelScreen: React.FC = () => {
             </p>
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FEF3C7] text-[#D97706] text-xs font-bold rounded-full border border-[#FDE68A]">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Admin PIN: 9999 (or 1234)</span>
-          </div>
 
           <form onSubmit={handleAdminUnlock} className="space-y-3 pt-2">
             <input
@@ -169,7 +166,7 @@ export const AdminPanelScreen: React.FC = () => {
 
             {pinError && (
               <div className="text-xs text-[#DC2626] font-semibold bg-[#FEE2E2] p-2 rounded-lg border border-[#FECACA]">
-                Invalid Passcode! Please enter 9999 or 1234.
+                Invalid Passcode! Please try again.
               </div>
             )}
 
@@ -450,7 +447,7 @@ export const AdminPanelScreen: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-3 font-semibold text-[#0F172A]">Class {learner.classGrade || 10}</td>
-                      <td className="p-3 font-mono text-[#475569] font-bold">{learner.pin || '1234'}</td>
+                      <td className="p-3 font-mono text-[#475569] font-bold">{learner.pin || '—'}</td>
                       <td className="p-3 font-mono text-[11px] text-[#64748B]">{learner.id}</td>
                       <td className="p-3 text-right">
                         <button

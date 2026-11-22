@@ -18,7 +18,6 @@ import {
 import { useApp, ScreenId } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { VidyapathLogo } from './VidyapathLogo';
-import { AppUpdateButton } from './AppUpdateButton';
 import { getTranslations, SupportedLang } from '../utils/translations';
 import { SCHEDULED_LANGUAGES } from '../config/languages';
 
@@ -154,10 +153,10 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           <div className="bg-[#F0FDFA] p-3 rounded-[12px] border border-[#E2E8F0] mb-4 flex items-center gap-3">
             <StudentAvatar learner={activeLearner} size="md" />
             <div className="min-w-0 flex-1">
-              <div className="font-bold text-sm text-[#0F172A] truncate">
+              <div className="font-bold text-base text-[#0F172A] truncate">
                 {activeLearner.nickname}
               </div>
-              <div className="text-xs text-[#0F766E] font-semibold mt-0.5">
+              <div className="text-sm text-[#0F766E] font-semibold mt-0.5">
                 {activeLearner.classGrade
                   ? `${activeLearner.classGrade} ${t.classText}`
                   : `10 ${t.classText}`}
@@ -167,7 +166,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         )}
 
         {/* Core Nav Items 1-4 */}
-        <nav className="space-y-1">
+        <nav className="space-y-1.5">
           {navItems.map((item) => {
             const active = isItemActive(item.id);
             return (
@@ -175,7 +174,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 key={item.id}
                 type="button"
                 onClick={() => handleNavClick(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-[12px] text-sm font-bold transition-all min-h-[48px] text-left ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-[12px] text-base font-semibold transition-all min-h-[48px] text-left ${
                   active
                     ? 'bg-[#0F766E] text-white shadow-xs'
                     : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
@@ -196,7 +195,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           <button
             type="button"
             onClick={() => handleNavClick('PARENT_VIEW')}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-[12px] text-sm font-bold transition-all min-h-[48px] text-left ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-[12px] text-base font-semibold transition-all min-h-[48px] text-left ${
               isItemActive('PARENT_VIEW')
                 ? 'bg-[#0F766E] text-white shadow-xs'
                 : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
@@ -216,7 +215,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           <button
             type="button"
             onClick={() => handleNavClick('ADMIN')}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-[12px] text-sm font-bold transition-all min-h-[48px] text-left ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-[12px] text-base font-semibold transition-all min-h-[48px] text-left ${
               isItemActive('ADMIN')
                 ? 'bg-[#0F766E] text-white shadow-xs'
                 : 'text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
@@ -237,15 +236,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       {/* Bottom: Settings, Offline Demo Toggle, Language & Switch Profile */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2.5">
         {/* Language Switcher Dropdown (Telugu, Hindi, English) */}
-        <div className="flex items-center justify-between bg-[#F8FAFC] p-2 rounded-[12px] border border-[#E2E8F0]">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#475569] shrink-0">
+        <div className="flex items-center justify-between bg-[#F8FAFC] p-2.5 rounded-[12px] border border-[#E2E8F0]">
+          <div className="flex items-center gap-1.5 text-sm font-bold text-[#475569] shrink-0">
             <Globe className="w-4 h-4 text-[#0F766E]" />
             <span>{t.languageLabel}</span>
           </div>
           <select
             value={currentLanguage}
             onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
-            className="text-xs bg-white text-[#0F172A] font-bold px-2 py-1 rounded-md border border-[#E2E8F0] focus:outline-hidden cursor-pointer max-w-[130px] truncate"
+            className="text-sm bg-white text-[#0F172A] font-bold px-2 py-1.5 rounded-md border border-[#E2E8F0] focus:outline-hidden cursor-pointer max-w-[130px] truncate min-h-[38px]"
             title="Select Language (Telugu, Hindi, English)"
           >
             {SCHEDULED_LANGUAGES.map((lang) => (
@@ -261,7 +260,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           type="button"
           onClick={toggleSimulatedOffline}
           title="Toggle Simulated Offline Mode for Live Testing"
-          className={`w-full flex items-center justify-between p-2 rounded-[12px] border text-xs font-bold transition-all ${
+          className={`w-full flex items-center justify-between p-2.5 rounded-[12px] border text-sm font-bold transition-all min-h-[48px] ${
             isOffline
               ? 'bg-[#FEF3C7] border-[#D97706] text-[#92400E]'
               : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#475569] hover:border-[#0F766E]'
@@ -276,7 +275,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             <span>{t.simulateOffline}</span>
           </div>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
               isOffline
                 ? 'bg-[#D97706] text-white'
                 : 'bg-[#DCFCE7] text-[#16A34A]'
@@ -292,26 +291,23 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             type="button"
             onClick={() => triggerSync()}
             title="Sync offline progress with cloud"
-            className="w-full flex items-center justify-between p-2 rounded-[12px] bg-[#F0FDFA] hover:bg-[#CCFBF1] border border-[#0F766E]/30 text-xs font-bold text-[#0F766E] transition-all min-h-[44px]"
+            className="w-full flex items-center justify-between p-2.5 rounded-[12px] bg-[#F0FDFA] hover:bg-[#CCFBF1] border border-[#0F766E]/30 text-sm font-bold text-[#0F766E] transition-all min-h-[48px]"
           >
             <div className="flex items-center gap-1.5">
               <RefreshCw className="w-4 h-4 text-[#0F766E]" />
               <span>{currentLanguage === 'te' ? 'ఇప్పుడే సింక్ చేయి' : currentLanguage === 'hi' ? 'अभी सिंक करें' : 'Sync Progress'}</span>
             </div>
-            <span className="text-[10px] bg-[#0F766E] text-white px-1.5 py-0.5 rounded-sm">
+            <span className="text-xs bg-[#0F766E] text-white px-2 py-0.5 rounded-md">
               {currentLanguage === 'te' ? 'సింక్' : currentLanguage === 'hi' ? 'सिंक' : 'Sync'}
             </span>
           </button>
         )}
 
-        {/* In-App Release & Update Checker */}
-        <AppUpdateButton />
-
-        {/* 6. Switch Profile (Pinned at bottom) */}
+        {/* Switch Profile (Pinned at bottom) */}
         <button
           type="button"
           onClick={handleSwitchProfile}
-          className="w-full flex items-center justify-center gap-2 py-3 px-3 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] border border-[#E2E8F0] hover:border-[#0F766E] text-xs font-bold text-[#0F172A] active:scale-98 transition-all min-h-[48px]"
+          className="w-full flex items-center justify-center gap-2 py-3 px-3 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] border border-[#E2E8F0] hover:border-[#0F766E] text-sm font-bold text-[#0F172A] active:scale-98 transition-all min-h-[48px]"
         >
           <Users className="w-4 h-4 text-[#0F766E]" />
           <span>{t.navSwitchProfile}</span>
