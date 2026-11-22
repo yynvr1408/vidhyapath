@@ -160,7 +160,7 @@ export const AiTutorScreen: React.FC = () => {
   const replyChips = [t.replyChipSimpler, t.replyChipExample, t.replyChipStepByStep];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-100px)] justify-between bg-[#FFFFFF] rounded-[12px] border border-[#E2E8F0] shadow-xs overflow-hidden">
+    <div className="w-full max-w-4xl mx-auto h-[calc(100dvh-10rem)] md:h-[calc(100vh-5rem)] flex flex-col justify-between bg-[#FFFFFF] rounded-[12px] border border-[#E2E8F0] shadow-xs overflow-hidden">
       {/* Hidden file input shared by the welcome card and the input bar photo button */}
       <input
         ref={fileInputRef}

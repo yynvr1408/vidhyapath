@@ -25,6 +25,10 @@
 
 @layer base {
   html, body {
+    width: 100%;
+    min-height: 100vh;
+    max-width: 100%;
+    overflow-x: hidden;
     background-color: #F8FAFC;
     color: #0F172A;
     -webkit-tap-highlight-color: transparent;
@@ -35,7 +39,15 @@
     -webkit-touch-callout: none;
     -webkit-text-size-adjust: 100%;
     overscroll-behavior-y: none;
+  }
+
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Universal safe-area top padding for all headers across the app */

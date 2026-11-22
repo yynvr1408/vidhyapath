@@ -236,16 +236,16 @@ export const ParentTeacherViewScreen: React.FC = () => {
 
   // 2. Unlocked Parent / Teacher Dashboard
   return (
-    <div className="space-y-4 animate-fadeIn max-w-xl mx-auto">
+    <div className="space-y-6 animate-fadeIn w-full max-w-5xl xl:max-w-6xl mx-auto">
       {/* Header Overview Card */}
-      <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="bg-[#FFFFFF] rounded-[12px] p-5 sm:p-6 border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3.5">
           <StudentAvatar learner={activeLearner} size="lg" />
-          <div>
+          <div className="min-w-0">
             <div className="text-xs text-[#0F766E] font-bold">
               {t.guardianZeroPii}
             </div>
-            <h2 className="text-lg font-extrabold text-[#0F172A] mt-0.5">
+            <h2 className="text-xl font-extrabold text-[#0F172A] mt-0.5 truncate">
               {studentName}
             </h2>
             <span className="text-sm text-[#475569]">
@@ -255,125 +255,136 @@ export const ParentTeacherViewScreen: React.FC = () => {
         </div>
 
         {/* Read Report Aloud Button for Parents Who Struggle with Reading */}
-        <AudioButton
-          text={fullSpokenReport}
-          label={t.listenToReport}
-          size="md"
-        />
+        <div className="self-start sm:self-auto">
+          <AudioButton
+            text={fullSpokenReport}
+            label={t.listenToReport}
+            size="md"
+          />
+        </div>
       </div>
 
-      {/* This Week's Simple Jargon-Free Summary */}
-      <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs space-y-3">
-        <h3 className="font-extrabold text-base text-[#0F172A]">
-          {t.thisWeekSummary}
-        </h3>
-
-        <div className="grid grid-cols-2 gap-3 bg-[#F8FAFC] p-3.5 rounded-[12px] border border-[#E2E8F0] text-center">
-          <div>
-            <div className="text-2xl font-black text-[#0F766E]">
-              {summaryReport.sessionsCompleted}
-            </div>
-            <div className="text-xs font-bold text-[#475569] mt-0.5">
-              {t.completedSessions}
-            </div>
+      {/* This Week's Simple Jargon-Free Summary (3 cards on desktop, 1 on mobile) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="bg-[#FFFFFF] p-5 rounded-[12px] border border-[#E2E8F0] shadow-xs text-center flex flex-col items-center justify-center">
+          <div className="text-2xl sm:text-3xl font-black text-[#0F766E]">
+            {summaryReport.sessionsCompleted}
           </div>
-          <div>
-            <div className="text-2xl font-black text-[#16A34A]">
-              {summaryReport.accuracy}%
-            </div>
-            <div className="text-xs font-bold text-[#475569] mt-0.5">
-              {t.averageAccuracy}
-            </div>
+          <div className="text-sm font-bold text-[#475569] mt-1">
+            {t.completedSessions}
+          </div>
+        </div>
+
+        <div className="bg-[#FFFFFF] p-5 rounded-[12px] border border-[#E2E8F0] shadow-xs text-center flex flex-col items-center justify-center">
+          <div className="text-2xl sm:text-3xl font-black text-[#16A34A]">
+            {summaryReport.accuracy}%
+          </div>
+          <div className="text-sm font-bold text-[#475569] mt-1">
+            {t.averageAccuracy}
+          </div>
+        </div>
+
+        <div className="bg-[#FFFFFF] p-5 rounded-[12px] border border-[#E2E8F0] shadow-xs text-center flex flex-col items-center justify-center sm:col-span-2 lg:col-span-1">
+          <div className="text-2xl sm:text-3xl font-black text-[#D97706]">
+            {categorizedTopics.good.length} / {(categorizedTopics.good.length + categorizedTopics.practicing.length + categorizedTopics.needsHelp.length)}
+          </div>
+          <div className="text-sm font-bold text-[#475569] mt-1">
+            {t.strongTopicsLabel}
           </div>
         </div>
       </div>
 
-      {/* Topic Status Badges (Green / Amber / Red) */}
-      <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs space-y-3">
-        <h3 className="font-extrabold text-base text-[#0F172A]">
-          {t.topicStatusList}
-        </h3>
+      {/* 2-Column Responsive Desktop Grid for Status & Guidance */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        {/* Topic Status Badges (Green / Amber / Red) */}
+        <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs space-y-3.5">
+          <h3 className="font-extrabold text-base text-[#0F172A]">
+            {t.topicStatusList}
+          </h3>
 
-        <div className="space-y-2">
-          {/* Green Topics */}
-          {categorizedTopics.good.map((topic, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3 rounded-[8px] bg-[#DCFCE7]/60 border border-[#16A34A]/30 text-sm"
+          <div className="space-y-2.5">
+            {/* Green Topics */}
+            {categorizedTopics.good.map((topic, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 rounded-[8px] bg-[#DCFCE7]/60 border border-[#16A34A]/30 text-sm"
+              >
+                <span className="font-bold text-[#0F172A] truncate pr-2">
+                  {topic}
+                </span>
+                <span className="bg-[#DCFCE7] text-[#16A34A] px-2.5 py-0.5 rounded-full font-extrabold text-[11px] shrink-0 border border-[#16A34A]/30">
+                  {t.statusGood}
+                </span>
+              </div>
+            ))}
+
+            {/* Amber Topics */}
+            {categorizedTopics.practicing.map((topic, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 rounded-[8px] bg-[#FEF3C7]/60 border border-[#D97706]/30 text-sm"
+              >
+                <span className="font-bold text-[#0F172A] truncate pr-2">
+                  {topic}
+                </span>
+                <span className="bg-[#FEF3C7] text-[#D97706] px-2.5 py-0.5 rounded-full font-extrabold text-[11px] shrink-0 border border-[#D97706]/30">
+                  {t.statusPracticing}
+                </span>
+              </div>
+            ))}
+
+            {/* Red Topics (Needs Help) */}
+            {categorizedTopics.needsHelp.map((topic, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 rounded-[8px] bg-[#FEE2E2]/60 border border-[#DC2626]/30 text-sm"
+              >
+                <span className="font-bold text-[#0F172A] truncate pr-2">
+                  {topic}
+                </span>
+                <span className="bg-[#FEE2E2] text-[#DC2626] px-2.5 py-0.5 rounded-full font-extrabold text-[11px] shrink-0 border border-[#DC2626]/30">
+                  {t.statusNeedsHelp}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Parent Guidance & Practice Together Activity */}
+        <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs space-y-4 flex flex-col justify-between">
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm font-bold text-[#0F766E] uppercase tracking-wide mb-1.5">
+                {t.parentGuidance}
+              </div>
+              <p className="text-base text-[#475569] font-medium leading-relaxed bg-[#F8FAFC] p-4 rounded-[10px] border border-[#E2E8F0]">
+                {summaryReport.parentGuidance}
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <div className="flex items-center gap-1.5 text-sm font-bold text-[#D97706] uppercase tracking-wide mb-1.5">
+                <Heart className="w-4 h-4 fill-[#D97706]" />
+                <span>{t.practiceTogether}</span>
+              </div>
+              <p className="text-base text-[#0F172A] font-semibold leading-relaxed bg-[#FFFBEB] p-4 rounded-[10px] border border-[#FDE68A]">
+                {summaryReport.funHomeActivity}
+              </p>
+            </div>
+          </div>
+
+          {/* WhatsApp / SMS Share Summary Button */}
+          <div className="pt-3 border-t border-[#E2E8F0]">
+            <button
+              type="button"
+              onClick={handleCopyShare}
+              className="w-full py-3.5 px-4 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] text-white font-bold text-base flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95 min-h-[48px]"
             >
-              <span className="font-bold text-[#0F172A] truncate pr-2">
-                {topic}
-              </span>
-              <span className="bg-[#DCFCE7] text-[#16A34A] px-2 py-0.5 rounded-full font-extrabold text-[10px] shrink-0 border border-[#16A34A]/30">
-                {t.statusGood}
-              </span>
-            </div>
-          ))}
-
-          {/* Amber Topics */}
-          {categorizedTopics.practicing.map((topic, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3 rounded-[8px] bg-[#FEF3C7]/60 border border-[#D97706]/30 text-sm"
-            >
-              <span className="font-bold text-[#0F172A] truncate pr-2">
-                {topic}
-              </span>
-              <span className="bg-[#FEF3C7] text-[#D97706] px-2 py-0.5 rounded-full font-extrabold text-[10px] shrink-0 border border-[#D97706]/30">
-                {t.statusPracticing}
-              </span>
-            </div>
-          ))}
-
-          {/* Red Topics (Needs Help) */}
-          {categorizedTopics.needsHelp.map((topic, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3 rounded-[8px] bg-[#FEE2E2]/60 border border-[#DC2626]/30 text-sm"
-            >
-              <span className="font-bold text-[#0F172A] truncate pr-2">
-                {topic}
-              </span>
-              <span className="bg-[#FEE2E2] text-[#DC2626] px-2 py-0.5 rounded-full font-extrabold text-[10px] shrink-0 border border-[#DC2626]/30">
-                {t.statusNeedsHelp}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Parent Guidance & Practice Together Activity */}
-      <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs space-y-3">
-        <div>
-          <div className="text-sm font-bold text-[#0F766E] uppercase mb-1">
-            {t.parentGuidance}
+              {isCopied ? <Check className="w-5 h-5 stroke-[3]" /> : <Share2 className="w-5 h-5" />}
+              <span>{isCopied ? t.reportCopied : t.shareSummary}</span>
+            </button>
           </div>
-          <p className="text-base text-[#475569] font-medium leading-relaxed">
-            {summaryReport.parentGuidance}
-          </p>
         </div>
-
-        <div className="pt-3 border-t border-[#E2E8F0]">
-          <div className="flex items-center gap-1.5 text-sm font-bold text-[#D97706] uppercase mb-1">
-            <Heart className="w-3.5 h-3.5 fill-[#D97706]" />
-            <span>{t.practiceTogether}</span>
-          </div>
-          <p className="text-base text-[#0F172A] font-semibold leading-relaxed">
-            {summaryReport.funHomeActivity}
-          </p>
-        </div>
-      </div>
-
-      {/* WhatsApp / SMS Share Summary Button */}
-      <div className="bg-[#FFFFFF] p-4 rounded-[12px] border border-[#E2E8F0] shadow-xs text-center space-y-2">
-        <button
-          type="button"
-          onClick={handleCopyShare}
-          className="w-full py-3.5 px-4 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] text-white font-bold text-base flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95 min-h-[48px]"
-        >
-          {isCopied ? <Check className="w-4 h-4 stroke-[3]" /> : <Share2 className="w-4 h-4" />}
-          <span>{isCopied ? t.reportCopied : t.shareSummary}</span>
-        </button>
       </div>
     </div>
   );

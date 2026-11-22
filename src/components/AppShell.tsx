@@ -14,14 +14,19 @@ import {
   CheckCircle2,
   Lock,
   RefreshCw,
+  Edit3,
+  ChevronUp,
 } from 'lucide-react';
 import { useApp, ScreenId } from '../context/AppContext';
+import { LearnerProfile } from '../types';
 import { StudentAvatar } from './StudentAvatar';
 import { VidyapathLogo } from './VidyapathLogo';
 import { AppUpdateButton } from './AppUpdateButton';
 import { AppUpdateHeaderPill } from './AppUpdateHeaderPill';
 import { AppUpdateBanner } from './AppUpdateBanner';
 import { AppUpdateModal } from './AppUpdateModal';
+import { EditProfileModal } from './EditProfileModal';
+import { PinPadModal } from './PinPadModal';
 import { getTranslations, SupportedLang } from '../utils/translations';
 import { SCHEDULED_LANGUAGES } from '../config/languages';
 import { navigationManager } from '../services/navigationManager';
@@ -51,6 +56,8 @@ interface AppShellProps {
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const {
+    learners,
+    selectLearner,
     activeLearner,
     currentScreen,
     setScreen,
@@ -64,7 +71,16 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   } = useApp();
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [selectedLearnerForPin, setSelectedLearnerForPin] = useState<LearnerProfile | null>(null);
   const t = getTranslations(currentLanguage);
+
+  const handleSelectProfileToSwitch = (learner: LearnerProfile) => {
+    setShowProfileDropdown(false);
+    if (activeLearner?.id === learner.id) return;
+    setSelectedLearnerForPin(learner);
+  };
 
   // Phone back-button integration to close mobile drawer if open
   useEffect(() => {
@@ -161,11 +177,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     setMobileDrawerOpen(false);
   };
 
-  const handleSwitchProfile = () => {
-    setMobileDrawerOpen(false);
-    switchLearner();
-  };
-
   // Check if item is active
   const isItemActive = (id: ScreenId) => {
     if (id === 'MY_SYLLABUS') {
@@ -210,13 +221,22 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           </div>
         </div>
 
-        {/* Active Student Header Card */}
+        {/* Active Student Header Card - Click to Edit Profile Details */}
         {activeLearner && (
-          <div className="bg-[#F0FDFA] p-3 rounded-[12px] border border-[#E2E8F0] mb-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowEditProfileModal(true)}
+            className="w-full text-left bg-[#F0FDFA] hover:bg-[#CCFBF1]/50 p-3 rounded-[12px] border border-[#E2E8F0] hover:border-[#0F766E] mb-4 flex items-center gap-3 transition-all cursor-pointer group shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-[#0F766E]"
+            title={`${t.editProfileTitle} (${getCleanDisplayName(activeLearner.nickname, currentLanguage).primary})`}
+          >
             <StudentAvatar learner={activeLearner} size="md" />
             <div className="min-w-0 flex-1">
-              <div className="font-bold text-base text-[#0F172A] truncate">
-                {getCleanDisplayName(activeLearner.nickname, currentLanguage).primary}
+              <div className="font-bold text-base text-[#0F172A] truncate group-hover:text-[#0F766E] flex items-center justify-between">
+                <span className="truncate">{getCleanDisplayName(activeLearner.nickname, currentLanguage).primary}</span>
+                <span className="text-xs text-[#0F766E] font-medium shrink-0 ml-1 flex items-center gap-1 opacity-80 group-hover:opacity-100 bg-[#CCFBF1] px-1.5 py-0.5 rounded-md">
+                  <Edit3 className="w-3 h-3" />
+                  <span>{t.edit}</span>
+                </span>
               </div>
               <div className="text-sm text-[#0F766E] font-semibold mt-0.5">
                 {activeLearner.classGrade
@@ -224,7 +244,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                   : `10 ${t.classText}`}
               </div>
             </div>
-          </div>
+          </button>
         )}
 
         {/* Core Nav Items 1-4 */}
@@ -311,7 +331,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           >
             {SCHEDULED_LANGUAGES.map((lang) => (
               <option key={lang.code} value={lang.code}>
-                {lang.nativeName} ({lang.name})
+                {lang.nativeName}
               </option>
             ))}
           </select>
@@ -365,15 +385,84 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           </button>
         )}
 
-        {/* Switch Profile (Pinned at bottom) */}
-        <button
-          type="button"
-          onClick={handleSwitchProfile}
-          className="w-full flex items-center justify-center gap-2 py-3 px-3 rounded-[12px] bg-[#F8FAFC] hover:bg-[#F0FDFA] border border-[#E2E8F0] hover:border-[#0F766E] text-sm font-bold text-[#0F172A] active:scale-98 transition-all min-h-[48px]"
-        >
-          <Users className="w-4 h-4 text-[#0F766E]" />
-          <span>{t.navSwitchProfile}</span>
-        </button>
+        {/* Switch Profile Dropdown Container (In-Place Profile List & PIN Modal) */}
+        <div className="relative w-full">
+          {/* Backdrop overlay to close dropdown when tapping outside */}
+          {showProfileDropdown && (
+            <div
+              className="fixed inset-0 z-40 bg-black/10"
+              onClick={() => setShowProfileDropdown(false)}
+            />
+          )}
+
+          {/* Profile Dropdown Menu in that place */}
+          {showProfileDropdown && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#FFFFFF] rounded-[16px] shadow-2xl border border-[#CBD5E1] p-2.5 z-50 animate-fadeIn max-h-72 overflow-y-auto">
+              <div className="px-2 py-1.5 text-xs font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0] mb-2 flex items-center justify-between">
+                <span>{t.whoIsLearning || 'Select Profile'}</span>
+                <span className="text-[11px] text-[#0F766E] font-bold">PIN: 1234</span>
+              </div>
+              <div className="space-y-1">
+                {learners.map((learner) => {
+                  const isActive = activeLearner?.id === learner.id;
+                  const displayName = getCleanDisplayName(learner.nickname, currentLanguage).primary;
+                  const classText = learner.classGrade ? `${learner.classGrade} ${t.classText}` : `10 ${t.classText}`;
+
+                  return (
+                    <button
+                      key={learner.id}
+                      type="button"
+                      onClick={() => handleSelectProfileToSwitch(learner)}
+                      className={`w-full flex items-center justify-between p-2 rounded-[10px] text-left transition-all ${
+                        isActive
+                          ? 'bg-[#F0FDFA] border border-[#CCFBF1] text-[#0F766E]'
+                          : 'hover:bg-[#F8FAFC] text-[#0F172A] border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <StudentAvatar learner={learner} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-xs sm:text-sm truncate">
+                            {displayName}
+                          </div>
+                          <div className="text-[11px] text-[#0F766E] font-semibold">
+                            {classText}
+                          </div>
+                        </div>
+                      </div>
+                      {isActive ? (
+                        <span className="text-[10px] font-bold bg-[#DCFCE7] text-[#16A34A] px-2 py-0.5 rounded-full shrink-0">
+                          {currentLanguage === 'te' ? 'యాక్టివ్' : currentLanguage === 'hi' ? 'सक्रिय' : 'Active'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-[#64748B] group-hover:text-[#0F766E] shrink-0 font-medium flex items-center gap-1">
+                          <Lock className="w-3.5 h-3.5 text-[#0F766E]" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Switch Profile Trigger Button */}
+          <button
+            type="button"
+            onClick={() => setShowProfileDropdown((prev) => !prev)}
+            className={`w-full flex items-center justify-between py-3 px-3.5 rounded-[12px] border text-sm font-bold active:scale-98 transition-all min-h-[48px] relative z-40 ${
+              showProfileDropdown
+                ? 'bg-[#F0FDFA] border-[#0F766E] text-[#0F766E] shadow-xs'
+                : 'bg-[#F8FAFC] hover:bg-[#F0FDFA] border-[#E2E8F0] hover:border-[#0F766E] text-[#0F172A]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-[#0F766E]" />
+              <span>{t.navSwitchProfile}</span>
+            </div>
+            <ChevronUp className={`w-4 h-4 text-[#0F766E] transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -428,6 +517,18 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               <span className="w-2 h-2 rounded-full bg-[#16A34A]" />
               <span className="text-[11px] font-bold">{t.online}</span>
             </div>
+          )}
+
+          {/* Active Student Profile Avatar - Tap to Edit */}
+          {activeLearner && (
+            <button
+              type="button"
+              onClick={() => setShowEditProfileModal(true)}
+              className="p-0.5 rounded-full border border-[#0F766E]/40 hover:border-[#0F766E] active:scale-95 transition-all shadow-2xs ml-0.5"
+              title={`${t.editProfileTitle} (${getCleanDisplayName(activeLearner.nickname, currentLanguage).primary})`}
+            >
+              <StudentAvatar learner={activeLearner} size="sm" />
+            </button>
           )}
         </div>
       </header>
@@ -501,6 +602,30 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
       {/* Global Interactive In-App Update Modal */}
       <AppUpdateModal />
+
+      {/* Student Profile Edit Modal */}
+      {activeLearner && (
+        <EditProfileModal
+          learner={activeLearner}
+          isOpen={showEditProfileModal}
+          onClose={() => setShowEditProfileModal(false)}
+          requireCodeVerification={false}
+        />
+      )}
+
+      {/* In-Place PIN Pad Modal for switching profiles without navigating back to main landing page */}
+      {selectedLearnerForPin && (
+        <PinPadModal
+          learner={selectedLearnerForPin}
+          isOpen={Boolean(selectedLearnerForPin)}
+          onClose={() => setSelectedLearnerForPin(null)}
+          onSuccess={() => {
+            selectLearner(selectedLearnerForPin);
+            setSelectedLearnerForPin(null);
+            setMobileDrawerOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

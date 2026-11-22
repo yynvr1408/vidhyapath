@@ -55,7 +55,7 @@ export const MySyllabusScreen: React.FC = () => {
     const hasPrev = activeCardIndex > 0;
 
     return (
-      <div className="space-y-4 animate-fadeIn">
+      <div className="w-full max-w-4xl mx-auto space-y-4 animate-fadeIn">
         {/* Breadcrumb Navigation Header */}
         <div className="flex items-center justify-between bg-[#FFFFFF] p-3 rounded-[12px] border border-[#E2E8F0] shadow-xs min-h-[48px]">
           <button
@@ -201,20 +201,20 @@ export const MySyllabusScreen: React.FC = () => {
     );
   }
 
-  // Vertical List of Chapters
+  // Responsive Grid List of Chapters
   return (
-    <div className="space-y-4 animate-fadeIn">
+    <div className="w-full max-w-5xl xl:max-w-6xl mx-auto space-y-6 animate-fadeIn">
       {/* Header Banner */}
-      <div className="bg-[#FFFFFF] p-4 rounded-[12px] border border-[#E2E8F0] shadow-xs flex items-center justify-between">
+      <div className="bg-[#FFFFFF] p-4 sm:p-5 rounded-[12px] border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-extrabold text-[#0F172A]">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[#0F172A]">
             {t.mySyllabusTitle}
           </h2>
           <p className="text-sm text-[#475569] mt-0.5 font-medium">
             {t.gradeSubject}
           </p>
         </div>
-        <div className="flex items-center gap-1.5 text-sm bg-[#F0FDFA] text-[#0F766E] px-3.5 py-1.5 rounded-full border border-[#E2E8F0] font-bold">
+        <div className="inline-flex items-center gap-1.5 text-sm bg-[#F0FDFA] text-[#0F766E] px-3.5 py-1.5 rounded-full border border-[#E2E8F0] font-bold self-start sm:self-auto">
           <BookOpen className="w-4 h-4" />
           <span>
             {pack.topics.length}{' '}
@@ -227,8 +227,8 @@ export const MySyllabusScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Chapters Vertical List */}
-      <div className="space-y-3">
+      {/* Chapters Responsive 2-Col Desktop / 1-Col Mobile Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 lg:gap-6">
         {pack.topics.map((topic, index) => {
           const { percent, masteredCount, totalCount } =
             PracticeEngine.computeChapterLanternGlow(pack, topic.id, skillStates);
@@ -246,15 +246,15 @@ export const MySyllabusScreen: React.FC = () => {
           return (
             <div
               key={topic.id}
-              className="bg-[#FFFFFF] rounded-[12px] p-4.5 border border-[#E2E8F0] shadow-xs hover:border-[#0F766E] transition-all flex flex-col justify-between"
+              className="bg-[#FFFFFF] rounded-[12px] p-4.5 sm:p-5 border border-[#E2E8F0] shadow-xs hover:border-[#0F766E] transition-all flex flex-col justify-between gap-3"
             >
-              <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-1">
                 <div
                   onClick={() => {
                     setActiveReadingTopic(topic);
                     setActiveCardIndex(0);
                   }}
-                  className="flex-1 cursor-pointer group"
+                  className="flex-1 min-w-0 cursor-pointer group"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     {/* Status Dot */}
@@ -269,7 +269,7 @@ export const MySyllabusScreen: React.FC = () => {
                   <h3 className="font-extrabold text-lg text-[#0F172A] leading-snug group-hover:text-[#0F766E] transition-colors">
                     {topic.title}
                   </h3>
-                  <p className="text-sm text-[#475569] line-clamp-1 mt-0.5">
+                  <p className="text-sm text-[#475569] line-clamp-2 mt-1">
                     {topic.description}
                   </p>
                 </div>
@@ -279,7 +279,7 @@ export const MySyllabusScreen: React.FC = () => {
                   type="button"
                   onClick={() => toggleChapterOffline(topic.id)}
                   title={isOfflineDownloaded ? t.savedOffline : t.saveOffline}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all active:scale-95 shrink-0 min-h-[44px] ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all active:scale-95 shrink-0 sm:self-start min-h-[44px] ${
                     isOfflineDownloaded
                       ? 'bg-[#FEF3C7] text-[#D97706] border-[#D97706]/40'
                       : 'bg-[#F8FAFC] text-[#475569] border-[#E2E8F0] hover:bg-[#F0FDFA] hover:text-[#0F766E]'
@@ -293,8 +293,8 @@ export const MySyllabusScreen: React.FC = () => {
               </div>
 
               {/* Progress Bar & Direct Practice Row */}
-              <div className="pt-2.5 border-t border-[#E2E8F0] flex items-center justify-between gap-3">
-                <div className="flex-1">
+              <div className="pt-3 border-t border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="w-full sm:flex-1 min-w-0">
                   <div className="flex items-center justify-between text-xs font-bold text-[#475569] mb-1">
                     <span>
                       {masteredCount} / {totalCount}{' '}
@@ -315,14 +315,14 @@ export const MySyllabusScreen: React.FC = () => {
                 </div>
 
                 {/* Action Buttons: Read Concept or Practice Now */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => {
                       setActiveReadingTopic(topic);
                       setActiveCardIndex(0);
                     }}
-                    className="py-2.5 px-3.5 rounded-lg bg-[#F8FAFC] hover:bg-[#F0FDFA] text-[#0F766E] border border-[#E2E8F0] text-sm font-bold flex items-center gap-1 min-h-[48px]"
+                    className="flex-1 sm:flex-initial py-2.5 px-3.5 rounded-lg bg-[#F8FAFC] hover:bg-[#F0FDFA] text-[#0F766E] border border-[#E2E8F0] text-sm font-bold flex items-center justify-center gap-1 min-h-[48px]"
                   >
                     <span>
                       {currentLanguage === 'hi'
@@ -336,7 +336,7 @@ export const MySyllabusScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleStartPracticeForTopic(topic.id)}
-                    className="py-2.5 px-4 rounded-lg bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold flex items-center gap-1.5 min-h-[48px] shadow-xs active:scale-95"
+                    className="flex-1 sm:flex-initial py-2.5 px-4 rounded-lg bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold flex items-center justify-center gap-1.5 min-h-[48px] shadow-xs active:scale-95 whitespace-nowrap"
                   >
                     <Target className="w-4 h-4" />
                     <span>{t.practiceNow}</span>

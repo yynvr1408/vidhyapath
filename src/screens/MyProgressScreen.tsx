@@ -117,13 +117,13 @@ export const MyProgressScreen: React.FC = () => {
   const accuracy = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 80;
 
   return (
-    <div className="space-y-4 animate-fadeIn max-w-xl mx-auto">
+    <div className="space-y-6 animate-fadeIn w-full max-w-5xl xl:max-w-6xl mx-auto">
       {/* Student Profile Overview Card */}
-      <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs flex items-center justify-between">
+      <div className="bg-[#FFFFFF] rounded-[12px] p-5 sm:p-6 border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <StudentAvatar learner={activeLearner} size="lg" />
-          <div>
-            <h2 className="text-lg font-extrabold text-[#0F172A]">
+          <div className="min-w-0">
+            <h2 className="text-xl font-extrabold text-[#0F172A] truncate">
               {activeLearner ? getCleanDisplayName(activeLearner.nickname, currentLanguage).primary : ''}
             </h2>
             <p className="text-sm text-[#0F766E] font-bold mt-0.5">
@@ -131,108 +131,117 @@ export const MyProgressScreen: React.FC = () => {
             </p>
           </div>
         </div>
-        <div className="text-right">
+        <div className="flex items-center sm:flex-col sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-[#E2E8F0]">
           <span className="text-3xl font-black text-[#16A34A]">{accuracy}%</span>
-          <span className="block text-xs font-bold text-[#475569]">{t.overallAccuracy}</span>
+          <span className="text-xs font-bold text-[#475569]">{t.overallAccuracy}</span>
         </div>
       </div>
 
-      {/* Encouraging High-Level Stats Dashboard */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-[#FFFFFF] p-4.5 rounded-[12px] border border-[#E2E8F0] shadow-xs text-center">
-          <BookOpen className="w-6 h-6 text-[#0F766E] mx-auto mb-1.5" />
-          <div className="text-2xl font-black text-[#0F172A]">2 / {pack.topics.length}</div>
-          <div className="text-sm font-bold text-[#475569] mt-0.5">{t.chaptersCompleted}</div>
+      {/* Encouraging High-Level Stats Dashboard (3 cards on desktop, 1 on mobile) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className="bg-[#FFFFFF] p-5 rounded-[12px] border border-[#E2E8F0] shadow-xs text-center flex flex-col items-center justify-center">
+          <BookOpen className="w-7 h-7 text-[#0F766E] mx-auto mb-2" />
+          <div className="text-2xl sm:text-3xl font-black text-[#0F172A]">2 / {pack.topics.length}</div>
+          <div className="text-sm font-bold text-[#475569] mt-1">{t.chaptersCompleted}</div>
         </div>
 
-        <div className="bg-[#FFFFFF] p-4.5 rounded-[12px] border border-[#E2E8F0] shadow-xs text-center">
-          <Target className="w-6 h-6 text-[#D97706] mx-auto mb-1.5" />
-          <div className="text-2xl font-black text-[#0F172A]">6</div>
-          <div className="text-sm font-bold text-[#475569] mt-0.5">{t.quizzesFinished}</div>
-        </div>
-      </div>
-
-      {/* Weekly Study Streak Card */}
-      <div className="bg-[#FFFFFF] rounded-[12px] p-4.5 border border-[#E2E8F0] shadow-xs space-y-3">
-        <div className="flex items-center justify-between text-sm font-bold">
-          <span className="flex items-center gap-1.5 text-[#0F766E]">
-            <Calendar className="w-4 h-4 text-[#0F766E]" />
-            <span>{t.weeklyStreak}</span>
-          </span>
-          <span className="text-[#16A34A] font-semibold">{t.activeDays}</span>
+        <div className="bg-[#FFFFFF] p-5 rounded-[12px] border border-[#E2E8F0] shadow-xs text-center flex flex-col items-center justify-center">
+          <Target className="w-7 h-7 text-[#D97706] mx-auto mb-2" />
+          <div className="text-2xl sm:text-3xl font-black text-[#0F172A]">6</div>
+          <div className="text-sm font-bold text-[#475569] mt-1">{t.quizzesFinished}</div>
         </div>
 
-        {/* 7 Days Dots */}
-        <div className="flex items-center justify-between px-1">
-          {t.days.map((dayName, idx) => {
-            const isActive = idx !== 3 && idx !== 6;
-            return (
-              <div key={idx} className="flex flex-col items-center gap-1.5">
-                <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${
-                    isActive
-                      ? 'bg-[#0F766E] text-white shadow-xs'
-                      : 'bg-[#F8FAFC] text-[#94A3B8] border border-[#E2E8F0]'
-                  }`}
-                >
-                  {isActive ? '✓' : ''}
-                </div>
-                <span className="text-xs font-bold text-[#475569]">{dayName}</span>
-              </div>
-            );
-          })}
+        <div className="bg-[#FFFFFF] p-5 rounded-[12px] border border-[#E2E8F0] shadow-xs text-center flex flex-col items-center justify-center sm:col-span-2 lg:col-span-1">
+          <TrendingUp className="w-7 h-7 text-[#16A34A] mx-auto mb-2" />
+          <div className="text-2xl sm:text-3xl font-black text-[#16A34A]">{accuracy}%</div>
+          <div className="text-sm font-bold text-[#475569] mt-1">{t.overallAccuracy}</div>
         </div>
       </div>
 
-      {/* Clear List of "Topics to Revise" with Direct Revise Now Buttons */}
-      <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs space-y-3.5">
-        <div className="flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-[#DC2626]" />
-          <h3 className="font-extrabold text-base text-[#0F172A]">
-            {t.topicsToRevise}
-          </h3>
-        </div>
+      {/* 2-Column Responsive Desktop Grid for Streak & Weak Topics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        {/* Weekly Study Streak Card */}
+        <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs space-y-4">
+          <div className="flex items-center justify-between text-sm font-bold">
+            <span className="flex items-center gap-1.5 text-[#0F766E]">
+              <Calendar className="w-5 h-5 text-[#0F766E]" />
+              <span className="text-base">{t.weeklyStreak}</span>
+            </span>
+            <span className="text-[#16A34A] font-semibold">{t.activeDays}</span>
+          </div>
 
-        <div className="space-y-3">
-          {weakTopics.map((item, index) => (
-            <div
-              key={index}
-              className="p-4 bg-[#FEE2E2]/40 rounded-[12px] border border-[#FECACA] flex items-center justify-between gap-3.5"
-            >
-              <div className="flex-1">
-                <h4 className="font-bold text-sm text-[#0F172A] leading-snug">
-                  {item.title}
-                </h4>
-                <p className="text-xs text-[#475569] mt-0.5 font-medium">
-                  {item.reason}
-                </p>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <div className="w-28 bg-[#E2E8F0] rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-[#DC2626] h-full rounded-full"
-                      style={{ width: `${item.mastery}%` }}
-                    />
+          {/* 7 Days Dots */}
+          <div className="flex items-center justify-between px-1">
+            {t.days.map((dayName, idx) => {
+              const isActive = idx !== 3 && idx !== 6;
+              return (
+                <div key={idx} className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                      isActive
+                        ? 'bg-[#0F766E] text-white shadow-xs'
+                        : 'bg-[#F8FAFC] text-[#94A3B8] border border-[#E2E8F0]'
+                    }`}
+                  >
+                    {isActive ? '✓' : ''}
                   </div>
-                  <span className="text-xs font-bold text-[#DC2626]">
-                    {item.mastery}%
-                  </span>
+                  <span className="text-xs font-bold text-[#475569]">{dayName}</span>
                 </div>
-              </div>
+              );
+            })}
+          </div>
+        </div>
 
-              {/* Direct Revise Now Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  selectTopic(item.topicId);
-                  setScreen('PRACTICE');
-                }}
-                className="px-3.5 py-2.5 rounded-[10px] bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold shrink-0 shadow-xs flex items-center gap-1.5 active:scale-95 min-h-[44px]"
+        {/* Clear List of "Topics to Revise" with Direct Revise Now Buttons */}
+        <div className="bg-[#FFFFFF] rounded-[12px] p-5 border border-[#E2E8F0] shadow-xs space-y-3.5">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-[#DC2626]" />
+            <h3 className="font-extrabold text-base text-[#0F172A]">
+              {t.topicsToRevise}
+            </h3>
+          </div>
+
+          <div className="space-y-3">
+            {weakTopics.map((item, index) => (
+              <div
+                key={index}
+                className="p-4 bg-[#FEE2E2]/40 rounded-[12px] border border-[#FECACA] flex items-center justify-between gap-3.5"
               >
-                <span>{t.reviseNow}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-sm text-[#0F172A] leading-snug truncate">
+                    {item.title}
+                  </h4>
+                  <p className="text-xs text-[#475569] mt-0.5 font-medium line-clamp-1">
+                    {item.reason}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <div className="w-28 bg-[#E2E8F0] rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-[#DC2626] h-full rounded-full"
+                        style={{ width: `${item.mastery}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-bold text-[#DC2626]">
+                      {item.mastery}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Direct Revise Now Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    selectTopic(item.topicId);
+                    setScreen('PRACTICE');
+                  }}
+                  className="px-3.5 py-2.5 rounded-[10px] bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold shrink-0 shadow-xs flex items-center gap-1.5 active:scale-95 min-h-[44px]"
+                >
+                  <span>{t.reviseNow}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

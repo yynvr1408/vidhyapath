@@ -200,6 +200,22 @@ export interface TranslationDictionary {
   pinResetSuccess: string;
   backToPin: string;
   noEmailOrOtpNeeded: string;
+
+  // Profile Editing Modal
+  editProfileTitle: string;
+  editProfileSubtitle: string;
+  avatarStyleLabel: string;
+  photoAvatar: string;
+  iconAvatar: string;
+  initialsAvatar: string;
+  uploadPhoto: string;
+  compressingPhoto: string;
+  changePhoto: string;
+  accentColorLabel: string;
+  saveChanges: string;
+  savedSuccess: string;
+  studentNameLabel: string;
+  selectClassLabel: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
@@ -389,6 +405,22 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     pinResetSuccess: 'పిన్ విజయవంతంగా మార్చబడింది! తెరుస్తున్నాము...',
     backToPin: 'తిరిగి పిన్ నమోదుకు',
     noEmailOrOtpNeeded: 'ఈమెయిల్ లేదా OTP అవసరం లేదు (విద్యార్థి సురక్షిత మోడ్)',
+
+    // Profile Editing Modal
+    editProfileTitle: 'ప్రొఫైల్ సవరణ (Edit Profile)',
+    editProfileSubtitle: 'మీ పేరు, తరగతి మరియు ఫోటో మార్చండి',
+    avatarStyleLabel: 'అవతార్ శైలి (Avatar Style)',
+    photoAvatar: 'ఫోటో (Photo)',
+    iconAvatar: 'ఐకాన్ (Icon)',
+    initialsAvatar: 'అక్షరాలు (Initials)',
+    uploadPhoto: 'కొత్త ఫోటో అప్‌లోడ్',
+    compressingPhoto: 'కంప్రెస్ అవుతోంది...',
+    changePhoto: 'ఫోటో మార్చండి',
+    accentColorLabel: 'రంగు ఎంచుకోండి (Accent Color)',
+    saveChanges: 'మార్పులు సేవ్ చేయి',
+    savedSuccess: 'సేవ్ అయింది!',
+    studentNameLabel: 'విద్యార్థి పేరు (Student Name)',
+    selectClassLabel: 'తరగతి (Class)',
   },
 
   en: {
@@ -577,6 +609,22 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     pinResetSuccess: 'PIN reset successfully! Unlocking...',
     backToPin: 'Back to PIN',
     noEmailOrOtpNeeded: 'No email or OTP required (Student Safe Mode)',
+
+    // Profile Editing Modal
+    editProfileTitle: 'Edit Profile',
+    editProfileSubtitle: 'Update your name, class, and photo',
+    avatarStyleLabel: 'Avatar Style',
+    photoAvatar: 'Photo',
+    iconAvatar: 'Icon',
+    initialsAvatar: 'Initials',
+    uploadPhoto: 'Upload New Photo',
+    compressingPhoto: 'Compressing...',
+    changePhoto: 'Change Photo',
+    accentColorLabel: 'Select Accent Color',
+    saveChanges: 'Save Changes',
+    savedSuccess: 'Saved!',
+    studentNameLabel: 'Student Name',
+    selectClassLabel: 'Class Grade',
   },
 
   hi: {
@@ -765,6 +813,22 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     pinResetSuccess: 'पिन सफलतापूर्वक रीसेट हो गया! खोला जा रहा है...',
     backToPin: 'वापस पिन पर',
     noEmailOrOtpNeeded: 'ईमेल या ओटीपी की आवश्यकता नहीं (छात्र सुरक्षित मोड)',
+
+    // Profile Editing Modal
+    editProfileTitle: 'प्रोफ़ाइल संपादित करें (Edit Profile)',
+    editProfileSubtitle: 'अपना नाम, कक्षा और फ़ोटो बदलें',
+    avatarStyleLabel: 'अवतार शैली (Avatar Style)',
+    photoAvatar: 'फ़ोटो (Photo)',
+    iconAvatar: 'आइकन (Icon)',
+    initialsAvatar: 'अक्षर (Initials)',
+    uploadPhoto: 'नई फ़ोटो अपलोड करें',
+    compressingPhoto: 'कंप्रेस हो रहा है...',
+    changePhoto: 'फ़ोटो बदलें',
+    accentColorLabel: 'रंग चुनें (Accent Color)',
+    saveChanges: 'बदलाव सहेजें',
+    savedSuccess: 'सहेजा गया!',
+    studentNameLabel: 'विद्यार्थी का नाम (Student Name)',
+    selectClassLabel: 'कक्षा (Class)',
   },
 };
 

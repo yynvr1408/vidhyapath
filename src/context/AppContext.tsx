@@ -117,13 +117,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const switchLanguage = async (lang: SupportedLang) => {
     setCurrentLanguage(lang);
     localStorage.setItem('vidyapath_language', lang);
-    if (lang === 'hi') {
-      await switchPack('hi-10-maths-cbse');
-    } else if (lang === 'te') {
-      await switchPack('te-10-maths-ap');
-    } else {
-      // Default to English
-      await switchPack('en-10-maths-cbse');
+    const targetPack = lang === 'hi' ? 'hi-10-maths-cbse' : lang === 'te' ? 'te-10-maths-ap' : 'en-10-maths-cbse';
+    await switchPack(targetPack);
+    if (activeLearnerRef.current) {
+      activeLearnerRef.current.packId = targetPack;
+      localDb.saveLearner(activeLearnerRef.current).catch(() => {});
     }
   };
 
@@ -254,8 +252,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Initialize
   useEffect(() => {
-    const savedPack = localStorage.getItem('vidyapath_language_pack') || 'te-10-maths-ap';
-    loadPack(savedPack);
+    const savedLang = (localStorage.getItem('vidyapath_language') as SupportedLang) || 'te';
+    const targetPack = savedLang === 'hi' ? 'hi-10-maths-cbse' : savedLang === 'en' ? 'en-10-maths-cbse' : 'te-10-maths-ap';
+    loadPack(targetPack);
     seedDefaultLearners();
 
     // Load persisted settings
@@ -337,9 +336,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveLearner(learner);
     setSkillStates(new Map());
     loadLearnerSkills(learner.id);
-    if (learner.packId) {
-      loadPack(learner.packId);
+
+    // CRITICAL: Respect and preserve the language selected on the main landing page!
+    // Never allow a learner profile's stored packId to override the user's selected language.
+    const activeLang = currentLanguage || (localStorage.getItem('vidyapath_language') as SupportedLang) || 'te';
+    const targetPackId = activeLang === 'hi' ? 'hi-10-maths-cbse' : activeLang === 'en' ? 'en-10-maths-cbse' : 'te-10-maths-ap';
+
+    if (learner.packId !== targetPackId) {
+      learner.packId = targetPackId;
+      localDb.saveLearner(learner).catch(() => {});
     }
+
+    loadPack(targetPackId);
     setCurrentScreen('MY_SYLLABUS'); // Default landing page after unlocking profile!
   };
 

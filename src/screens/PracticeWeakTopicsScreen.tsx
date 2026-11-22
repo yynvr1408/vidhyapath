@@ -152,7 +152,7 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
     const accuracy = Math.round((correctCount / total) * 100);
 
     return (
-      <div className="bg-[#FFFFFF] rounded-[12px] p-6 border border-[#E2E8F0] shadow-xs text-center space-y-5 animate-fadeIn max-w-md mx-auto">
+      <div className="bg-[#FFFFFF] rounded-[12px] p-6 sm:p-8 border border-[#E2E8F0] shadow-xs text-center space-y-5 animate-fadeIn w-full max-w-lg mx-auto">
         <div className="w-20 h-20 rounded-full bg-[#F0FDFA] text-[#0F766E] border-2 border-[#0F766E] mx-auto flex items-center justify-center shadow-xs">
           <Trophy className="w-10 h-10" />
         </div>
@@ -222,7 +222,7 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
   const currentHintText = hintLevel > 0 ? hintTexts[hintLevel - 1] : null;
 
   return (
-    <div className="space-y-4 animate-fadeIn max-w-xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto space-y-5 animate-fadeIn">
       {/* Subtle Auto-Saved Banner */}
       <div className="flex items-center justify-between bg-[#F0FDFA] px-3.5 py-2 rounded-[12px] border border-[#E2E8F0] text-xs text-[#0F766E] font-bold">
         <div className="flex items-center gap-1.5">

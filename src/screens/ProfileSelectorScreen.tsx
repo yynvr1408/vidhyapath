@@ -96,7 +96,7 @@ export const ProfileSelectorScreen: React.FC = () => {
           >
             {SCHEDULED_LANGUAGES.map((lang) => (
               <option key={lang.code} value={lang.code}>
-                {lang.nativeName} ({lang.name})
+                {lang.nativeName}
               </option>
             ))}
           </select>
