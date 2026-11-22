@@ -832,6 +832,58 @@ app.post('/api/admin/syllabus', syllabusUpload.single('file'), requireAdminCode,
   }
 });
 
+// Startup seed: load subject syllabus files (.txt / .md) from backend/seed/syllabus into the
+// in-memory store so AI Tutor retrieval works after a restart. Failures only log a warning.
+function seedSyllabusFromFiles(): void {
+  try {
+    const seedDir = path.resolve(__dirname, '../seed/syllabus');
+    if (!fs.existsSync(seedDir)) {
+      console.warn(`[Syllabus Seed] Folder not found, skipping: ${seedDir}`);
+      return;
+    }
+    for (const fileName of fs.readdirSync(seedDir)) {
+      const ext = path.extname(fileName).toLowerCase();
+      if (ext !== '.txt' && ext !== '.md') continue;
+      try {
+        const subject = path.basename(fileName, path.extname(fileName));
+        const text = fs.readFileSync(path.join(seedDir, fileName), 'utf8').trim();
+        if (!text) continue;
+        const chapters = parseSyllabusTextFallback(text, 'en', '10', subject);
+        const chunks: SyllabusChunk[] = [];
+        for (const ch of chapters) {
+          chunks.push({ id: ch.id, chapterId: ch.id, conceptId: null, chapterTitle: ch.title, conceptTitle: null, text: ch.summary });
+          for (const c of ch.concepts) {
+            chunks.push({
+              id: `${ch.id}-${c.id}`,
+              chapterId: ch.id,
+              conceptId: c.id,
+              chapterTitle: ch.title,
+              conceptTitle: c.title,
+              text: `${c.explanation} ${c.keyPoints.join('; ')}`.trim(),
+            });
+          }
+        }
+        syllabusStore.set(syllabusKeyOf(subject), {
+          id: randomUUID(),
+          language: 'en',
+          classLevel: '10',
+          subject,
+          chapters,
+          chunks,
+          updatedAt: new Date().toISOString(),
+        });
+        console.log(`[Syllabus Seed] Loaded "${fileName}" under key "${syllabusKeyOf(subject)}" (${chunks.length} chunks)`);
+      } catch (fileErr) {
+        console.warn(`[Syllabus Seed] Could not load ${fileName}:`, fileErr);
+      }
+    }
+  } catch (err) {
+    console.warn('[Syllabus Seed] Startup seeding failed, continuing without seed files:', err);
+  }
+}
+seedSyllabusFromFiles();
+
+
 // Public: read the active (or subject-specific) syllabus without chunks
 app.get('/api/syllabus', (req: Request, res: Response) => {
   const syllabus = findSyllabus(req.query.subject);

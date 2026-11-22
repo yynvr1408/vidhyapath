@@ -1,0 +1,9 @@
+Chapter 1: Real Numbers
+- Euclid's Division Lemma
+- Fundamental Theorem of Arithmetic
+- Terminating and Non-Terminating Repeating Decimals
+
+Chapter 2: Sets
+- Roster and Set-Builder Forms
+- Union and Intersection of Sets
+- Difference of Sets

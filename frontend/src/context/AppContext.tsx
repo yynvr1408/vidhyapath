@@ -110,7 +110,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof window === 'undefined') return 'te';
     const saved = localStorage.getItem('vidyapath_language') as SupportedLang;
     if (saved && ['te', 'hi', 'en'].includes(saved)) return saved;
-    return 'en';
+    return 'te';
   };
 
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLang>(getInitialLang);
@@ -276,7 +276,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof window !== 'undefined') {
       localStorage.setItem('vidyapath_active_learner', JSON.stringify(learner));
     }
-  }, []);
+    if (learner.packId?.startsWith('te')) {
+      switchLanguage('te');
+    } else if (learner.packId?.startsWith('hi')) {
+      switchLanguage('hi');
+    } else if (learner.packId?.startsWith('en')) {
+      switchLanguage('en');
+    }
+  }, [switchLanguage]);
 
   const unlockLearnerWithPin = useCallback((learnerId: string, pin: string): boolean => {
     const found = learners.find((l) => l.id === learnerId);
