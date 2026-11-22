@@ -58,7 +58,11 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
   if (!pack || questions.length === 0) {
     return (
       <div className="bg-[#FFFFFF] rounded-[12px] p-8 border border-[#E2E8F0] text-center font-bold text-[#0F766E]">
-        ప్రశ్నలు లోడ్ అవుతున్నాయి...
+        {currentLanguage === 'te'
+          ? 'ప్రశ్నలు లోడ్ అవుతున్నాయి...'
+          : currentLanguage === 'hi'
+          ? 'प्रश्न लोड हो रहे हैं...'
+          : 'Loading practice questions...'}
       </div>
     );
   }
@@ -344,7 +348,12 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
               <strong className="text-[#DC2626] font-bold block mb-1">
                 {t.remedyHeading}
               </strong>
-              {activeFeedback.remedyText || 'సూత్రాన్ని మరియు శేషాన్ని ఒకసారి నిశితంగా సరిచూడండి.'}
+              {activeFeedback.remedyText ||
+                (currentLanguage === 'te'
+                  ? 'సూత్రాన్ని మరియు శేషాన్ని ఒకసారి నిశితంగా సరిచూడండి.'
+                  : currentLanguage === 'hi'
+                  ? 'सूत्र और शेषफल को एक बार ध्यान से देखें।'
+                  : 'Carefully review the formula and remainder constraints.')}
             </div>
           )}
 

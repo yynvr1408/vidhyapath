@@ -399,6 +399,29 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
           setScreen('PARENT_VIEW');
           onClose();
         }, 1200);
+      } else if (activeTab === 'teacher') {
+        const res = await fetch('/api/auth/register/teacher', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName,
+            email: identifier.trim().toLowerCase(),
+            password: credential,
+            phone,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to create teacher account.');
+        }
+
+        localStorage.setItem('vidyapath_token', data.token);
+        setSuccessMessage('Teacher account created! Redirecting to portal...');
+        setTimeout(() => {
+          setScreen('ADMIN');
+          onClose();
+        }, 1200);
       } else if (activeTab === 'admin') {
         const res = await fetch('/api/auth/register/institution', {
           method: 'POST',
@@ -1175,11 +1198,11 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
               )}
             </div>
           ) : (
-            /* Staff (Guardian or Admin) Registration Form */
+            /* Staff (Guardian, Teacher, or Admin) Registration Form */
             <form onSubmit={handleStaffRegisterSubmit} className="space-y-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
                 <h3 className="text-sm font-bold text-[#0F172A]">
-                  Register as {activeTab === 'guardian' ? 'Parent / Guardian' : 'Institution Head'}
+                  Register as {activeTab === 'guardian' ? 'Parent / Guardian' : activeTab === 'teacher' ? 'Faculty / Teacher' : 'Institution Head'}
                 </h3>
                 <button
                   type="button"

@@ -202,6 +202,67 @@ router.post('/auth/register/guardian', async (req: Request, res: Response) => {
   });
 });
 
+// POST /api/auth/register/teacher (Teacher / Educator Account Registration)
+router.post('/auth/register/teacher', async (req: Request, res: Response) => {
+  const { fullName, email, password, phone, institutionId, department, designation } = req.body;
+  if (!fullName || !email || !password) {
+    return res.status(400).json({ error: 'Full name, email, and password are required.' });
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  for (const u of dataStore.users.values()) {
+    if (u.email && u.email.toLowerCase() === normalizedEmail) {
+      return res.status(400).json({ error: 'An account with this email address already exists.' });
+    }
+  }
+
+  const teacherId = 'user_teach_' + Date.now().toString(36);
+  const pwd = dataStore.hashPassword(String(password));
+  const inst = institutionId ? dataStore.institutions.get(institutionId) : dataStore.institutions.get('inst_global');
+
+  const newTeacher: User & { passwordHash: string; salt: string } = {
+    id: teacherId,
+    institutionId: inst?.id || 'inst_global',
+    institutionName: inst?.name || 'Vidyapath Global Academy (Independent Learning)',
+    fullName: String(fullName).trim(),
+    email: normalizedEmail,
+    phone: phone ? String(phone).trim() : undefined,
+    role: 'teacher',
+    status: 'active',
+    passwordHash: pwd.hash,
+    salt: pwd.salt,
+    createdAt: Date.now(),
+    teacherProfile: {
+      userId: teacherId,
+      institutionId: inst?.id || 'inst_global',
+      departmentId: department || 'general_education',
+      designation: designation || 'Educator',
+      qualifications: 'Certified Faculty',
+      assignedSubjectIds: [],
+    },
+  };
+
+  dataStore.users.set(teacherId, newTeacher);
+
+  const token = AuthService.generateToken(newTeacher);
+
+  dataStore.logAudit({
+    userId: teacherId,
+    userEmail: newTeacher.email,
+    category: 'auth',
+    action: 'TEACHER_ACCOUNT_REGISTERED',
+    details: { institutionId: newTeacher.institutionId, fullName: newTeacher.fullName },
+  });
+
+  return res.json({
+    success: true,
+    message: 'Teacher account created successfully.',
+    token,
+    user: newTeacher,
+    redirectTo: '/portal',
+  });
+});
+
 // POST /api/auth/student/safety-question (Query student security question for PIN recovery)
 router.post('/auth/student/safety-question', (req: Request, res: Response) => {
   const { loginCode, rollNumber } = req.body;

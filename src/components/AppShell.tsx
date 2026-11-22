@@ -242,7 +242,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 <span className={active ? 'text-white' : 'text-[#0F766E]'}>
                   {item.icon}
                 </span>
-                <span className="truncate">{item.label}</span>
+                <span className="leading-snug">{item.label}</span>
               </button>
             );
           })}
@@ -373,7 +373,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           />
 
           {/* Drawer Panel */}
-          <div className="relative w-[280px] max-w-[85vw] h-full bg-[#FFFFFF] shadow-2xl z-50 transform transition-transform animate-slideRight">
+          <div className="relative w-[300px] sm:w-[320px] max-w-[88vw] h-full bg-[#FFFFFF] shadow-2xl z-50 transform transition-transform animate-slideRight">
             <div className="absolute top-3 right-3 z-10">
               <button
                 type="button"

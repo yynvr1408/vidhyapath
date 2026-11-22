@@ -86,7 +86,7 @@ export const AppUpdateModal: React.FC = () => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
       <div className="bg-white rounded-2xl w-full max-w-xl max-h-[92vh] overflow-hidden shadow-2xl border border-[#CBD5E1] flex flex-col animate-scaleUp">
         {/* Modal Top Bar */}
-        <div className="p-4 sm:p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-linear-to-r from-[#F8FAFC] to-[#FFFFFF]">
+        <div className="p-4 sm:p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-gradient-to-r from-[#F8FAFC] to-[#FFFFFF]">
           <div className="flex items-center gap-2.5">
             <VidyapathLogo size="sm" showWordmark={false} />
             <div>

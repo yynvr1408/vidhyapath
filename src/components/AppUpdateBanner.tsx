@@ -25,7 +25,7 @@ export const AppUpdateBanner: React.FC = () => {
   const latestVersion = updateInfo?.latestVersion || currentVersion;
 
   return (
-    <div className="bg-linear-to-r from-[#D97706] to-[#B45309] text-white px-3 sm:px-4 py-2 text-xs font-bold shadow-md z-40 animate-slideDown flex items-center justify-between gap-2 border-b border-white/20">
+    <div className="bg-gradient-to-r from-[#D97706] to-[#B45309] text-white px-3 sm:px-4 py-2 text-xs font-bold shadow-md z-40 animate-slideDown flex items-center justify-between gap-2 border-b border-white/20">
       <div className="flex items-center gap-2 min-w-0">
         <span className="p-1 rounded-full bg-white/20 shrink-0">
           <Sparkles className="w-3.5 h-3.5 text-white animate-pulse" />

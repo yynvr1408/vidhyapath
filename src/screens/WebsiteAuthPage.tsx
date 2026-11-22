@@ -322,7 +322,7 @@ export const WebsiteAuthPage: React.FC<WebsiteAuthPageProps> = ({
         setSuccessMessage('Guardian account registered successfully! You may now sign in.');
         setTimeout(() => setAuthMode('login'), 1200);
       } else if (activeRole === 'teacher') {
-        const res = await fetch('/api/auth/register/guardian', {
+        const res = await fetch('/api/auth/register/teacher', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -330,7 +330,6 @@ export const WebsiteAuthPage: React.FC<WebsiteAuthPageProps> = ({
             email: identifier.trim().toLowerCase(),
             phone,
             password,
-            relationship: 'Teacher',
           }),
         });
         const data = await res.json();
@@ -443,7 +442,7 @@ export const WebsiteAuthPage: React.FC<WebsiteAuthPageProps> = ({
       {/* 2. Main Login Card Container */}
       <main className="max-w-lg w-full mx-auto my-6 bg-white rounded-3xl border border-[#CBD5E1] shadow-xl overflow-hidden animate-fadeIn">
         {/* Card Header */}
-        <div className="p-5 sm:p-6 bg-linear-to-r from-[#F8FAFC] to-[#FFFFFF] border-b border-[#E2E8F0]">
+        <div className="p-5 sm:p-6 bg-gradient-to-r from-[#F8FAFC] to-[#FFFFFF] border-b border-[#E2E8F0]">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-extrabold text-[#0F172A] tracking-tight">

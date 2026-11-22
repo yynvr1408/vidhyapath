@@ -97,7 +97,7 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
       <AppUpdateBanner />
 
       {/* 2. Hero Section */}
-      <section className="py-12 sm:py-20 px-4 sm:px-6 bg-linear-to-b from-white to-[#F8FAFC] border-b border-[#E2E8F0]">
+      <section className="py-12 sm:py-20 px-4 sm:px-6 bg-gradient-to-b from-white to-[#F8FAFC] border-b border-[#E2E8F0]">
         <div className="max-w-4xl mx-auto text-center space-y-5">
           {/* Official Accreditation / Free Tag Badge */}
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0] text-xs font-bold">
@@ -317,7 +317,7 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
         </div>
 
         {/* Master Super Admin Banner */}
-        <div className="bg-linear-to-r from-[#FFFBEB] to-[#FEF3C7] p-5 rounded-3xl border border-[#FDE68A] flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-gradient-to-r from-[#FFFBEB] to-[#FEF3C7] p-5 rounded-3xl border border-[#FDE68A] flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 text-center sm:text-left">
             <div className="w-12 h-12 rounded-2xl bg-[#D97706] text-white flex items-center justify-center shrink-0">
               <Shield className="w-6 h-6" />

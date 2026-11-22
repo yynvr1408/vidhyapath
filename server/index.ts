@@ -143,9 +143,8 @@ app.post('/api/sync', async (req: Request, res: Response) => {
   const safeLearnerId = typeof learnerId === 'string' ? learnerId : '';
   const requestedEvents = Array.isArray(events) ? events : [];
   const requestedDoubts = Array.isArray(doubts) ? doubts : [];
-  if (process.env.DATABASE_URL && !isNeonConnected() && (requestedEvents.length || requestedDoubts.length)) {
-    return res.status(503).json({ success: false, error: 'Progress storage is starting up. Retry shortly.' });
-  }
+  // Process sync events in-memory and persist to PostgreSQL if connected.
+  // durable: isNeonConnected() signals to client whether events are stored in durable DB.
 
   // Append new events idempotently (client UUID check) & persist to PostgreSQL
   let newEventsCount = 0;

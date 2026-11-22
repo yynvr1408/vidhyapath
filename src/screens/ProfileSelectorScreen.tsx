@@ -423,7 +423,7 @@ export const ProfileSelectorScreen: React.FC<ProfileSelectorScreenProps> = ({
           </div>
 
           {/* Card 3: Platform Super Administrator Panel */}
-          <div className="bg-linear-to-r from-[#FFFBEB] to-[#FEF3C7]/40 p-3 rounded-xl border border-[#FDE68A] transition-all flex items-center justify-between">
+          <div className="bg-gradient-to-r from-[#FFFBEB] to-[#FEF3C7]/40 p-3 rounded-xl border border-[#FDE68A] transition-all flex items-center justify-between">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-[#D97706] text-white flex items-center justify-center shrink-0">
                 <Shield className="w-4 h-4" />
