@@ -115,6 +115,31 @@ async function testApi() {
   console.assert(updateData.currentVersion === '1.0.0', 'currentVersion must match query');
   console.log('[PASS] /api/app/check-update response verified:', updateData);
 
+  // 9. Test /api/admin/auth/forgot-password (Admin password reset request with email template)
+  const forgotRes = await fetch(`${baseUrl}/api/admin/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'admin@vidyapath.edu' }),
+  });
+  const forgotData = await forgotRes.json();
+  console.assert(forgotData.success === true, 'Forgot password request should succeed');
+  console.assert(forgotData.devOtp && forgotData.devOtp.length === 6, 'Dev OTP should be 6 digits');
+  console.log('[PASS] /api/admin/auth/forgot-password dispatched email template & OTP:', forgotData.devOtp);
+
+  // 10. Test /api/admin/auth/reset-password (Admin password reset confirmation)
+  const resetRes = await fetch(`${baseUrl}/api/admin/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'admin@vidyapath.edu',
+      code: forgotData.devOtp,
+      newPassword: 'UpdatedAdminPass@2026',
+    }),
+  });
+  const resetData = await resetRes.json();
+  console.assert(resetData.success === true, 'Reset password should succeed');
+  console.log('[PASS] /api/admin/auth/reset-password updated password and sent confirmation email');
+
   server.close();
   console.log('\n=== ALL API ENDPOINTS VERIFIED AND WORKING 100%! ===');
   process.exit(0);

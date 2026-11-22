@@ -178,6 +178,20 @@ export interface TranslationDictionary {
   tutorThinking: string;
   removePhoto: string;
   photoAttachedAlt: string;
+
+  // Student PIN Recovery via Safety Question (Zero Email / Zero OTP)
+  forgotPin: string;
+  resetPinViaSafetyQuestion: string;
+  securityQuestionLabel: string;
+  securityAnswerLabel: string;
+  enterSecurityAnswer: string;
+  securityAnswerPlaceholder: string;
+  verifyAnswer: string;
+  incorrectSecurityAnswer: string;
+  enterNewPin: string;
+  pinResetSuccess: string;
+  backToPin: string;
+  noEmailOrOtpNeeded: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
@@ -332,7 +346,6 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     changelog: 'కొత్త మార్పులు',
     reloadApp: 'తాజా వెర్షన్‌ను లోడ్ చేయి',
     updateCheckFailed: 'అప్‌డేట్ తనిఖీ విఫలమైంది. ఇంటర్నెట్ సరిచూసుకోండి.',
-
     welcomeGreeting: 'హలో! మీ సందేహాన్ని అడగండి — మాట్లాడండి లేదా ఫోటో తీయండి.',
     welcomeSpeakCard: '🎤 మీ సందేహం మాట్లాడండి',
     welcomePhotoCard: '📷 ప్రశ్న ఫోటో తీయండి',
@@ -348,6 +361,19 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     tutorThinking: 'ట్యూటర్ ఆలోచిస్తున్నాడు...',
     removePhoto: 'ఫోటోను తీసివేయి',
     photoAttachedAlt: 'ప్రశ్న ఫోటో',
+
+    forgotPin: 'పిన్ మర్చిపోయారా?',
+    resetPinViaSafetyQuestion: 'భద్రతా ప్రశ్నతో పిన్ రీసెట్ చేయండి',
+    securityQuestionLabel: 'భద్రతా ప్రశ్న',
+    securityAnswerLabel: 'మీ సమాధానం',
+    enterSecurityAnswer: 'మీ భద్రతా ప్రశ్నకు సమాధానం ఇవ్వండి',
+    securityAnswerPlaceholder: 'ఉదాహరణ: Maths లేదా మీ సమాధానం',
+    verifyAnswer: 'సమాధానం సరిచూడండి',
+    incorrectSecurityAnswer: 'సమాధానం సరిపోలలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.',
+    enterNewPin: 'కొత్త 4-అంకెల పిన్ నమోదు చేయండి',
+    pinResetSuccess: 'పిన్ విజయవంతంగా మార్చబడింది! తెరుస్తున్నాము...',
+    backToPin: 'తిరిగి పిన్ నమోదుకు',
+    noEmailOrOtpNeeded: 'ఈమెయిల్ లేదా OTP అవసరం లేదు (విద్యార్థి సురక్షిత మోడ్)',
   },
 
   en: {
@@ -501,7 +527,6 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     changelog: "What's New",
     reloadApp: 'Reload to Update',
     updateCheckFailed: 'Update check failed. Check your internet connection.',
-
     welcomeGreeting: 'Hello! Ask your doubt — speak or take a photo.',
     welcomeSpeakCard: '🎤 Speak Your Doubt',
     welcomePhotoCard: '📷 Take Photo of Question',
@@ -517,6 +542,19 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     tutorThinking: 'Tutor is thinking...',
     removePhoto: 'Remove photo',
     photoAttachedAlt: 'Question photo',
+
+    forgotPin: 'Forgot PIN?',
+    resetPinViaSafetyQuestion: 'Reset PIN via Safety Question',
+    securityQuestionLabel: 'Safety Question',
+    securityAnswerLabel: 'Your Answer',
+    enterSecurityAnswer: 'Answer your safety question',
+    securityAnswerPlaceholder: 'e.g. Maths or your answer',
+    verifyAnswer: 'Verify Answer',
+    incorrectSecurityAnswer: 'Answer does not match. Please try again.',
+    enterNewPin: 'Enter New 4-Digit PIN',
+    pinResetSuccess: 'PIN reset successfully! Unlocking...',
+    backToPin: 'Back to PIN',
+    noEmailOrOtpNeeded: 'No email or OTP required (Student Safe Mode)',
   },
 
   hi: {
@@ -670,7 +708,6 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     changelog: 'क्या नया है',
     reloadApp: 'रीलोड करके अपडेट करें',
     updateCheckFailed: 'अपडेट जाँच विफल रही। कृपया इंटरनेट कनेक्शन जांचें।',
-
     welcomeGreeting: 'नमस्ते! अपना संदेह पूछें — बोलें या फोटो लें।',
     welcomeSpeakCard: '🎤 अपना संदेह बोलें',
     welcomePhotoCard: '📷 प्रश्न की फोटो लें',
@@ -686,6 +723,19 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     tutorThinking: 'ट्यूटर सोच रहा है...',
     removePhoto: 'फोटो हटाएं',
     photoAttachedAlt: 'प्रश्न की फोटो',
+
+    forgotPin: 'पिन भूल गए?',
+    resetPinViaSafetyQuestion: 'सुरक्षा प्रश्न से पिन रीसेट करें',
+    securityQuestionLabel: 'सुरक्षा प्रश्न',
+    securityAnswerLabel: 'आपका उत्तर',
+    enterSecurityAnswer: 'अपने सुरक्षा प्रश्न का उत्तर दें',
+    securityAnswerPlaceholder: 'उदा: Maths या आपका उत्तर',
+    verifyAnswer: 'उत्तर सत्यापित करें',
+    incorrectSecurityAnswer: 'उत्तर मेल नहीं खा रहा है। कृपया पुनः प्रयास करें।',
+    enterNewPin: 'नया 4-अंकीय पिन दर्ज करें',
+    pinResetSuccess: 'पिन सफलतापूर्वक रीसेट हो गया! खोला जा रहा है...',
+    backToPin: 'वापस पिन पर',
+    noEmailOrOtpNeeded: 'ईमेल या ओटीपी की आवश्यकता नहीं (छात्र सुरक्षित मोड)',
   },
 };
 

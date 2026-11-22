@@ -79,6 +79,9 @@ export interface LearnerProfile {
   loginCode: string; // Unique student code (e.g. RAVI-09, PRIYA-10)
   pin?: string; // 4-digit PIN (e.g. "1234")
   pinHash?: string | null;
+  securityQuestionId?: string; // e.g. "subject" | "animal" | "fruit" | "sport" | "friend"
+  securityQuestion?: string; // Custom or localized question prompt
+  securityAnswer?: string; // Localized plain text answer for zero-email PIN recovery
   createdAt: number;
   cohortCode?: string;
 }

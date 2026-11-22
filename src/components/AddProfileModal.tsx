@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Check, UserPlus } from 'lucide-react';
+import { X, Check, UserPlus, ShieldCheck } from 'lucide-react';
 import { LearnerProfile } from '../types';
 import { useApp } from '../context/AppContext';
 import { getTranslations } from '../utils/translations';
+import { SAFETY_QUESTIONS, getSafetyQuestionLabel } from '../config/safetyQuestions';
 
 interface AddProfileModalProps {
   isOpen: boolean;
@@ -21,12 +22,16 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
   const [selectedAvatar, setSelectedAvatar] = useState(HUMAN_AVATARS[0]);
   const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[0]);
   const [pin, setPin] = useState('1234');
+  const [securityQuestionId, setSecurityQuestionId] = useState(SAFETY_QUESTIONS[0].id);
+  const [securityAnswer, setSecurityAnswer] = useState('Maths');
 
   if (!isOpen) return null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+
+    const chosenQuestionPrompt = getSafetyQuestionLabel(securityQuestionId, currentLanguage);
 
     const newProfile: LearnerProfile = {
       id: 'learner_' + Date.now(),
@@ -38,6 +43,9 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
       loginCode: name.trim().toUpperCase().slice(0, 5) + '-' + classGrade,
       pin: pin.length === 4 ? pin : '1234',
       pinHash: pin.length === 4 ? pin : '1234',
+      securityQuestionId,
+      securityQuestion: chosenQuestionPrompt,
+      securityAnswer: securityAnswer.trim() || 'Maths',
       packId: pack?.id || 'te-10-maths-ap',
       createdAt: Date.now(),
     };
@@ -140,6 +148,40 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
               placeholder="1234"
               className="w-full text-center text-lg font-mono font-bold tracking-widest p-2.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden text-[#0F172A]"
             />
+          </div>
+
+          {/* Safety Question & Answer for Zero-Email PIN Recovery */}
+          <div className="bg-[#F0FDFA] p-3 rounded-[12px] border border-[#CCFBF1] space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#0F766E]">
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span>{t.securityQuestionLabel} ({t.noEmailOrOtpNeeded})</span>
+            </div>
+
+            <select
+              value={securityQuestionId}
+              onChange={(e) => setSecurityQuestionId(e.target.value)}
+              className="w-full text-xs font-semibold p-2.5 rounded-[8px] bg-white border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden text-[#0F172A] cursor-pointer"
+            >
+              {SAFETY_QUESTIONS.map((q) => (
+                <option key={q.id} value={q.id}>
+                  {q.labels[currentLanguage] || q.labels.en}
+                </option>
+              ))}
+            </select>
+
+            <div>
+              <label className="block text-[11px] font-bold text-[#475569] mb-1">
+                {t.securityAnswerLabel}:
+              </label>
+              <input
+                type="text"
+                required
+                value={securityAnswer}
+                onChange={(e) => setSecurityAnswer(e.target.value)}
+                placeholder={t.securityAnswerPlaceholder}
+                className="w-full text-xs font-semibold p-2.5 rounded-[8px] bg-white border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden text-[#0F172A]"
+              />
+            </div>
           </div>
 
           <button

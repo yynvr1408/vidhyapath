@@ -1,5 +1,10 @@
 // EmailJS Transactional Email Delivery Service
 import { dataStore } from '../db/store.js';
+import {
+  getAdminRegistrationEmail,
+  getPasswordResetEmail,
+  getPasswordResetSuccessEmail,
+} from '../templates/emailTemplates.js';
 
 export interface EmailOptions {
   toEmail: string;
@@ -169,6 +174,112 @@ export class EmailService {
         ip_address: ipAddress || 'Unknown IP',
         timestamp: new Date().toUTCString(),
         message: 'A security-sensitive event occurred on your Vidyapath account. If this was not you, please immediately reset your password and contact institutional administration.',
+      },
+    });
+
+    return res.success;
+  }
+
+  // 5. Send Admin Registration / Onboarding Email with HTML Template
+  static async sendAdminRegistrationEmail(
+    email: string,
+    adminName: string,
+    institutionName: string,
+    institutionCode: string,
+    role: string,
+    tempPassword?: string,
+    portalUrl: string = 'https://vidyapath.edu/admin'
+  ): Promise<boolean> {
+    const template = getAdminRegistrationEmail({
+      adminName,
+      adminEmail: email,
+      institutionName,
+      institutionCode,
+      role,
+      portalUrl,
+      tempPassword,
+    });
+
+    const res = await this.sendEmail({
+      toEmail: email,
+      toName: adminName,
+      subject: template.subject,
+      templateParams: {
+        admin_name: adminName,
+        institution_name: institutionName,
+        institution_code: institutionCode,
+        assigned_role: role,
+        portal_url: portalUrl,
+        temp_password: tempPassword || 'Set by administrator',
+        html_content: template.html,
+        text_content: template.text,
+      },
+    });
+
+    return res.success;
+  }
+
+  // 6. Send Admin Password Reset Request Email with OTP
+  static async sendPasswordResetOtpEmail(
+    email: string,
+    adminName: string,
+    otp: string,
+    expiryMinutes: number = 15,
+    ipAddress?: string,
+    portalUrl: string = 'https://vidyapath.edu/admin'
+  ): Promise<boolean> {
+    const template = getPasswordResetEmail({
+      adminName,
+      adminEmail: email,
+      resetCode: otp,
+      expiryMinutes,
+      portalUrl,
+      ipAddress,
+    });
+
+    const res = await this.sendEmail({
+      toEmail: email,
+      toName: adminName,
+      subject: template.subject,
+      templateParams: {
+        admin_name: adminName,
+        reset_code: otp,
+        expiry_minutes: expiryMinutes,
+        portal_url: portalUrl,
+        ip_address: ipAddress || '127.0.0.1',
+        html_content: template.html,
+        text_content: template.text,
+      },
+    });
+
+    return res.success;
+  }
+
+  // 7. Send Admin Password Reset Success Notification
+  static async sendPasswordResetSuccessEmail(
+    email: string,
+    adminName: string,
+    ipAddress?: string,
+    portalUrl: string = 'https://vidyapath.edu/admin'
+  ): Promise<boolean> {
+    const template = getPasswordResetSuccessEmail({
+      adminName,
+      adminEmail: email,
+      timestamp: new Date().toUTCString(),
+      portalUrl,
+      ipAddress,
+    });
+
+    const res = await this.sendEmail({
+      toEmail: email,
+      toName: adminName,
+      subject: template.subject,
+      templateParams: {
+        admin_name: adminName,
+        portal_url: portalUrl,
+        ip_address: ipAddress || '127.0.0.1',
+        html_content: template.html,
+        text_content: template.text,
       },
     });
 

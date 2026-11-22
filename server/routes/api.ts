@@ -145,6 +145,118 @@ router.post('/auth/otp/verify', (req: Request, res: Response) => {
   return res.json({ success: true, message: result.message });
 });
 
+// POST /api/auth/password-reset/request & POST /api/admin/auth/forgot-password
+const handlePasswordResetRequest = async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email || !String(email).includes('@')) {
+    return res.status(400).json({ error: 'A valid administrator email address is required.' });
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  let matchedUser: (User & { passwordHash: string; salt: string }) | null = null;
+  for (const user of dataStore.users.values()) {
+    if (user.email.toLowerCase() === normalizedEmail) {
+      matchedUser = user;
+      break;
+    }
+  }
+
+  // Generate 6-digit OTP
+  const { otp, error } = AuthService.generateOtp(normalizedEmail, 'password_reset');
+  if (error) {
+    return res.status(429).json({ error });
+  }
+
+  const adminName = matchedUser ? matchedUser.fullName : 'Administrator';
+  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+
+  // Dispatch rich HTML email template
+  await EmailService.sendPasswordResetOtpEmail(
+    normalizedEmail,
+    adminName,
+    otp,
+    15,
+    clientIp
+  );
+
+  const isEmailConfigured = EmailService.isConfigured();
+  return res.json({
+    success: true,
+    message: isEmailConfigured
+      ? `A password reset code has been dispatched to ${normalizedEmail}.`
+      : `[Simulated Mode] EmailJS not configured. Reset code: ${otp}`,
+    cooldownSeconds: 60,
+    ...(isEmailConfigured ? {} : { simulated: true, devOtp: otp }),
+  });
+};
+
+router.post('/auth/password-reset/request', handlePasswordResetRequest);
+router.post('/admin/auth/forgot-password', handlePasswordResetRequest);
+
+// POST /api/auth/password-reset/confirm & POST /api/admin/auth/reset-password
+const handlePasswordResetConfirm = async (req: Request, res: Response) => {
+  const { email, code, newPassword } = req.body;
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ error: 'Email, verification code, and new password are required.' });
+  }
+
+  if (String(newPassword).length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+
+  // Verify OTP
+  const verifyResult = AuthService.verifyOtp(normalizedEmail, 'password_reset', String(code));
+  if (!verifyResult.success) {
+    return res.status(400).json({ error: verifyResult.message });
+  }
+
+  // Find user
+  let matchedUser: (User & { passwordHash: string; salt: string }) | null = null;
+  for (const user of dataStore.users.values()) {
+    if (user.email.toLowerCase() === normalizedEmail) {
+      matchedUser = user;
+      break;
+    }
+  }
+
+  if (!matchedUser) {
+    return res.status(404).json({ error: 'Administrator account not found.' });
+  }
+
+  // Hash new password and update
+  const pwd = dataStore.hashPassword(newPassword);
+  matchedUser.passwordHash = pwd.hash;
+  matchedUser.salt = pwd.salt;
+
+  const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+
+  // Send success confirmation email
+  await EmailService.sendPasswordResetSuccessEmail(
+    normalizedEmail,
+    matchedUser.fullName,
+    clientIp
+  );
+
+  dataStore.logAudit({
+    userId: matchedUser.id,
+    userEmail: matchedUser.email,
+    institutionId: matchedUser.institutionId,
+    category: 'auth',
+    action: 'ADMIN_PASSWORD_RESET_SUCCESS',
+    details: { email: normalizedEmail },
+  });
+
+  return res.json({
+    success: true,
+    message: 'Administrator password has been reset successfully. You may now log in.',
+  });
+};
+
+router.post('/auth/password-reset/confirm', handlePasswordResetConfirm);
+router.post('/admin/auth/reset-password', handlePasswordResetConfirm);
+
 // POST /api/auth/register/institution
 router.post('/auth/register/institution', async (req: Request, res: Response) => {
   const { name, code, type, contactEmail, contactPhone, address, adminFullName, adminPassword } = req.body;
@@ -205,6 +317,16 @@ router.post('/auth/register/institution', async (req: Request, res: Response) =>
   };
 
   dataStore.users.set(adminUserId, adminUser);
+
+  // Dispatch rich HTML onboarding email to the administrator
+  await EmailService.sendAdminRegistrationEmail(
+    contactEmail,
+    adminFullName || 'Institution Administrator',
+    name,
+    String(code).toUpperCase(),
+    'institution_admin',
+    adminPassword
+  );
 
   // Notify Super Admin
   dataStore.notifications.set('notif_' + Date.now(), {

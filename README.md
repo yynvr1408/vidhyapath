@@ -273,7 +273,57 @@ Vidyapath features an integrated, proactive in-app release and update delivery m
 
 ---
 
-## 9. Free Tier to Enterprise Scale Matrix
+## 9. Cross-Platform Icon Architecture & Asset Engine
+
+Vidyapath features an automated, multi-density icon generation and delivery pipeline (`scripts/generate_all_icons.ps1`) for desktop browsers, mobile PWAs, and native Android installations:
+
+1. **Website & Browser Favicons (`public/` & `index.html`)**:
+   - **Multi-Resolution Favicon (`public/favicon.ico`)**: Native 48x48, 32x32, and 16x16 icon format for browser address bars, bookmarks, and tabs.
+   - **Standard PNG Favicons**: `favicon-32x32.png` and `favicon-16x16.png`.
+   - **Apple Touch Icon**: `apple-touch-icon.png` (180x180 px) with clean high-DPI scaling for iOS Safari Home Screen bookmarks.
+   - **Web App Manifest (`public/manifest.json`)**: Configured with standard and maskable icons (`icon-maskable-192.png`, `icon-maskable-512.png`) featuring an 80% safe zone to prevent browser cropping.
+2. **Native Android APK Adaptive Icons (`android/app/src/main/res/`)**:
+   - **Legacy Density Mipmaps**: Full launcher icons (`ic_launcher.png`, `ic_launcher_round.png`) across `mdpi` (48px), `hdpi` (72px), `xhdpi` (96px), `xxhdpi` (144px), and `xxxhdpi` (192px).
+   - **Modern Adaptive Icons (API 26+)**: Configured foreground assets (`ic_launcher_foreground.png`) across all densities (`mdpi` 108px, `hdpi` 162px, `xhdpi` 216px, `xxhdpi` 324px, `xxxhdpi` 432px) centered within the 66% safe zone on a pure background (`@color/ic_launcher_background`), removing obsolete capacitor vector overrides.
+
+---
+
+## 10. Transactional Email Templates & Admin Password Reset
+
+Vidyapath provides responsive HTML email templates (`server/templates/emailTemplates.ts`) styled with Vidyapath's brand palette (Educational Teal `#0F766E`, Warm Amber `#D97706`, Slate `#0F172A`):
+
+1. **Admin Registration & Institutional Onboarding Email**:
+   - Dispatched upon institution registration and administrator provisioning.
+   - Includes institution name, code, assigned RBAC role, portal access URL, temporary passcode, and security guidelines.
+2. **Admin Password Reset Request Email**:
+   - Dispatched via `POST /api/admin/auth/forgot-password`.
+   - Prominently displays a 6-digit verification code/OTP valid for 15 minutes, requester IP address, and security warnings.
+3. **Admin Password Reset Confirmation Email**:
+   - Dispatched via `POST /api/admin/auth/reset-password`.
+   - Confirms password updates with timestamps and emergency escalation contact information.
+
+---
+
+## 11. Student Zero-Email / Safety Question PIN Reset
+
+To ensure 100% child privacy, rural usability, and COPPA/FERPA compliance, students never require email addresses or mobile OTPs:
+
+1. **Simple Profile Creation**:
+   - Requires only: Display Name/Nickname, Class Grade (9 or 10), Mascot/Avatar, 4-digit numeric PIN, and a **Safety Question & Answer**.
+2. **Trilingual Child-Friendly Safety Questions (`src/config/safetyQuestions.ts`)**:
+   - *"What is your favorite school subject?"* (మీకు అత్యంత ఇష్టమైన సబ్జెక్ట్ ఏది? / आपका सबसे पसंदीदा विषय कौन सा है?)
+   - *"What is your favorite animal?"* (మీకు ఇష్టమైన జంతువు ఏది? / आपका पसंदीदा जानवर कौन सा है?)
+   - *"What is your favorite fruit?"* (మీకు ఇష్టమైన పండు ఏది? / आपका पसंदीदा फल कौन सा है?)
+   - *"What is your favorite game or sport?"* (మీకు ఇష్టమైన ఆట ఏది? / आपका पसंदीदा खेल कौन सा है?)
+   - *"What is the name of your best friend?"* (మీ ప్రాణస్నేహితుడి పేరు ఏమిటి? / आपके सबसे अच्छे दोस्त का नाम क्या है?)
+3. **1-Tap Zero-Email PIN Recovery (`PinPadModal.tsx`)**:
+   - Tapping *"Forgot PIN? / Reset via Safety Question"* prompts the student with their safety question.
+   - Case-insensitive answer validation with regional synonym support (`Maths` $\leftrightarrow$ `లెక్కలు` $\leftrightarrow$ `गणित`).
+   - Upon correct answer, student directly sets a new 4-digit PIN via the numeric keypad—instantly saving and unlocking the session with zero external dependencies.
+
+---
+
+## 12. Free Tier to Enterprise Scale Matrix
 
 Vidyapath operates on a **$0/month free-tier baseline** while providing a seamless upgrade path to enterprise infrastructure:
 
@@ -290,7 +340,7 @@ Vidyapath operates on a **$0/month free-tier baseline** while providing a seamle
 
 ---
 
-## 10. Complete API Reference
+## 13. Complete API Reference
 
 ### Health & Monitoring Probes
 | Method | Endpoint | Description |
@@ -306,8 +356,10 @@ Vidyapath operates on a **$0/month free-tier baseline** while providing a seamle
 | `POST` | `/api/auth/login` | Email/password authentication with account lockout protection. |
 | `POST` | `/api/auth/otp/send` | Dispatches 6-digit cryptographic OTP via EmailJS (or returns `devOtp` in dev). |
 | `POST` | `/api/auth/otp/verify` | Single-use cryptographic verification of OTP. |
-| `POST` | `/api/auth/register/institution` | Onboards institution into `pending_approval` state. |
+| `POST` | `/api/auth/register/institution` | Onboards institution into `pending_approval` state & dispatches HTML welcome email. |
 | `POST` | `/api/auth/register/student` | Registers student linked to verified academic profile. |
+| `POST` | `/api/admin/auth/forgot-password` | Dispatches 6-digit password reset OTP email using responsive HTML template. |
+| `POST` | `/api/admin/auth/reset-password` | Verifies reset OTP, updates salted password hash, and dispatches confirmation email. |
 | `GET` | `/api/auth/me` | Returns authenticated user profile and permissions. |
 
 ### Super Administration (Level 1)
@@ -348,7 +400,7 @@ Vidyapath operates on a **$0/month free-tier baseline** while providing a seamle
 
 ---
 
-## 11. Automated Testing & Verification Suite
+## 14. Automated Testing & Verification Suite
 
 Vidyapath maintains a rigorous 4-stage automated testing pipeline with **100% pass coverage** across all critical security, scaling, and operational workflows:
 
@@ -356,10 +408,10 @@ Vidyapath maintains a rigorous 4-stage automated testing pipeline with **100% pa
 # 1. Type-check & Production Build Verification (<155 KB gzip main bundle)
 npm run build
 
-# 2. Unit & Backend Language Enforcement Test Suite (41 tests)
+# 2. Unit & Backend Language Enforcement Test Suite (49 tests across 7 test suites)
 npx vitest run tests/unit
 
-# 3. UI Component & Language Switching Test Suite (28 tests)
+# 3. UI Component & Language Switching Test Suite (28 tests across 8 test suites)
 npx vitest run tests/ui
 
 # 4. System, REST API Endpoints & Enterprise Workflows
@@ -367,26 +419,32 @@ npm test
 ```
 
 ### Verified Test Workflows:
-1. **In-App Auto-Update & Version Delivery (`app_update.test.ts`)**:
+1. **Admin Email Templates & Password Reset (`admin_email_templates.test.ts`)**:
+   - Verification of rich HTML email rendering for Admin Registration, Password Reset Request (with 6-digit OTP), and Password Reset Success Confirmation.
+2. **Student Zero-Email / Safety Question PIN Reset (`student_safety_question_auth.test.ts`)**:
+   - Verification of child-friendly safety questions localized across Telugu, Hindi, and English.
+   - Case-insensitive answer validation with regional synonym matching (`Maths` $\leftrightarrow$ `లెక్కలు` $\leftrightarrow$ `गणित`).
+   - Pure local PIN update without requiring email or OTP.
+3. **In-App Auto-Update & Version Delivery (`app_update.test.ts`)**:
    - Verification of current app version reporting, GitHub releases update parsing, modal toggle state, banner dismiss, and Service Worker PWA update event detection.
-2. **Strict Trilingual Language Enforcement (`strict_language_e2e.test.ts` & `strict_language_ui.test.tsx`)**:
+4. **Strict Trilingual Language Enforcement (`strict_language_e2e.test.ts` & `strict_language_ui.test.tsx`)**:
    - Verification of exact translation key parity across Telugu, Hindi, and English with zero empty strings.
    - BCP-47 speech locale binding (`te-IN`, `hi-IN`, `en-IN`) for TTS and STT.
    - Server-side rejection of non-whitelisted language codes with HTTP 400 Bad Request.
    - End-to-end trilingual UI rendering across Sidebar, My Syllabus, AI Tutor, Practice, and Parent View.
-3. **Cryptographic Security**: PBKDF2 password hashing, JWT signing, signature verification, and tamper rejection.
-4. **OTP Security**: Expiration, single-use invalidation, attempt limits, and 60-second resend cooldown.
-5. **Multi-Tier Institution Approval**: Registration $\to$ Super Admin review $\to$ Approval $\to$ Account activation.
-6. **Dynamic Syllabus Matcher**: Automatic resolution of semester courses based on enrollment.
-7. **Syllabus Parsing & Publication**: Structured unit extraction and database ingestion.
-8. **LMS Assignment & Quiz Engine**: Online submission and automatic scoring with explanations.
-9. **AI Pedagogical Guardrails**: Verified refusal of exam cheating, prompt injection, and PII extraction.
-10. **High-Concurrency Scaling**: Idempotency key deduplication (`X-Cache: IDEMPOTENT-HIT`) and sliding-window rate limiting (`X-RateLimit-*`).
-11. **In-Memory Cloudflare R2 Uploads**: Memory buffer streaming without writing to ephemeral disk.
+5. **Cryptographic Security**: PBKDF2 password hashing, JWT signing, signature verification, and tamper rejection.
+6. **OTP Security**: Expiration, single-use invalidation, attempt limits, and 60-second resend cooldown.
+7. **Multi-Tier Institution Approval**: Registration $\to$ Super Admin review $\to$ Approval $\to$ Account activation.
+8. **Dynamic Syllabus Matcher**: Automatic resolution of semester courses based on enrollment.
+9. **Syllabus Parsing & Publication**: Structured unit extraction and database ingestion.
+10. **LMS Assignment & Quiz Engine**: Online submission and automatic scoring with explanations.
+11. **AI Pedagogical Guardrails**: Verified refusal of exam cheating, prompt injection, and PII extraction.
+12. **High-Concurrency Scaling**: Idempotency key deduplication (`X-Cache: IDEMPOTENT-HIT`) and sliding-window rate limiting (`X-RateLimit-*`).
+13. **In-Memory Cloudflare R2 Uploads**: Memory buffer streaming without writing to ephemeral disk.
 
 ---
 
-## 12. Step-by-Step Deployment Guide
+## 15. Step-by-Step Deployment Guide
 
 ### A. Local Development
 ```bash
@@ -444,7 +502,7 @@ The repository includes automated GitHub Actions CI/CD ([`.github/workflows/buil
 
 ---
 
-## 13. Technology Stack Summary
+## 16. Technology Stack Summary
 
 - **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide Icons, Vite, HTML5 Canvas
 - **Backend API**: Node.js, Express, TypeScript, tsx, Multer (Memory Storage)

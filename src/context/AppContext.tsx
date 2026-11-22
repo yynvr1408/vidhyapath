@@ -60,6 +60,7 @@ interface AppContextValue {
   switchLanguage: (lang: SupportedLang) => Promise<void>;
   loginWithCode: (code: string) => Promise<{ success: boolean; learner?: LearnerProfile; message?: string }>;
   updateLearnerProfile: (profile: LearnerProfile) => Promise<void>;
+  updateLearnerPin: (learnerId: string, newPin: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -144,6 +145,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           loginCode: 'RAVI-10',
           pin: '1234',
           pinHash: '1234',
+          securityQuestionId: 'subject',
+          securityQuestion: 'What is your favorite school subject?',
+          securityAnswer: 'Maths',
           createdAt: Date.now() - 3600 * 1000 * 24 * 5,
         },
         {
@@ -157,6 +161,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           loginCode: 'PRIY-10',
           pin: '1234',
           pinHash: '1234',
+          securityQuestionId: 'animal',
+          securityQuestion: 'What is your favorite animal?',
+          securityAnswer: 'Lion',
           createdAt: Date.now() - 3600 * 1000 * 24 * 4,
         },
         {
@@ -170,6 +177,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           loginCode: 'KIRN-10',
           pin: '1234',
           pinHash: '1234',
+          securityQuestionId: 'fruit',
+          securityQuestion: 'What is your favorite fruit?',
+          securityAnswer: 'Mango',
           createdAt: Date.now() - 3600 * 1000 * 24 * 3,
         },
         {
@@ -183,6 +193,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           loginCode: 'ANAN-10',
           pin: '1234',
           pinHash: '1234',
+          securityQuestionId: 'sport',
+          securityQuestion: 'What is your favorite game or sport?',
+          securityAnswer: 'Cricket',
           createdAt: Date.now() - 3600 * 1000 * 24 * 2,
         },
       ];
@@ -418,6 +431,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateLearnerPin = async (learnerId: string, newPin: string) => {
+    const updatedLearners = learners.map((l) => {
+      if (l.id === learnerId) {
+        return { ...l, pin: newPin, pinHash: newPin };
+      }
+      return l;
+    });
+    setLearners(updatedLearners);
+    const target = updatedLearners.find((l) => l.id === learnerId);
+    if (target) {
+      await localDb.saveLearner(target);
+      if (activeLearnerRef.current?.id === learnerId) {
+        setActiveLearner(target);
+      }
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -453,6 +483,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         switchLanguage,
         loginWithCode,
         updateLearnerProfile,
+        updateLearnerPin,
       }}
     >
       <div className="w-full min-h-screen bg-[#F8FAFC] text-[#0F172A]">
