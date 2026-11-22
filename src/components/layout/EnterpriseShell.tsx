@@ -207,25 +207,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  // Language Selector Component (Telugu, Hindi, English)
-  const LanguageDropdown = ({ className = '' }: { className?: string }) => (
-    <div className={`flex items-center gap-1.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-[8px] px-2 py-1 ${className}`}>
-      <Globe className="w-4 h-4 text-[#0F766E] shrink-0" />
-      <select
-        value={currentLanguage}
-        onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
-        className="text-xs bg-transparent text-[#0F172A] font-bold cursor-pointer focus:outline-hidden truncate w-full"
-        title="Select Language (Telugu, Hindi, English)"
-      >
-        {SCHEDULED_LANGUAGES.map((lang) => (
-          <option key={lang.code} value={lang.code}>
-            {lang.nativeName}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-
+  
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#FFFFFF] border-r border-[#E2E8F0] p-4 text-[#0F172A] justify-between overflow-y-auto">
       <div>
@@ -265,7 +247,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
           <div className="text-[10px] font-extrabold uppercase text-[#64748B] tracking-wider mb-1">
             Interface Language (తెలుగు / हिन्दी / English)
           </div>
-          <LanguageDropdown className="w-full" />
+          <LanguageSelector className="w-full" />
         </div>
 
         {/* Role-Specific Navigation Links */}
@@ -344,24 +326,21 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
             <AppUpdateHeaderPill />
 
             {/* Language Dropdown (Telugu, Hindi, English) */}
-            <LanguageDropdown className="max-w-[130px] sm:max-w-[180px]" />
+            <LanguageSelector variant="compact" />
 
-            {/* Interactive Offline / Online Mode Toggle */}
-            <button
-              type="button"
-              onClick={toggleSimulatedOffline}
-              title={simulatedOffline || isOffline ? 'Offline Mode Active - Click to Switch Online' : 'Online Connected - Click to Test Offline Mode'}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full border transition-all active:scale-95 min-h-[34px] ${
-                simulatedOffline || isOffline
-                  ? 'bg-[#FEF3C7] border-[#D97706]/40 text-[#92400E] hover:bg-[#FDE68A]'
-                  : 'bg-[#DCFCE7] border-[#16A34A]/40 text-[#16A34A] hover:bg-[#BBF7D0]'
+            {/* Honest Connection Status Badge */}
+            <div
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full border min-h-[34px] ${
+                isOffline
+                  ? 'bg-[#FEF3C7] border-[#D97706]/40 text-[#92400E]'
+                  : 'bg-[#DCFCE7] border-[#16A34A]/40 text-[#16A34A]'
               }`}
             >
-              {simulatedOffline || isOffline ? <WifiOff className="w-3.5 h-3.5 text-[#D97706]" /> : <Wifi className="w-3.5 h-3.5 text-[#16A34A]" />}
+              {isOffline ? <WifiOff className="w-3.5 h-3.5 text-[#D97706]" /> : <Wifi className="w-3.5 h-3.5 text-[#16A34A]" />}
               <span className="text-[11px] hidden sm:inline">
-                {simulatedOffline ? 'Offline (Demo)' : isOffline ? 'Offline' : 'Online'}
+                {isOffline ? 'Offline' : 'Online'}
               </span>
-            </button>
+            </div>
 
             {/* Notifications Dropdown Toggle */}
             <div className="relative">

@@ -441,20 +441,17 @@ export const AdminPanelScreen: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Quick Offline Simulation Toggle */}
-          <button
-            type="button"
-            onClick={toggleSimulatedOffline}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+          {/* Real Network Connection Status */}
+          <div
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${
               isOffline
                 ? 'bg-[#FEF3C7] border-[#D97706] text-[#92400E]'
                 : 'bg-[#DCFCE7] border-[#16A34A] text-[#16A34A]'
             }`}
-            title="Toggle offline simulation for testing"
           >
             {isOffline ? <WifiOff className="w-3.5 h-3.5" /> : <Wifi className="w-3.5 h-3.5" />}
-            <span>{isOffline ? 'Offline (PWA Mode)' : 'Online Connected'}</span>
-          </button>
+            <span>{isOffline ? 'Offline (Saved Locally)' : 'Online Connected'}</span>
+          </div>
         </div>
       </header>
 

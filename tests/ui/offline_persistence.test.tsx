@@ -39,7 +39,7 @@ describe('offline persistence', () => {
         </AppShell>
       </AppTestRoot>
     );
-    expect(await screen.findByText(en.offlineSaved)).toBeInTheDocument();
+    expect((await screen.findAllByText(en.offlineSaved)).length).toBeGreaterThan(0);
     expect(first.ctx!.isOffline).toBe(true);
 
     await answerCurrentQuestion(user, r1.container, pack, 'correct');
@@ -56,7 +56,7 @@ describe('offline persistence', () => {
       </AppTestRoot>
     );
 
-    expect(await screen.findByText(en.offlineSaved)).toBeInTheDocument();
+    expect((await screen.findAllByText(en.offlineSaved)).length).toBeGreaterThan(0);
     await waitFor(async () => {
       expect(await localDb.getAttemptsByLearner('learner_offline')).toHaveLength(2);
     });

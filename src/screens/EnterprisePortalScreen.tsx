@@ -43,6 +43,17 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
     }
   };
 
+  // The enterprise sidebar includes a few learner-loop destinations. Keep the
+  // portal screen mounted only for portal views; switching loops must happen
+  // from an event handler, never while React is rendering a screen.
+  const handlePortalNavigation = (screen: EnterpriseScreenId) => {
+    if (screen === 'PRACTICE_ENGINE' || screen === 'MY_PROGRESS' || screen === 'FOUNDATION_MASCOTS') {
+      setAppScreen(screen === 'PRACTICE_ENGINE' ? 'PRACTICE' : screen === 'MY_PROGRESS' ? 'PROGRESS' : 'PARENT_VIEW');
+      return;
+    }
+    setCurrentScreen(screen);
+  };
+
   // Render role-specific main dashboard
   const renderDashboard = () => {
     switch (activeRole) {
@@ -111,9 +122,8 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
       case 'FOUNDATION_MASCOTS':
       case 'PRACTICE_ENGINE':
       case 'MY_PROGRESS':
-        // Return directly to the student learning loop
-        handleReturn();
-        return null;
+        // These destinations are dispatched by handlePortalNavigation.
+        return renderDashboard();
       case 'INSTITUTIONS_QUEUE':
       case 'USERS_DIRECTORY':
       case 'AUDIT_LOGS':
@@ -141,7 +151,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
         </button>
       </div>
 
-      <EnterpriseShell currentScreen={currentScreen} setScreen={setCurrentScreen}>
+      <EnterpriseShell currentScreen={currentScreen} setScreen={handlePortalNavigation}>
         {renderContent()}
       </EnterpriseShell>
     </div>

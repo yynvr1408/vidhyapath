@@ -128,7 +128,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     },
   ];
 
-  // Mobile Sticky Bottom Touch Navigation Tabs (5 primary views)
+  // Keep the mobile bar focused on the learner loop. Guardian and admin
+  // destinations are secondary views and remain available from the drawer.
   const mobileBottomNavItems: { id: ScreenId; label: string; icon: React.ReactNode }[] = [
     {
       id: 'MY_SYLLABUS',
@@ -149,11 +150,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       id: 'PROGRESS',
       label: t.bottomNavProgress,
       icon: <TrendingUp className="w-5 h-5 shrink-0" />,
-    },
-    {
-      id: 'PARENT_VIEW',
-      label: t.bottomNavParent,
-      icon: <ShieldCheck className="w-5 h-5 shrink-0" />,
     },
   ];
 
@@ -298,55 +294,31 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
       {/* Bottom: Settings, Offline Demo Toggle, Language & Switch Profile */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2.5">
-        {/* Language Switcher Dropdown (22 Scheduled Languages - Pure Native Script) */}
-        <div className="flex items-center justify-between bg-[#F8FAFC] p-2.5 rounded-[12px] border border-[#E2E8F0] gap-2">
-          <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#475569] shrink-0">
-            <Globe className="w-4 h-4 text-[#0F766E]" />
-            <span>{t.languageLabel}</span>
-          </div>
-          <select
-            value={currentLanguage}
-            onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
-            className="text-xs sm:text-sm bg-white text-[#0F172A] font-bold px-2.5 py-1.5 rounded-lg border border-[#CBD5E1] focus:border-[#0F766E] focus:outline-hidden cursor-pointer min-h-[38px] shadow-2xs flex-1 max-w-[140px] text-right"
-            title="Select Language / భాష మార్చు"
-          >
-            {SCHEDULED_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code}>
-                {lang.nativeName}
-              </option>
-            ))}
-          </select>
+        {/* Universal 22-Language Native Selector */}
+        <div className="w-full">
+          <LanguageSelector showLabel={true} className="w-full" />
         </div>
 
-        {/* Demo Offline Mode Toggle Switch for Presentation */}
-        <button
-          type="button"
-          onClick={toggleSimulatedOffline}
-          title="Toggle Simulated Offline Mode for Live Testing"
-          className={`w-full flex items-center justify-between p-2.5 rounded-[12px] border text-sm font-bold transition-all min-h-[48px] ${
-            isOffline
-              ? 'bg-[#FEF3C7] border-[#D97706] text-[#92400E]'
-              : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#475569] hover:border-[#0F766E]'
-          }`}
-        >
+        {/* Real Network Status */}
+        <div className="flex items-center justify-between p-2 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-bold text-[#475569]">
           <div className="flex items-center gap-1.5">
             {isOffline ? (
-              <WifiOff className="w-4 h-4 text-[#D97706]" />
+              <WifiOff className="w-3.5 h-3.5 text-[#D97706]" />
             ) : (
-              <Wifi className="w-4 h-4 text-[#16A34A]" />
+              <Wifi className="w-3.5 h-3.5 text-[#16A34A]" />
             )}
-            <span>{t.simulateOffline}</span>
+            <span>{isOffline ? t.offlineSaved : t.online}</span>
           </div>
           <span
-            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
               isOffline
-                ? 'bg-[#D97706] text-white'
+                ? 'bg-[#FEF3C7] text-[#D97706]'
                 : 'bg-[#DCFCE7] text-[#16A34A]'
             }`}
           >
-            {isOffline ? 'OFF' : 'ON'}
+            {isOffline ? 'OFFLINE' : 'ONLINE'}
           </span>
-        </button>
+        </div>
 
         {/* Manual Honest Cloud Sync */}
         {!isOffline && (
@@ -354,7 +326,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             type="button"
             onClick={() => triggerSync()}
             title="Sync offline progress with cloud"
-            className="w-full flex items-center justify-between p-2.5 rounded-[12px] bg-[#F0FDFA] hover:bg-[#CCFBF1] border border-[#0F766E]/30 text-sm font-bold text-[#0F766E] transition-all min-h-[48px]"
+            className="w-full flex items-center justify-between p-2.5 rounded-[12px] bg-[#F0FDFA] hover:bg-[#CCFBF1] border border-[#0F766E]/30 text-sm font-bold text-[#0F766E] transition-all min-h-[44px] cursor-pointer"
           >
             <div className="flex items-center gap-1.5">
               <RefreshCw className="w-4 h-4 text-[#0F766E]" />
@@ -411,7 +383,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
           {isOffline ? (
             <div
-              onClick={toggleSimulatedOffline}
               title="Offline Mode - Saved on Phone"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#FEF3C7] border border-[#D97706]/40 text-[#92400E] text-xs font-bold rounded-full cursor-pointer active:scale-95"
             >
@@ -422,7 +393,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             </div>
           ) : (
             <div
-              onClick={toggleSimulatedOffline}
               title="Online Connected"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#DCFCE7] border border-[#16A34A]/40 text-[#16A34A] text-xs font-bold rounded-full cursor-pointer active:scale-95"
             >
@@ -462,7 +432,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       )}
 
       {/* Main Content Area beside Sidebar */}
-      <main className="flex-1 min-w-0 max-w-4xl mx-auto w-full p-4 md:p-6 pb-28 md:pb-12">
+      <main className="flex-1 min-w-0 max-w-6xl mx-auto w-full p-4 md:p-6 pb-28 md:pb-12">
         {children}
       </main>
 
