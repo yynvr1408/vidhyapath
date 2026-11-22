@@ -161,6 +161,23 @@ export interface TranslationDictionary {
   changelog: string;
   reloadApp: string;
   updateCheckFailed: string;
+
+  // AI Tutor redesign (low-literacy, tap-first UI)
+  welcomeGreeting: string;
+  welcomeSpeakCard: string;
+  welcomePhotoCard: string;
+  starterExplainChapter: string;
+  starterDailyExample: string;
+  speakBtn: string;
+  listenReply: string;
+  listeningNow: string;
+  stopListening: string;
+  replyChipSimpler: string;
+  replyChipExample: string;
+  replyChipStepByStep: string;
+  tutorThinking: string;
+  removePhoto: string;
+  photoAttachedAlt: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
@@ -184,7 +201,7 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     edit: 'మార్చు',
     delete: 'తొలగించు',
     confirm: 'నిర్ధారించు',
-    zeroPiiNotice: 'సురక్షితం · ఎలాంటి వ్యక్తిగత డేటా లేదా ఫోన్ నంబర్లు అవసరం లేదు (Zero-PII)',
+    zeroPiiNotice: 'సురక్షితం · ఎలాంటి వ్యక్తిగత వివరాలు లేదా ఫోన్ నంబర్లు అవసరం లేదు',
     online: 'ఆన్‌లైన్',
     offlineSaved: 'ఆఫ్‌లైన్ - ఫోన్‌లో సేవ్ అయింది',
     simulateOffline: 'ఆఫ్‌లైన్ మోడ్ సిమ్యులేషన్',
@@ -230,7 +247,7 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     chipFormulaRecall: 'సూత్రం గుర్తుచేయండి',
     chipExamTip: 'పరీక్ష ముఖ్యమైన చిట్కా',
     pressMicToSpeak: 'మైక్ నొక్కి మీ సందేహం మాట్లాడండి',
-    typeDoubtPlaceholder: 'మీ సందేహాన్ని ఇక్కడ రాయండి...',
+    typeDoubtPlaceholder: 'లేదా ఇక్కడ టైప్ చేయండి...',
     cameraPhoto: 'ఫోటో',
     sendDoubt: 'పంపు',
     thinking: 'ఆలోచిస్తున్నాను...',
@@ -248,7 +265,7 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     voiceAnswer: 'వాయిస్ జవాబు',
     greatJob: 'చాలా బాగుంది! సరైన జవాబు!',
     tryAgain: 'ఒకసారి నిశితంగా పరిశీలిద్దాం',
-    remedyHeading: 'గుర్తుంచుకోవలసిన విషయం (Remedy):',
+    remedyHeading: 'గుర్తుంచుకోవలసిన విషయం:',
     correctOption: 'సరైన ఆప్షన్:',
     nextQuestion: 'తదుపరి ప్రశ్న',
     sessionComplete: 'అభినందనలు! సాధన పూర్తయింది',
@@ -267,20 +284,20 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     days: ['సోమ', 'మంగళ', 'బుధ', 'గురు', 'శుక్ర', 'శని', 'ఆది'],
 
     parentViewTitle: 'తల్లిదండ్రులు & ఉపాధ్యాయుల వ్యూ',
-    parentViewSubtitle: 'సులభమైన పురోగతి సమీక్ష (Zero-Jargon)',
+    parentViewSubtitle: 'సులభమైన పురోగతి సమీక్ష',
     parentPinPrompt: 'సంరక్షకుని వ్యూ కోసం 4 అంకెల పిన్ నమోదు చేయండి',
     parentPinHint: 'డెమో పిన్: 1234',
     thisWeekSummary: 'ఈ వారం సారాంశం',
     topicStatusList: 'అధ్యాయాల నైపుణ్య స్థితి',
-    statusGood: 'బాగా వచ్చు (Good)',
-    statusPracticing: 'సాధన చేస్తున్నారు (Practicing)',
-    statusNeedsHelp: 'మరింత శ్రద్ధ అవసరం (Needs Help)',
+    statusGood: 'బాగా వచ్చు',
+    statusPracticing: 'సాధన చేస్తున్నారు',
+    statusNeedsHelp: 'మరింత శ్రద్ధ అవసరం',
     parentGuidance: 'తల్లిదండ్రులు / ఉపాధ్యాయులు చేయవలసిన సూచన:',
     practiceTogether: 'ఇంట్లో కలిసి సాధన చేసే సరదా ఆట:',
     listenToReport: 'వాయిస్ నివేదిక వినండి',
     shareSummary: 'వాట్సాప్ / SMS ద్వారా పంపండి',
     reportCopied: 'నివేదిక కాపీ అయింది! వాట్సాప్‌లో పంపవచ్చు.',
-    guardianZeroPii: 'సురక్షిత విద్యార్థి ప్రొఫైల్ (Zero-PII)',
+    guardianZeroPii: 'సురక్షిత విద్యార్థి ప్రొఫైల్',
     sessionCompleteSub: 'మీరు ఈ సెషన్‌లో 5 ప్రశ్నలను సాధన చేశారు',
     languageLabel: 'భాష:',
     adminPortal: 'అడ్మిన్ & ఉపాధ్యాయుల పోర్టల్',
@@ -315,6 +332,22 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     changelog: 'కొత్త మార్పులు',
     reloadApp: 'తాజా వెర్షన్‌ను లోడ్ చేయి',
     updateCheckFailed: 'అప్‌డేట్ తనిఖీ విఫలమైంది. ఇంటర్నెట్ సరిచూసుకోండి.',
+
+    welcomeGreeting: 'హలో! మీ సందేహాన్ని అడగండి — మాట్లాడండి లేదా ఫోటో తీయండి.',
+    welcomeSpeakCard: '🎤 మీ సందేహం మాట్లాడండి',
+    welcomePhotoCard: '📷 ప్రశ్న ఫోటో తీయండి',
+    starterExplainChapter: 'ఈ అధ్యాయాన్ని సులభంగా వివరించండి',
+    starterDailyExample: 'రోజువారీ ఉదాహరణ ఇవ్వండి',
+    speakBtn: 'మాట్లాడండి',
+    listenReply: 'వినండి',
+    listeningNow: 'వింటున్నాను... ఇప్పుడు మాట్లాడండి',
+    stopListening: 'ఆపు',
+    replyChipSimpler: 'ఇంకా సులభంగా చెప్పండి',
+    replyChipExample: 'రోజువారీ ఉదాహరణ ఇవ్వండి',
+    replyChipStepByStep: 'స్టెప్ బై స్టెప్ చెప్పండి',
+    tutorThinking: 'ట్యూటర్ ఆలోచిస్తున్నాడు...',
+    removePhoto: 'ఫోటోను తీసివేయి',
+    photoAttachedAlt: 'ప్రశ్న ఫోటో',
   },
 
   en: {
@@ -383,7 +416,7 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     chipFormulaRecall: 'Recall the formula',
     chipExamTip: 'Key exam tip',
     pressMicToSpeak: 'Tap mic and speak your doubt',
-    typeDoubtPlaceholder: 'Type your mathematics question here...',
+    typeDoubtPlaceholder: 'Or type here...',
     cameraPhoto: 'Photo',
     sendDoubt: 'Send',
     thinking: 'Thinking...',
@@ -468,6 +501,22 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     changelog: "What's New",
     reloadApp: 'Reload to Update',
     updateCheckFailed: 'Update check failed. Check your internet connection.',
+
+    welcomeGreeting: 'Hello! Ask your doubt — speak or take a photo.',
+    welcomeSpeakCard: '🎤 Speak Your Doubt',
+    welcomePhotoCard: '📷 Take Photo of Question',
+    starterExplainChapter: 'Explain this chapter simply',
+    starterDailyExample: 'Give a daily-life example',
+    speakBtn: 'Speak',
+    listenReply: 'Listen',
+    listeningNow: 'Listening... Speak now',
+    stopListening: 'Stop',
+    replyChipSimpler: 'Make it simpler',
+    replyChipExample: 'Give a daily-life example',
+    replyChipStepByStep: 'Explain step-by-step',
+    tutorThinking: 'Tutor is thinking...',
+    removePhoto: 'Remove photo',
+    photoAttachedAlt: 'Question photo',
   },
 
   hi: {
@@ -490,7 +539,7 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     edit: 'संपादित करें',
     delete: 'हटाएं',
     confirm: 'पुष्टि करें',
-    zeroPiiNotice: 'सुरक्षित एवं निजी · कोई व्यक्तिगत डेटा या फोन नंबर एकत्र नहीं किया जाता (Zero-PII)',
+    zeroPiiNotice: 'सुरक्षित एवं निजी · कोई व्यक्तिगत डेटा या फोन नंबर एकत्र नहीं किया जाता',
     online: 'ऑनलाइन',
     offlineSaved: 'ऑफलाइन - फोन पर सहेजा गया',
     simulateOffline: 'ऑफलाइन मोड सिमुलेशन',
@@ -536,7 +585,7 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     chipFormulaRecall: 'सूत्र याद दिलाएं',
     chipExamTip: 'परीक्षा हेतु मुख्य सुझाव',
     pressMicToSpeak: 'माइक दबाकर अपना संदेह बोलें',
-    typeDoubtPlaceholder: 'अपना गणित का प्रश्न यहाँ लिखें...',
+    typeDoubtPlaceholder: 'या यहाँ लिखें...',
     cameraPhoto: 'फोटो',
     sendDoubt: 'भेजें',
     thinking: 'सोच रहा हूँ...',
@@ -586,7 +635,7 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     listenToReport: 'रिपोर्ट सुनें (ऑडियो)',
     shareSummary: 'व्हाट्सएप / एसएमएस द्वारा भेजें',
     reportCopied: 'रिपोर्ट कॉपी हो गई! व्हाट्सएप पर भेज सकते हैं।',
-    guardianZeroPii: 'सुरक्षित छात्र प्रोफ़ाइल (Zero-PII)',
+    guardianZeroPii: 'सुरक्षित छात्र प्रोफ़ाइल',
     sessionCompleteSub: 'आपने इस सत्र में 5 प्रश्नों का अभ्यास किया',
     languageLabel: 'भाषा:',
     adminPortal: 'व्यवस्थापक और शिक्षक पोर्टल',
@@ -621,6 +670,22 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     changelog: 'क्या नया है',
     reloadApp: 'रीलोड करके अपडेट करें',
     updateCheckFailed: 'अपडेट जाँच विफल रही। कृपया इंटरनेट कनेक्शन जांचें।',
+
+    welcomeGreeting: 'नमस्ते! अपना संदेह पूछें — बोलें या फोटो लें।',
+    welcomeSpeakCard: '🎤 अपना संदेह बोलें',
+    welcomePhotoCard: '📷 प्रश्न की फोटो लें',
+    starterExplainChapter: 'इस अध्याय को सरल तरीके से समझाएं',
+    starterDailyExample: 'दैनिक जीवन का उदाहरण दें',
+    speakBtn: 'बोलें',
+    listenReply: 'सुनें',
+    listeningNow: 'सुन रहा हूँ... अब बोलें',
+    stopListening: 'रोकें',
+    replyChipSimpler: 'और सरल समझाएं',
+    replyChipExample: 'दैनिक जीवन का उदाहरण दें',
+    replyChipStepByStep: 'स्टेप-बाय-स्टेप समझाएं',
+    tutorThinking: 'ट्यूटर सोच रहा है...',
+    removePhoto: 'फोटो हटाएं',
+    photoAttachedAlt: 'प्रश्न की फोटो',
   },
 };
 

@@ -44,12 +44,23 @@ export const AiTutorScreen: React.FC = () => {
 
   // Initialize with welcoming greeting from Tutor in regional language
   useEffect(() => {
+    let studentDisplayName = activeLearner?.nickname || (currentLanguage === 'te' ? 'విద్యార్థి' : currentLanguage === 'hi' ? 'विद्यार्थी' : 'Student');
+    if (activeLearner?.nickname && activeLearner.nickname.includes('/')) {
+      const parts = activeLearner.nickname.split('/').map((s) => s.trim());
+      const teluguPart = parts.find((p) => /[\u0C00-\u0C7F]/.test(p));
+      const hindiPart = parts.find((p) => /[\u0900-\u097F]/.test(p));
+      const englishPart = parts.find((p) => !/[\u0C00-\u0C7F\u0900-\u097F]/.test(p));
+      if (currentLanguage === 'te' && teluguPart) studentDisplayName = teluguPart;
+      else if (currentLanguage === 'hi' && hindiPart) studentDisplayName = hindiPart;
+      else if (englishPart) studentDisplayName = englishPart;
+    }
+
     const greetingText =
       currentLanguage === 'en'
-        ? `Hello ${activeLearner?.nickname || 'Student'}! I am your Maths Tutor. Ask any doubt by tapping the Mic button below or choosing a quick question.`
+        ? `Hello ${studentDisplayName}! I am your Maths Tutor. Ask any doubt by tapping the Mic button below or choosing a quick question.`
         : currentLanguage === 'hi'
-        ? `नमस्ते ${activeLearner?.nickname || 'विद्यार्थी'}! मैं आपका गणित ट्यूटर हूँ। नीचे माइक दबाकर बोलें या कोई प्रश्न चुनें।`
-        : `నమస్కారం ${activeLearner?.nickname || 'విద్యార్థి'}! నేను మీ గణిత ట్యూటర్‌ని. మీ సందేహాన్ని క్రింది మైక్ బటన్ నొక్కి మాట్లాడండి లేదా టైప్ చేయండి.`;
+        ? `नमस्ते ${studentDisplayName}! मैं आपका गणित ट्यूटर हूँ। नीचे माइक दबाकर बोलें या कोई प्रश्न चुनें।`
+        : `నమస్కారం ${studentDisplayName}! నేను మీ గణిత ట్యూటర్‌ని. మీ సందేహాన్ని క్రింది మైక్ బటన్ నొక్కి మాట్లాడండి లేదా టైప్ చేయండి.`;
 
     setMessages([
       {

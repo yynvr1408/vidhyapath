@@ -16,8 +16,27 @@ import {
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from '../components/StudentAvatar';
 import { AudioButton } from '../components/AudioButton';
-import { getTranslations } from '../utils/translations';
+import { getTranslations, SupportedLang } from '../utils/translations';
 import { SpeechService } from '../services/speech';
+
+const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
+  if (!nickname) return { primary: 'Student', secondary: '' };
+  if (nickname.includes('/')) {
+    const parts = nickname.split('/').map((s) => s.trim());
+    const teluguPart = parts.find((p) => /[\u0C00-\u0C7F]/.test(p));
+    const englishPart = parts.find((p) => !/[\u0C00-\u0C7F\u0900-\u097F]/.test(p));
+    const hindiPart = parts.find((p) => /[\u0900-\u097F]/.test(p));
+
+    if (lang === 'te' && teluguPart) {
+      return { primary: teluguPart, secondary: '' };
+    }
+    if (lang === 'hi' && hindiPart) {
+      return { primary: hindiPart, secondary: '' };
+    }
+    return { primary: englishPart || parts[0], secondary: '' };
+  }
+  return { primary: nickname, secondary: '' };
+};
 
 export const ParentTeacherViewScreen: React.FC = () => {
   const { activeLearner, pack, skillStates, currentLanguage } = useApp();
@@ -28,7 +47,9 @@ export const ParentTeacherViewScreen: React.FC = () => {
   const [pinError, setPinError] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
-  const studentName = activeLearner?.nickname || 'విద్యార్థి / Student';
+  const studentName = activeLearner
+    ? getCleanDisplayName(activeLearner.nickname, currentLanguage).primary
+    : (currentLanguage === 'te' ? 'విద్యార్థి' : currentLanguage === 'hi' ? 'विद्यार्थी' : 'Student');
 
   // Dynamically categorize topic mastery from pack and learner skill states
   const categorizedTopics = React.useMemo(() => {
@@ -139,13 +160,13 @@ export const ParentTeacherViewScreen: React.FC = () => {
           `⚠️ अभ्यास की आवश्यकता: ${weakList}\n` +
           `💡 सुझाव: घर पर प्रतिदिन 10 मिनट अभ्यास कराएं।\n\n` +
           `सुरक्षित ऑफ़लाइन रिपोर्ट · Zero-PII`
-        : `📚 *Vidyapath (విద్యాపథ్) - విద్యార్థి వారపు నివేదిక*\n\n` +
+        : `📚 *విద్యాపథ్ - విద్యార్థి వారపు నివేదిక*\n\n` +
           `👤 విద్యార్థి: ${studentName}\n` +
           `📅 సెషన్లు: 6 పూర్తయ్యాయి | ఖచ్చితత్వం: 82%\n` +
           `✅ బాగా వచ్చినవి: ${goodList}\n` +
           `⚠️ శ్రద్ధ అవసరమైనవి: ${weakList}\n` +
           `💡 తల్లిదండ్రుల సూచన: ఇంట్లో రోజూ 10 నిమిషాలు సాధన చేయించండి.\n\n` +
-          `సురక్షిత ఆఫ్‌లైన్ నివేదిక · Zero-PII`;
+          `సురక్షిత ఆఫ్‌లైన్ నివేదిక`;
 
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(shareText).catch(() => {});

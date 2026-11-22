@@ -15,12 +15,12 @@ const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
     const hindiPart = parts.find((p) => /[\u0900-\u097F]/.test(p));
 
     if (lang === 'te' && teluguPart) {
-      return { primary: teluguPart, secondary: englishPart || '' };
+      return { primary: teluguPart, secondary: '' };
     }
     if (lang === 'hi' && hindiPart) {
-      return { primary: hindiPart, secondary: englishPart || '' };
+      return { primary: hindiPart, secondary: '' };
     }
-    return { primary: englishPart || parts[0], secondary: teluguPart || hindiPart || '' };
+    return { primary: englishPart || parts[0], secondary: '' };
   }
   return { primary: nickname, secondary: '' };
 };

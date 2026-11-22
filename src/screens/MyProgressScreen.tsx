@@ -12,8 +12,27 @@ import {
 import { useApp } from '../context/AppContext';
 import { localDb } from '../db/indexedDb';
 import { AttemptEvent, SkillState } from '../types';
-import { getTranslations } from '../utils/translations';
+import { getTranslations, SupportedLang } from '../utils/translations';
 import { StudentAvatar } from '../components/StudentAvatar';
+
+const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
+  if (!nickname) return { primary: 'Student', secondary: '' };
+  if (nickname.includes('/')) {
+    const parts = nickname.split('/').map((s) => s.trim());
+    const teluguPart = parts.find((p) => /[\u0C00-\u0C7F]/.test(p));
+    const englishPart = parts.find((p) => !/[\u0C00-\u0C7F\u0900-\u097F]/.test(p));
+    const hindiPart = parts.find((p) => /[\u0900-\u097F]/.test(p));
+
+    if (lang === 'te' && teluguPart) {
+      return { primary: teluguPart, secondary: '' };
+    }
+    if (lang === 'hi' && hindiPart) {
+      return { primary: hindiPart, secondary: '' };
+    }
+    return { primary: englishPart || parts[0], secondary: '' };
+  }
+  return { primary: nickname, secondary: '' };
+};
 
 export const MyProgressScreen: React.FC = () => {
   const {
@@ -105,7 +124,7 @@ export const MyProgressScreen: React.FC = () => {
           <StudentAvatar learner={activeLearner} size="lg" />
           <div>
             <h2 className="text-lg font-extrabold text-[#0F172A]">
-              {activeLearner?.nickname}
+              {activeLearner ? getCleanDisplayName(activeLearner.nickname, currentLanguage).primary : ''}
             </h2>
             <p className="text-sm text-[#0F766E] font-bold mt-0.5">
               {activeLearner?.classGrade ? `${activeLearner.classGrade} ${t.classText}` : `10 ${t.classText}`} · {t.gradeSubject}

@@ -64,9 +64,12 @@ export const S1_ProfilePicker: React.FC = () => {
     <div className="min-h-screen bg-[#F4F9F6] p-4 max-w-md mx-auto flex flex-col justify-between text-[#0F172A]">
       {/* Top Bar with Language Selector */}
       <div className="flex items-center justify-between pb-2 pt-1">
-        <span className="text-xs font-bold text-[#15803D] uppercase tracking-wider">
-          {isEn ? 'Class 10 Maths' : isHi ? 'कक्षा 10 गणित' : '10వ తరగతి గణితం'}
-        </span>
+        <div className="flex items-center gap-2">
+          <VidyapathLogo size="sm" showWordmark={false} />
+          <span className="font-extrabold text-lg text-[#15803D] tracking-tight">
+            {isEn ? 'Vidyapath' : isHi ? 'विद्यापथ' : 'విద్యాపథ్'}
+          </span>
+        </div>
         <div className="relative flex items-center">
           <BookOpen className="w-3.5 h-3.5 text-[#15803D] absolute left-2.5 pointer-events-none" />
           <select
@@ -84,7 +87,9 @@ export const S1_ProfilePicker: React.FC = () => {
 
       {/* Creative Vidyapath Vector Logo & Header Info */}
       <div className="text-center pt-3 pb-3 flex flex-col items-center">
-        <VidyapathLogo size="lg" showWordmark={true} className="mb-2" />
+        <div className="flex justify-center mb-3">
+          <VidyapathLogo size="lg" showWordmark={false} />
+        </div>
         <p className="text-xs text-[#475569] mt-1 font-medium">
           {pack?.uiStrings.whoIsLearning ||
             (isEn ? 'Who is learning today?' : isHi ? 'आज कौन पढ़ाई कर रहा है?' : 'ఎవరు చదువుకుంటున్నారు?')}

@@ -22,12 +22,12 @@ const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
     const hindiPart = parts.find((p) => /[\u0900-\u097F]/.test(p));
 
     if (lang === 'te' && teluguPart) {
-      return { primary: teluguPart, secondary: englishPart || '' };
+      return { primary: teluguPart, secondary: '' };
     }
     if (lang === 'hi' && hindiPart) {
-      return { primary: hindiPart, secondary: englishPart || '' };
+      return { primary: hindiPart, secondary: '' };
     }
-    return { primary: englishPart || parts[0], secondary: teluguPart || hindiPart || '' };
+    return { primary: englishPart || parts[0], secondary: '' };
   }
   return { primary: nickname, secondary: '' };
 };
@@ -75,56 +75,39 @@ export const ProfileSelectorScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between p-4 sm:p-6 max-w-lg mx-auto text-[#0F172A] safe-top-inset">
-      {/* Global Floating App Update Notification Banner */}
-      <AppUpdateBanner />
-
-      {/* 1. Sleek Top Bar with Status, Update Pill & Language Switcher */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] gap-2">
-        {/* Offline Status / Demo Toggle */}
-        <button
-          type="button"
-          onClick={toggleSimulatedOffline}
-          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all ${
-            isOffline
-              ? 'bg-[#FEF3C7] border-[#D97706]/40 text-[#92400E]'
-              : 'bg-[#DCFCE7] border-[#16A34A]/30 text-[#16A34A]'
-          }`}
-          title="Click to toggle offline mode simulation"
-        >
-          <span
-            className={`w-2 h-2 rounded-full ${
-              isOffline ? 'bg-[#D97706]' : 'bg-[#16A34A]'
-            }`}
-          />
-          <span>{isOffline ? t.offlineSaved : t.online}</span>
-        </button>
-
+      {/* 1. Sleek Top Bar with Vidyapath Brand & Language Switcher */}
+      <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+        {/* Top Left: Vidyapath Brand Name (Localized to Telugu/Hindi/English) */}
         <div className="flex items-center gap-2">
-          {/* In-App Release & Update Checker Pill */}
-          <AppUpdateHeaderPill />
+          <VidyapathLogo size="sm" showWordmark={false} />
+          <span className="font-extrabold text-xl text-[#0F766E] tracking-tight">
+            {t.appTitle}
+          </span>
+        </div>
 
-          {/* Language Selector Dropdown (Telugu, Hindi, English) */}
-          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 rounded-[12px] border border-[#E2E8F0] shadow-2xs">
-            <Globe className="w-3.5 h-3.5 text-[#0F766E]" />
-            <select
-              value={currentLanguage}
-              onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
-              className="text-xs font-bold text-[#0F172A] bg-transparent focus:outline-hidden cursor-pointer max-w-[130px] truncate"
-              title="Select Language (Telugu, Hindi, English)"
-            >
-              {SCHEDULED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.nativeName} ({lang.name})
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Top Right: Language Selector Dropdown (Telugu, Hindi, English) */}
+        <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1.5 rounded-[12px] border border-[#E2E8F0] shadow-2xs min-h-[44px]">
+          <Globe className="w-4 h-4 text-[#0F766E]" />
+          <select
+            value={currentLanguage}
+            onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
+            className="text-xs font-bold text-[#0F172A] bg-transparent focus:outline-hidden cursor-pointer max-w-[130px] truncate"
+            title="Select Language (Telugu, Hindi, English)"
+          >
+            {SCHEDULED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.nativeName} ({lang.name})
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* 2. Focused, Clean Hero Header (No walls of text) */}
+      {/* 2. Focused, Clean Hero Header (Centered Logo, No Hardcoded English Tagline) */}
       <div className="text-center pt-5 pb-3 flex flex-col items-center">
-        <VidyapathLogo size="md" showWordmark={true} className="mb-2" />
+        <div className="flex justify-center mb-3">
+          <VidyapathLogo size="lg" showWordmark={false} />
+        </div>
         <h1 className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight mt-1">
           {t.landingTitle}
         </h1>
@@ -133,8 +116,8 @@ export const ProfileSelectorScreen: React.FC = () => {
         </p>
 
         {/* Compact Demo PIN Badge */}
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#FEF3C7] text-[#D97706] text-xs font-bold rounded-full mt-2.5 border border-[#FDE68A]">
-          <Sparkles className="w-3 h-3 text-[#D97706]" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FEF3C7] text-[#D97706] text-xs font-bold rounded-full mt-2.5 border border-[#FDE68A]">
+          <Sparkles className="w-3.5 h-3.5 text-[#D97706]" />
           <span>{t.demoPinHint}</span>
         </div>
       </div>
@@ -208,7 +191,7 @@ export const ProfileSelectorScreen: React.FC = () => {
               </div>
               <div className="h-[16px]" />
               <div className="mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]">
-                + ప్రొఫైల్
+                {currentLanguage === 'te' ? '+ ప్రొఫైల్' : currentLanguage === 'hi' ? '+ प्रोफ़ाइल' : '+ Profile'}
               </div>
             </div>
 

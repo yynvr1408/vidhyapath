@@ -25,6 +25,25 @@ import { AppUpdateModal } from './AppUpdateModal';
 import { getTranslations, SupportedLang } from '../utils/translations';
 import { SCHEDULED_LANGUAGES } from '../config/languages';
 
+const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
+  if (!nickname) return { primary: 'Student', secondary: '' };
+  if (nickname.includes('/')) {
+    const parts = nickname.split('/').map((s) => s.trim());
+    const teluguPart = parts.find((p) => /[\u0C00-\u0C7F]/.test(p));
+    const englishPart = parts.find((p) => !/[\u0C00-\u0C7F\u0900-\u097F]/.test(p));
+    const hindiPart = parts.find((p) => /[\u0900-\u097F]/.test(p));
+
+    if (lang === 'te' && teluguPart) {
+      return { primary: teluguPart, secondary: '' };
+    }
+    if (lang === 'hi' && hindiPart) {
+      return { primary: hindiPart, secondary: '' };
+    }
+    return { primary: englishPart || parts[0], secondary: '' };
+  }
+  return { primary: nickname, secondary: '' };
+};
+
 interface AppShellProps {
   children: React.ReactNode;
 }
@@ -158,7 +177,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             <StudentAvatar learner={activeLearner} size="md" />
             <div className="min-w-0 flex-1">
               <div className="font-bold text-base text-[#0F172A] truncate">
-                {activeLearner.nickname}
+                {getCleanDisplayName(activeLearner.nickname, currentLanguage).primary}
               </div>
               <div className="text-sm text-[#0F766E] font-semibold mt-0.5">
                 {activeLearner.classGrade
