@@ -200,8 +200,8 @@ export const PracticeScreen: React.FC = () => {
 
         {/* 4 Multiple Choice Options */}
         <div className="grid grid-cols-1 gap-3">
-          {currentQ.options.map((opt) => {
-            const optKey = opt.slice(0, 1).toUpperCase(); // 'A', 'B', 'C', 'D'
+          {currentQ.options.map((opt, idx) => {
+            const optKey = String.fromCharCode(65 + idx); // 'A', 'B', 'C', 'D' by position
             const isSelected = selectedOption === optKey;
             const isCorrect = isAnswerSubmitted && optKey === currentQ.answer;
             const isWrong = isAnswerSubmitted && isSelected && optKey !== currentQ.answer;

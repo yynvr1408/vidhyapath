@@ -10,7 +10,7 @@
 # Eliminates browser CORS preflights and routes /api directly to the Render Web Service
 [[redirects]]
   from = "/api/*"
-  to = "https://vidyapath.onrender.com/api/:splat"
+  to = "https://vidhyapath-w5za.onrender.com/api/:splat"
   status = 200
   force = true
   headers = { X-Forwarded-Host = "vidyapath-web" }
@@ -18,7 +18,7 @@
 # 2. Edge Proxy for Static File Uploads (Syllabus PDFs, Handouts, Voice clips)
 [[redirects]]
   from = "/uploads/*"
-  to = "https://vidyapath.onrender.com/uploads/:splat"
+  to = "https://vidhyapath-w5za.onrender.com/uploads/:splat"
   status = 200
   force = true
 

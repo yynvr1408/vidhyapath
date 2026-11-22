@@ -24,6 +24,84 @@ interface Message {
   timestamp: number;
 }
 
+function generateFallbackReply(
+  query: string,
+  topic: any,
+  lang: string
+): { answer: string; concepts?: Array<{ id: string; title: string }> } {
+  const clean = query.trim().toLowerCase();
+
+  // 1. Greetings
+  if (/^(hi|hello|hlo|hey|namaste|నమస్కారం|హలో|नमस्ते)\b/i.test(clean)) {
+    if (lang === 'te') {
+      return {
+        answer: `నమస్కారం! నేను మీ విద్యాపథ్ AI ట్యూటర్‌ని. మీ 10వ తరగతి గణిత పాఠం **${topic?.title || 'వాస్తవ సంఖ్యలు'}** లోని ఏ సందేహమైనా నన్ను అడగండి — ఉదాహరణకు 'యూక్లిడ్ భాగహార న్యాయం' లేదా 'ప్రధాన కారణాంకాలు'. నేను దశలవారీగా వివరిస్తాను!`,
+        concepts: topic?.cards?.map((c: any) => ({ id: c.id, title: c.heading })),
+      };
+    } else if (lang === 'hi') {
+      return {
+        answer: `नमस्ते! मैं आपका विद्यापथ AI ट्यूटर हूँ। कक्षा 10 गणित के अध्याय **${topic?.title || 'वास्तविक संख्याएँ'}** के बारे में कोई भी प्रश्न पूछें। मैं आपको चरण-दर-चरण समझाऊँगा!`,
+        concepts: topic?.cards?.map((c: any) => ({ id: c.id, title: c.heading })),
+      };
+    } else {
+      return {
+        answer: `Hello! I am your Vidyapath AI Tutor. Ask me any question or concept from Class 10 Mathematics **${topic?.title || 'Real Numbers'}** (e.g. Euclid's Division Lemma, Fundamental Theorem of Arithmetic). I will guide you step by step!`,
+        concepts: topic?.cards?.map((c: any) => ({ id: c.id, title: c.heading })),
+      };
+    }
+  }
+
+  // 2. Search concept cards in current topic or across pack
+  const cards = topic?.cards || [];
+  const matchedCard = cards.find((c: any) => {
+    const heading = (c.heading || '').toLowerCase();
+    const concept = (c.conceptText || '').toLowerCase();
+    const words = clean.split(/\s+/).filter((w: string) => w.length > 2);
+    return words.some((w: string) => heading.includes(w) || concept.includes(w));
+  }) || cards[0];
+
+  if (matchedCard) {
+    const isTe = lang === 'te';
+    const isHi = lang === 'hi';
+    const steps = matchedCard.workedExample?.steps
+      ? matchedCard.workedExample.steps.map((s: string, idx: number) => `${idx + 1}. ${s}`).join('\n')
+      : '';
+
+    const answer = isTe
+      ? `### **${matchedCard.heading}**\n\n${matchedCard.conceptText}\n\n${
+          matchedCard.workedExample
+            ? `### **సాధించిన ఉదాహరణ:**\n*సమస్య:* ${matchedCard.workedExample.problem}\n\n${steps}\n\n**తుది జవాబు:** ${matchedCard.workedExample.finalAnswer}\n\n`
+            : ''
+        }### **ముఖ్య గమనిక:**\n${matchedCard.keyTakeaway}\n\n*ఈ వివరణ అర్థమైందా? మరింత సాధన చేద్దామా?*`
+      : isHi
+      ? `### **${matchedCard.heading}**\n\n${matchedCard.conceptText}\n\n${
+          matchedCard.workedExample
+            ? `### **हल किया गया उदाहरण:**\n*प्रश्न:* ${matchedCard.workedExample.problem}\n\n${steps}\n\n**अंतिम उत्तर:** ${matchedCard.workedExample.finalAnswer}\n\n`
+            : ''
+        }### **महत्वपूर्ण बिंदु:**\n${matchedCard.keyTakeaway}\n\n*क्या यह समझ आया? क्या आप एक और उदाहरण देखना चाहते हैं?*`
+      : `### **${matchedCard.heading}**\n\n${matchedCard.conceptText}\n\n${
+          matchedCard.workedExample
+            ? `### **Worked Example:**\n*Problem:* ${matchedCard.workedExample.problem}\n\n${steps}\n\n**Final Answer:** ${matchedCard.workedExample.finalAnswer}\n\n`
+            : ''
+        }### **Key Takeaway:**\n${matchedCard.keyTakeaway}\n\n*Does this explanation make sense, or would you like to see another example?*`;
+
+    return {
+      answer,
+      concepts: cards.map((c: any) => ({ id: c.id, title: c.heading })),
+    };
+  }
+
+  // 3. General Educational Socratic Guidance
+  return {
+    answer: lang === 'te'
+      ? `### **భావన వివరణ: ${query}**\n\n1. **ముఖ్య సూత్రం:** ఇచ్చిన లెక్కలోని విలువలను గుర్తించి, ప్రాథమిక సూత్రాన్ని వర్తింపజేయండి.\n2. **దశలవారీ పరిష్కారం:** ప్రతి దశను స్పష్టంగా క్రమపద్ధతిలో లెక్కించండి.\n3. **సరిచూడండి:** వచ్చిన జవాబు సరిగ్గా ఉందో లేదో నిబంధనలతో పోల్చండి.\n\nమీరు ఈ సమస్యలో ఏ దశ వద్ద సందేహం కలిగి ఉన్నారో చెప్పండి, నేను సహాయం చేస్తాను!`
+      : lang === 'hi'
+      ? `### **अवधारणा: ${query}**\n\n1. **मूल सूत्र:** दिए गए मानों को पहचानें और संबंधित सूत्र का उपयोग करें।\n2. **चरणबद्ध हल:** प्रत्येक चरण को ध्यानपूर्वक हल करें।\n3. **जांच:** अपने उत्तर का सत्यापन करें।\n\nबताएं कि आपको किस चरण में सहायता चाहिए!`
+      : `### **Concept Explanation: ${query}**\n\n1. **Core Principle:** Identify the given values and formula for this Class 10 topic.\n2. **Step-by-Step:** Apply the mathematical steps systematically.\n3. **Verification:** Check remainder conditions and signs.\n\nWhich specific step would you like me to walk through?`,
+    concepts: topic?.cards?.map((c: any) => ({ id: c.id, title: c.heading })),
+  };
+}
+
 export const AiTutorScreen: React.FC = () => {
   const {
     pack,
@@ -45,12 +123,13 @@ export const AiTutorScreen: React.FC = () => {
     return selectedTopicId || pack?.topics?.[0]?.id || 'ch1_real_numbers';
   });
 
+  const activeTopic = pack?.topics?.find((t) => t.id === activeChapterId) || pack?.topics?.[0];
+
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize with greeting & concepts for the selected chapter
   useEffect(() => {
-    const activeTopic = pack?.topics?.find((t) => t.id === activeChapterId) || pack?.topics?.[0];
     const chapterTitle = activeTopic?.title || 'Chapter 1';
     
     // Extract concepts
@@ -113,25 +192,36 @@ export const AiTutorScreen: React.FC = () => {
       });
 
       const data = await res.json();
-      const replyText = data.answer || data.reply || 'Could not fetch explanation.';
+      let replyText = data.answer || data.reply;
+      let concepts = data.concepts;
+
+      if (!replyText || !res.ok) {
+        const fallback = generateFallbackReply(conceptTitleOrId, activeTopic, currentLanguage);
+        replyText = fallback.answer;
+        concepts = fallback.concepts;
+      }
 
       const tutorMsg: Message = {
         id: `msg_${Date.now() + 1}`,
         sender: 'tutor',
         text: replyText,
-        concepts: data.concepts,
+        concepts: concepts,
         chapterId: data.chapterId || chId,
         conceptId: data.conceptId || conceptTitleOrId,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, tutorMsg]);
-    } catch (err: any) {
+    } catch {
+      const fallback = generateFallbackReply(conceptTitleOrId, activeTopic, currentLanguage);
       setMessages((prev) => [
         ...prev,
         {
           id: `msg_${Date.now() + 1}`,
           sender: 'tutor',
-          text: 'క్షమించండి, సర్వర్‌లో సమస్య ఏర్పడింది. దయచేసి మళ్ళీ ప్రయత్నించండి.',
+          text: fallback.answer,
+          concepts: fallback.concepts,
+          chapterId: chId,
+          conceptId: conceptTitleOrId,
           timestamp: Date.now(),
         },
       ]);
@@ -169,24 +259,34 @@ export const AiTutorScreen: React.FC = () => {
       });
 
       const data = await res.json();
-      const replyText = data.answer || data.reply || 'Could not fetch response.';
+      let replyText = data.answer || data.reply;
+      let concepts = data.concepts;
+
+      if (!replyText || !res.ok) {
+        const fallback = generateFallbackReply(query, activeTopic, currentLanguage);
+        replyText = fallback.answer;
+        concepts = fallback.concepts;
+      }
 
       const tutorMsg: Message = {
         id: `msg_${Date.now() + 1}`,
         sender: 'tutor',
         text: replyText,
-        concepts: data.concepts,
-        chapterId: data.chapterId,
+        concepts: concepts,
+        chapterId: data.chapterId || activeChapterId,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, tutorMsg]);
     } catch {
+      const fallback = generateFallbackReply(query, activeTopic, currentLanguage);
       setMessages((prev) => [
         ...prev,
         {
           id: `msg_${Date.now() + 1}`,
           sender: 'tutor',
-          text: 'నెట్‌వర్క్ సమస్య. మీ సందేహం నమోదు చేయబడింది.',
+          text: fallback.answer,
+          concepts: fallback.concepts,
+          chapterId: activeChapterId,
           timestamp: Date.now(),
         },
       ]);
