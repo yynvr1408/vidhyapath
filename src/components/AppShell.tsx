@@ -359,7 +359,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       </aside>
 
       {/* Mobile Top Header (< 768px) */}
-      <header className="md:hidden sticky top-0 z-40 bg-[#FFFFFF] border-b border-[#E2E8F0] px-4 py-2.5 flex items-center justify-between shadow-xs">
+      <header className="app-top-header md:hidden sticky top-0 z-40 bg-[#FFFFFF] border-b border-[#E2E8F0] px-4 py-2.5 flex items-center justify-between shadow-xs">
         {/* Left: Large Hamburger Menu Button */}
         <button
           type="button"

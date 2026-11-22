@@ -36,6 +36,7 @@ import { AppUpdateBanner } from '../AppUpdateBanner';
 import { AppUpdateModal } from '../AppUpdateModal';
 import { SCHEDULED_LANGUAGES } from '../../config/languages';
 import { SupportedLang, getTranslations } from '../../utils/translations';
+import { navigationManager } from '../../services/navigationManager';
 
 export type EnterpriseScreenId =
   | 'DASHBOARD'
@@ -92,6 +93,23 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
     };
     fetchNotifs();
   }, [user?.id]);
+
+  
+  // Hardware back button integration to close mobile drawer or notifications popover
+  useEffect(() => {
+    if (!mobileDrawerOpen && !notificationsOpen) return;
+    return navigationManager.registerBackHandler(() => {
+      if (notificationsOpen) {
+        setNotificationsOpen(false);
+        return true;
+      }
+      if (mobileDrawerOpen) {
+        setMobileDrawerOpen(false);
+        return true;
+      }
+      return false;
+    }, 100);
+  }, [mobileDrawerOpen, notificationsOpen]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -303,7 +321,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
       {/* Main Column: Header + Fluid Responsive Content */}
       <div className="flex-1 min-w-0 flex flex-col min-h-screen w-full">
         {/* Sticky Top Header Bar with Safe-Area Padding for Mobile Status Bar */}
-        <header className="sticky top-0 z-40 bg-[#FFFFFF] border-b border-[#E2E8F0] px-3 sm:px-6 py-2.5 pt-[max(env(safe-area-inset-top),0.625rem)] flex items-center justify-between shadow-2xs gap-2">
+        <header className="app-top-header sticky top-0 z-40 bg-[#FFFFFF] border-b border-[#E2E8F0] px-3 sm:px-6 py-2.5 pt-[max(env(safe-area-inset-top),0.625rem)] flex items-center justify-between shadow-2xs gap-2">
           <div className="flex items-center gap-2.5">
             <button
               type="button"

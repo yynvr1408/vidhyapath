@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useEnterpriseAuth } from '../../context/EnterpriseAuthContext';
 import { useAcademic } from '../../context/AcademicContext';
+import { useApp } from '../../context/AppContext';
 
 interface OfflineLearningCenterProps {
   onBack?: () => void;
@@ -39,28 +40,16 @@ export const OfflineLearningCenter: React.FC<OfflineLearningCenterProps> = ({ on
     };
   }, []);
 
+  const { activeLearner, triggerSync } = useApp();
+
   const handleSyncNow = async () => {
     setSyncing(true);
     setSyncStatus(null);
     try {
-      const res = await fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          learnerId: user?.id || 'learner_cheetah',
-          events: [],
-          doubts: [],
-          clientPackVersion: '1.0.0',
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSyncStatus('Local data successfully synchronized with Vidyapath Cloud Database!');
-      } else {
-        setSyncStatus('Synchronization completed with zero conflicts.');
-      }
+      await triggerSync();
+      setSyncStatus('Local data is fully synchronized with Vidyapath Cloud. Zero conflicts.');
     } catch (err: any) {
-      setSyncStatus('Offline: Changes queued locally in IndexedDB. Will sync automatically upon reconnection.');
+      setSyncStatus('Offline: Network unavailable. Attempts remain safely persisted locally in IndexedDB.');
     } finally {
       setSyncing(false);
     }

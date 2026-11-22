@@ -22,6 +22,9 @@ export const SuperAdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [rejectModalInst, setRejectModalInst] = useState<{ id: string; name: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState('Verification documents required or accreditation mismatch.');
+  const [rejecting, setRejecting] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -72,26 +75,34 @@ export const SuperAdminDashboard: React.FC = () => {
     }
   };
 
-  const handleReject = async (id: string, name: string) => {
-    const reason = prompt('Please enter the reason for rejection (will be emailed to the institution applicant):', 'Verification documents required');
-    if (!reason) return;
+  const handleOpenReject = (id: string, name: string) => {
+    setRejectModalInst({ id, name });
+  };
 
+  const handleConfirmReject = async () => {
+    if (!rejectModalInst) return;
+    setRejecting(true);
     try {
-      const res = await fetch(`/api/super-admin/institutions/${id}/reject`, {
+      const res = await fetch(`/api/super-admin/institutions/${rejectModalInst.id}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ reason: rejectReason }),
       });
       const data = await res.json();
       if (data.success) {
-        setActionMessage(`Rejected ${name}. Feedback notification dispatched.`);
+        setActionMessage(`Rejected ${rejectModalInst.name}. Feedback notification dispatched.`);
+        setRejectModalInst(null);
         await fetchData();
+      } else {
+        setActionMessage(data.error || 'Failed to reject institution');
       }
     } catch (err: any) {
       setActionMessage('Failed to reject institution: ' + err.message);
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -225,7 +236,7 @@ export const SuperAdminDashboard: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleReject(inst.id, inst.name)}
+                    onClick={() => handleOpenReject(inst.id, inst.name)}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-[8px] bg-white hover:bg-[#FEE2E2] border border-[#CBD5E1] text-[#DC2626] text-xs font-bold active:scale-95 transition-all"
                   >
                     <XCircle className="w-3.5 h-3.5" />
@@ -337,6 +348,53 @@ export const SuperAdminDashboard: React.FC = () => {
           </table>
         </div>
       </div>
+    
+      {/* Rejection Modal */}
+      {rejectModalInst && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl border border-[#CBD5E1] shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+              <h3 className="font-extrabold text-base text-[#0F172A]">Reject Institution Application</h3>
+              <button
+                type="button"
+                onClick={() => setRejectModalInst(null)}
+                className="text-xs text-[#64748B]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-[#475569]">
+              Enter the reason for rejecting <strong>{rejectModalInst.name}</strong>. This feedback will be emailed to the applicant:
+            </p>
+
+            <textarea
+              rows={3}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="w-full text-xs p-3 rounded-xl border border-[#CBD5E1] focus:border-[#DC2626] focus:outline-hidden font-medium"
+            />
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E8F0]">
+              <button
+                type="button"
+                onClick={() => setRejectModalInst(null)}
+                className="px-4 py-2 rounded-xl bg-[#F1F5F9] text-xs font-bold text-[#475569]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReject}
+                disabled={rejecting || !rejectReason.trim()}
+                className="px-4 py-2 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold shadow-2xs active:scale-95 transition-all"
+              >
+                {rejecting ? 'Rejecting...' : 'Confirm Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -23,6 +23,7 @@ import {
   Quiz,
   QuizAttempt,
   QuizQuestion,
+  Announcement,
 } from '../../src/types/enterprise.js';
 
 const router = Router();
@@ -805,6 +806,15 @@ router.get('/super-admin/audit-logs', requireAuth, requireRole(['super_admin']),
   return res.json(dataStore.auditLogs.slice(0, 100));
 });
 
+// GET /api/super-admin/users
+router.get('/super-admin/users', requireAuth, requireRole(['super_admin', 'institution_admin', 'academic_admin']), (req: Request, res: Response) => {
+  const users = Array.from(dataStore.users.values()).map((u) => {
+    const { passwordHash, ...safeUser } = u as any;
+    return safeUser;
+  });
+  return res.json(users);
+});
+
 // ============================================================================
 // 3. INSTITUTION & ACADEMIC HIERARCHY (LEVEL 2 & LEVEL 3)
 // ============================================================================
@@ -1072,6 +1082,20 @@ router.post('/lms/assignments', (req: Request, res: Response) => {
     message: 'Assignment created successfully by instructor.',
     assignment: newAssignment,
   });
+});
+
+// GET /api/lms/assignments
+router.get('/lms/assignments', (req: Request, res: Response) => {
+  const { subjectId } = req.query;
+  let list = Array.from(dataStore.assignments.values());
+  if (subjectId) {
+    list = list.filter((a) => a.subjectId === subjectId);
+  }
+  const result = list.map((a) => {
+    const subs = Array.from(dataStore.submissions.values()).filter((s) => s.assignmentId === a.id);
+    return { ...a, submissionsCount: subs.length };
+  });
+  return res.json(result);
 });
 
 // GET /api/lms/assignments/:id/submissions
@@ -1525,6 +1549,33 @@ router.post('/notifications/:id/read', requireAuth, (req: AuthenticatedRequest, 
 router.get('/announcements', (req: Request, res: Response) => {
   const annList = Array.from(dataStore.announcements.values()).sort((a, b) => b.createdAt - a.createdAt);
   return res.json(annList);
+});
+
+// POST /api/announcements
+router.post('/announcements', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (user && !['super_admin', 'institution_admin', 'academic_admin', 'teacher'].includes(user.role)) {
+    return res.status(403).json({ error: 'Only staff can post announcements.' });
+  }
+  const { title, content, priority, targetAudience } = req.body;
+  if (!title || !content) {
+    return res.status(400).json({ error: 'Title and content are required.' });
+  }
+  const annId = 'ann_' + Date.now().toString(36);
+  const ann: Announcement = {
+    id: annId,
+    institutionId: user?.institutionId || 'inst_global',
+    authorId: user?.userId || 'system',
+    authorName: (user as any)?.fullName || 'Administrator',
+    authorRole: user?.role || 'super_admin',
+    title: String(title),
+    body: String(content),
+    priority: priority === 'urgent' ? 'urgent' : 'normal',
+    targetRole: (targetAudience === 'teachers' || targetAudience === 'students') ? targetAudience : 'all',
+    createdAt: Date.now(),
+  };
+  dataStore.announcements.set(annId, ann);
+  return res.json({ success: true, announcement: ann });
 });
 
 // Helper for optional or required caller authentication and ownership verification

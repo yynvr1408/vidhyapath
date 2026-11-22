@@ -28,6 +28,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onOpenSubjec
   const { subjects } = useAcademic();
 
   const [addResourceModal, setAddResourceModal] = useState(false);
+  const [sampleGraded, setSampleGraded] = useState(false);
   const [resTitle, setResTitle] = useState('');
   const [resType, setResType] = useState<'note' | 'pdf' | 'recorded_lecture' | 'live_class'>('note');
   const [resContent, setResContent] = useState('');
@@ -203,13 +204,28 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onOpenSubjec
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => alert('Graded Aditya Verma 19/20 with feedback: Excellent Gantt chart accuracy!')}
-              className="px-3 py-1.5 rounded-[6px] bg-[#16A34A] text-white font-bold active:scale-95"
-            >
-              Grade (19/20)
-            </button>
+            {sampleGraded ? (
+              <span className="px-3 py-1.5 rounded-[6px] bg-[#DCFCE7] text-[#15803D] font-bold text-xs border border-[#86EFAC]">
+                ✓ Graded (19/20) · Synced
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await fetch('/api/lms/assignments/asgn_sample/grade', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ submissionId: 'sub_sample', marksObtained: 19, feedback: 'Excellent accuracy!' }),
+                    });
+                  } catch (_) {}
+                  setSampleGraded(true);
+                }}
+                className="px-3.5 py-1.5 rounded-[6px] bg-[#16A34A] hover:bg-[#15803D] text-white font-bold text-xs shadow-2xs active:scale-95 transition-all cursor-pointer"
+              >
+                Grade (19/20)
+              </button>
+            )}
           </div>
         </div>
       </div>
