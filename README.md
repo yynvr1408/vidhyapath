@@ -3,7 +3,7 @@
 [![CI Build](https://github.com/yynvr1408/vidhyapath/actions/workflows/web-build.yml/badge.svg)](https://github.com/yynvr1408/vidhyapath/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-teal.svg)](LICENSE)
 [![Frontend](https://img.shields.io/badge/Frontend-Netlify-00C7B7?logo=netlify&logoColor=white)](https://vidyapath1.netlify.app/)
-[![Backend](https://img.shields.io/badge/Backend-Render-46E3B7?logo=render&logoColor=white)](https://vidhyapath-ote8.onrender.com)
+[![Backend](https://img.shields.io/badge/Backend-Render-46E3B7?logo=render&logoColor=white)](https://vidhyapath-w5za.onrender.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 
@@ -16,7 +16,7 @@
 | Environment / Service | Live URL | Credentials & Notes |
 |:---|:---|:---|
 | **Live Student PWA (Netlify)** | [https://vidyapath1.netlify.app/](https://vidyapath1.netlify.app/) | Zero-friction student profiles (PIN: `1234` or create new) |
-| **Live Backend API (Render)** | [https://vidhyapath-ote8.onrender.com](https://vidhyapath-ote8.onrender.com) | Health probe: [`/healthz`](https://vidhyapath-ote8.onrender.com/healthz) • API: `/api/syllabus` |
+| **Live Backend API (Render)** | [https://vidhyapath-w5za.onrender.com](https://vidhyapath-w5za.onrender.com) | Health probe: [`/healthz`](https://vidhyapath-w5za.onrender.com/healthz) • API: `/api/syllabus` |
 | **Admin Syllabus-to-RAG Panel** | [https://vidyapath1.netlify.app/admin](https://vidyapath1.netlify.app/admin) | **Username:** `Admin` • **Password:** `admin123` |
 
 ### ⚡ 60-Second Hackathon Judge Quick-Start
