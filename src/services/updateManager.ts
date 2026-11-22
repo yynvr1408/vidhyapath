@@ -1,12 +1,11 @@
-// Global App Update Manager for Web PWA and Native Android APK
+// Global update manager for the browser PWA.
 import { APP_VERSION } from '../config/version';
 
 export interface UpdateInfo {
   hasUpdate: boolean;
   latestVersion?: string;
-  downloadUrl?: string;
+  releaseUrl?: string;
   releaseNotes?: string;
-  apkSizeMb?: string;
   publishedAt?: string;
 }
 
@@ -113,8 +112,6 @@ class UpdateManager {
         if (ghRes.ok) {
           const release = await ghRes.json();
           const latest = (release.tag_name || '').replace(/^v/, '');
-          const apk = release.assets?.find((a: any) => typeof a.name === 'string' && a.name.endsWith('.apk'));
-
           const parseVer = (v: string) => v.replace(/^[^0-9]*/, '').split('.').map((n) => parseInt(n, 10) || 0);
           const [lMaj = 0, lMin = 0, lPatch = 0] = parseVer(latest);
           const [cMaj = 0, cMin = 0, cPatch = 0] = parseVer(this.currentVersion);
@@ -126,9 +123,8 @@ class UpdateManager {
           const info: UpdateInfo = {
             hasUpdate: isNewer,
             latestVersion: latest,
-            downloadUrl: apk ? apk.browser_download_url : release.html_url,
+            releaseUrl: release.html_url,
             releaseNotes: release.body || '',
-            apkSizeMb: apk?.size ? (apk.size / (1024 * 1024)).toFixed(1) + ' MB' : undefined,
             publishedAt: release.published_at,
           };
           this.updateInfo = info;

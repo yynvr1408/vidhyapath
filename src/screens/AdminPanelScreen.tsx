@@ -844,8 +844,8 @@ export const AdminPanelScreen: React.FC = () => {
               <div className="mt-4 pt-4 border-t border-[#E2E8F0] space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-xs text-[#0F172A]">OTA App Releases & Version Channel</div>
-                    <div className="text-[11px] text-[#475569]">Automated GitHub Releases & APK update distribution</div>
+                    <div className="font-bold text-xs text-[#0F172A]">Website Release & Version Channel</div>
+                    <div className="text-[11px] text-[#475569]">Browser release notes and PWA updates</div>
                   </div>
                 </div>
                 <AppUpdateButton />

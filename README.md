@@ -1,6 +1,8 @@
 # 🏮 Vidyapath: Enterprise Multilingual Educational Ecosystem
 
-> **A production-ready, highly scalable educational operating system designed for universities, colleges, and rural schools. Built with an offline-first architecture, decoupled cloud deployment, 5-tier administrative hierarchy, 20-table relational schema, dynamic syllabus matching, intelligent LMS, governed pedagogical AI, and strict trilingual localization (Telugu, Hindi, English).**
+> **A multilingual, offline-first learning platform for students, families, teachers, and institutions. The current product is a responsive browser PWA with local progress storage, an optional cloud sync API, and Telugu, Hindi, and English support.**
+
+> **Current route and offline-sync contract:** see [the web-first architecture note](docs/WEB_FIRST_ARCHITECTURE.md).
 
 ---
 
@@ -8,8 +10,8 @@
 
 Vidyapath resolves the critical digital divide between institutional campus ERPs and real-world infrastructure constraints: low cellular bandwidth, shared family smartphones, intermittent connectivity, and strict cloud cost budgets.
 
-The platform is architected with a **decoupled cloud topology**:
-- **Frontend Edge CDN (Netlify)**: High-speed global edge distribution of the offline-first Progressive Web Application (PWA) with immutable caching, safe-area mobile insets, and transparent edge proxy rules for `/api/*` and `/uploads/*`.
+The platform is architected as a **web-first PWA**:
+- **Browser PWA (Netlify or Vercel)**: Responsive desktop and mobile website with service-worker caching, IndexedDB progress storage, and same-origin proxy rules for `/api/*` and `/uploads/*`.
 - **Backend Microservices (Render)**: Scalable Express + TypeScript runtime running stateless business logic, sliding-window rate limiters, token-bucket controls, idempotency middleware, and asynchronous batch queueing.
 - **Relational Data Layer (Neon PostgreSQL)**: Serverless, SSL-encrypted 20-table relational schema with live bidirectional sync and automatic in-memory resilient fallback.
 - **In-Memory Object Storage (Cloudflare R2)**: Direct streaming S3-compatible storage via `multer.memoryStorage()`, eliminating data loss from Render's ephemeral filesystem at **$0 egress fees**.
@@ -21,8 +23,8 @@ The platform is architected with a **decoupled cloud topology**:
                                   │                          │
                  ┌────────────────┴──────────────┐           │
                  ▼                               ▼           │
-     [Desktop / Tablet Browser]       [Android Native APK]   │
-   (Fluid Responsive Grid View)    (Capacitor 8, Safe-Area)  │
+     [Desktop / Tablet Browser]       [Mobile Browser PWA]  │
+     (Responsive Web App)         (Installable PWA)          │
                  │                               │           │
                  └───────────────┬───────────────┘           │
                                  │                           │
@@ -249,9 +251,9 @@ Vidyapath completely eliminates ephemeral file loss by streaming uploads directl
 
 ---
 
-## 8. In-App Auto-Update & Release Delivery Engine
+## 8. Web/PWA Update & Release Notes
 
-Vidyapath features an integrated, proactive in-app release and update delivery mechanism for both web PWAs and native Android APK installations:
+Vidyapath checks browser releases and handles PWA asset updates through its service worker:
 
 1. **Multi-Source Version Detection (`src/services/updateManager.ts`)**:
    - **Backend / GitHub Releases API**: Checks `/api/app/check-update` against published GitHub Releases with automated fallback to the GitHub API.
@@ -263,28 +265,25 @@ Vidyapath features an integrated, proactive in-app release and update delivery m
    - When a new version is released: transforms into an eye-catching pulsing badge `🚀 Update (vX.X.X Available!)`.
 3. **Global In-App Floating Banner (`AppUpdateBanner.tsx`)**:
    - Renders a dismissible alert bar at the top of the interface whenever an update is ready.
-   - Provides 1-click update actions: `[Reload Web]` for PWA or `[Update Now]` for Android APK.
+   - Links to release notes, or reloads the site when a service-worker update is ready.
 4. **Interactive In-App Update Modal (`AppUpdateModal.tsx`)**:
    - Displays current version vs. latest version.
    - Highlights changelog and release notes.
-   - One-tap APK download button or Service Worker `skipWaiting` reload trigger.
+   - Shows release notes and offers the Service Worker `skipWaiting` reload when available.
 5. **Settings Screen Integration (`S9_SettingsScreen.tsx`)**:
    - Dedicated "App Version & Updates" card allowing learners and teachers to manually check for updates and review build information.
 
 ---
 
-## 9. Cross-Platform Icon Architecture & Asset Engine
+## 9. Browser & PWA Icon Assets
 
-Vidyapath features an automated, multi-density icon generation and delivery pipeline (`scripts/generate_all_icons.ps1`) for desktop browsers, mobile PWAs, and native Android installations:
+Vidyapath generates browser and PWA icons with `scripts/generate_all_icons.ps1`:
 
 1. **Website & Browser Favicons (`public/` & `index.html`)**:
    - **Multi-Resolution Favicon (`public/favicon.ico`)**: Native 48x48, 32x32, and 16x16 icon format for browser address bars, bookmarks, and tabs.
    - **Standard PNG Favicons**: `favicon-32x32.png` and `favicon-16x16.png`.
    - **Apple Touch Icon**: `apple-touch-icon.png` (180x180 px) with clean high-DPI scaling for iOS Safari Home Screen bookmarks.
    - **Web App Manifest (`public/manifest.json`)**: Configured with standard and maskable icons (`icon-maskable-192.png`, `icon-maskable-512.png`) featuring an 80% safe zone to prevent browser cropping.
-2. **Native Android APK Adaptive Icons (`android/app/src/main/res/`)**:
-   - **Legacy Density Mipmaps**: Full launcher icons (`ic_launcher.png`, `ic_launcher_round.png`) across `mdpi` (48px), `hdpi` (72px), `xhdpi` (96px), `xxhdpi` (144px), and `xxxhdpi` (192px).
-   - **Modern Adaptive Icons (API 26+)**: Configured foreground assets (`ic_launcher_foreground.png`) across all densities (`mdpi` 108px, `hdpi` 162px, `xhdpi` 216px, `xxhdpi` 324px, `xxxhdpi` 432px) centered within the 66% safe zone on a pure background (`@color/ic_launcher_background`), removing obsolete capacitor vector overrides.
 
 ---
 
@@ -336,7 +335,7 @@ Vidyapath operates on a **$0/month free-tier baseline** while providing a seamle
 | **Groq Cloud** | • 1,000 requests/day<br>• 14,400 tokens/min<br>• ~300 tokens/sec LPU | Client-side `IndexedDB` semantic cache answers repeated questions in **0ms** with **0 tokens**. | Groq Cloud Enterprise dedicated LPU instance. |
 | **ElevenLabs** | • 10,000 characters/month | **Smart Voice Router**: ElevenLabs speaks short key takeaways (<120 chars); native Web Speech API reads full lessons. | ElevenLabs Enterprise Tier with custom institutional voices. |
 | **EmailJS** | • 200 transactional emails/month | 6-digit OTP verification with 60s cooldown. Development mode uses zero-crash audit simulation. | AWS SES / SendGrid dedicated SMTP relay. |
-| **GitHub Actions** | • Unlimited Linux build minutes<br>• 2 GB release storage | Automated CI/CD builds and publishes signed Android APKs directly to GitHub Releases. | GitHub Enterprise self-hosted runner pool. |
+| **GitHub Actions** | • Build artifact retention | Builds the browser PWA and uploads the `dist/` artifact. | GitHub Enterprise self-hosted runner pool. |
 
 ---
 
@@ -492,13 +491,8 @@ npm run dev
 docker-compose up --build -d
 ```
 
-### D. Native Android APK Build
-The repository includes automated GitHub Actions CI/CD ([`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml)). On every push to `main`, GitHub Actions:
-1. Runs all automated test suites.
-2. Builds optimized web assets.
-3. Syncs Capacitor Android.
-4. Compiles a signed Android debug APK via Gradle with Java 21.
-5. Publishes release assets directly to [GitHub Releases](https://github.com/yynvr1408/vidhyapath/releases).
+### D. Web Build Workflow
+The GitHub Actions workflow ([`.github/workflows/web-build.yml`](.github/workflows/web-build.yml)) installs dependencies, runs the existing suite, builds the PWA, and uploads `dist/` as a downloadable artifact. Android packaging is deferred until the browser workflow is stable.
 
 ---
 
@@ -510,4 +504,4 @@ The repository includes automated GitHub Actions CI/CD ([`.github/workflows/buil
 - **Object Storage**: Cloudflare R2 (S3-Compatible, Direct RAM Streaming, $0 Egress)
 - **AI & Speech**: Groq Cloud (LLaMA 3.3 70B, Whisper Large v3 STT), ElevenLabs Neural TTS, Web Speech API
 - **Deployment & Edge**: Netlify Edge CDN, Render Web Services, Docker, GitHub Actions CI/CD
-- **Mobile Container**: Capacitor 8 (Android SDK 34 / Java 21)
+- **Client Runtime**: Browser PWA with responsive mobile layouts and IndexedDB offline storage

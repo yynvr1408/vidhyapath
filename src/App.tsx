@@ -1,108 +1,195 @@
 import './config/api';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import type { ScreenId } from './context/AppContext';
 import { EnterpriseAuthProvider } from './context/EnterpriseAuthContext';
 import { AcademicProvider } from './context/AcademicContext';
-import { AppShell } from './components/AppShell';
-import { ProfileSelectorScreen } from './screens/ProfileSelectorScreen';
-import { MySyllabusScreen } from './screens/MySyllabusScreen';
-import { AiTutorScreen } from './screens/AiTutorScreen';
-import { PracticeWeakTopicsScreen } from './screens/PracticeWeakTopicsScreen';
-import { MyProgressScreen } from './screens/MyProgressScreen';
-import { ParentTeacherViewScreen } from './screens/ParentTeacherViewScreen';
-import { EnterprisePortalScreen } from './screens/EnterprisePortalScreen';
-import { S9_SettingsScreen } from './screens/S9_SettingsScreen';
-import { S11_ImpactScreen } from './screens/S11_ImpactScreen';
-import { S12_PackEditorScreen } from './screens/S12_PackEditorScreen';
-import { S2_CreateProfile } from './screens/S2_CreateProfile';
-import { WebsiteLandingScreen } from './screens/WebsiteLandingScreen';
-import { WebsiteAuthPage, AuthRole } from './screens/WebsiteAuthPage';
-import { isNativePlatform } from './utils/platform';
-import { useNativeBackButton } from './hooks/useNativeBackButton';
-import { PhoneExitToast } from './components/PhoneExitToast';
+import type { AuthRole } from './screens/WebsiteAuthPage';
+import { navigationManager } from './services/navigationManager';
 
-function getInitialRoute(): string {
+const AppShell = lazy(() => import('./components/AppShell').then((module) => ({ default: module.AppShell })));
+const MySyllabusScreen = lazy(() => import('./screens/MySyllabusScreen').then((module) => ({ default: module.MySyllabusScreen })));
+const AiTutorScreen = lazy(() => import('./screens/AiTutorScreen').then((module) => ({ default: module.AiTutorScreen })));
+const PracticeWeakTopicsScreen = lazy(() => import('./screens/PracticeWeakTopicsScreen').then((module) => ({ default: module.PracticeWeakTopicsScreen })));
+const MyProgressScreen = lazy(() => import('./screens/MyProgressScreen').then((module) => ({ default: module.MyProgressScreen })));
+const ParentTeacherViewScreen = lazy(() => import('./screens/ParentTeacherViewScreen').then((module) => ({ default: module.ParentTeacherViewScreen })));
+const EnterprisePortalScreen = lazy(() => import('./screens/EnterprisePortalScreen').then((module) => ({ default: module.EnterprisePortalScreen })));
+const S9_SettingsScreen = lazy(() => import('./screens/S9_SettingsScreen').then((module) => ({ default: module.S9_SettingsScreen })));
+const S11_ImpactScreen = lazy(() => import('./screens/S11_ImpactScreen').then((module) => ({ default: module.S11_ImpactScreen })));
+const S12_PackEditorScreen = lazy(() => import('./screens/S12_PackEditorScreen').then((module) => ({ default: module.S12_PackEditorScreen })));
+const S2_CreateProfile = lazy(() => import('./screens/S2_CreateProfile').then((module) => ({ default: module.S2_CreateProfile })));
+const ProfileSelectorScreen = lazy(() => import('./screens/ProfileSelectorScreen').then((module) => ({ default: module.ProfileSelectorScreen })));
+const WebsiteLandingScreen = lazy(() => import('./screens/WebsiteLandingScreen').then((module) => ({ default: module.WebsiteLandingScreen })));
+const WebsiteAuthPage = lazy(() => import('./screens/WebsiteAuthPage').then((module) => ({ default: module.WebsiteAuthPage })));
+
+const AUTH_ROLES: AuthRole[] = ['student', 'guardian', 'teacher', 'admin', 'super_admin'];
+
+function normalizePath(path: string): string {
+  const clean = path.toLowerCase().replace(/\/+$/, '') || '/';
+
+  if (clean === '/admin' || clean.startsWith('/dashboard')) return '/portal';
+  if (clean === '/auth') return '/login';
+  if (clean === '/parent') return '/guardian';
+  if (clean.startsWith('/parent/')) return clean.replace(/^\/parent/, '/guardian');
+  if (clean === '/app' || clean === '/student') return '/learn';
+  if (clean.startsWith('/app/')) return clean.replace(/^\/app/, '/learn');
+  if (clean.startsWith('/student/')) return clean.replace(/^\/student/, '/learn');
+  if (clean === '/tutor') return '/learn/tutor';
+  if (clean === '/practice') return '/learn/practice';
+  if (clean === '/progress') return '/learn/progress';
+  if (clean === '/syllabus') return '/learn';
+  if (clean.startsWith('/learn/profiles')) return '/learn';
+
+  return clean;
+}
+
+function routeFromLocation(): string {
   if (typeof window === 'undefined') return '/';
-  const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
-  const hash = window.location.hash.toLowerCase();
 
-  // If on web root '/' but hash carries a direct route destination
-  if (path === '/' || path === '') {
-    if (hash.includes('portal') || hash.includes('admin') || hash.includes('dashboard')) return '/portal';
-    if (hash.includes('login') || hash.includes('auth')) return '/login';
-    if (hash.includes('register')) return '/register';
-    if (hash.includes('guardian') || hash.includes('parent')) return '/guardian';
-    if (
-      hash.includes('learn') ||
-      hash.includes('app') ||
-      hash.includes('syllabus') ||
-      hash.includes('student') ||
-      hash.includes('tutor') ||
-      hash.includes('practice') ||
-      hash.includes('progress')
-    ) {
-      return '/learn';
-    }
+  const pathname = normalizePath(window.location.pathname);
+  if (pathname !== '/') {
+    return pathname.startsWith('/portal') || pathname.startsWith('/guardian') ||
+      pathname === '/login' || pathname === '/register' || pathname.startsWith('/learn')
+      ? pathname
+      : '/';
   }
-  return path;
+
+  // Support older shared links such as #portal and #learn/tutor while leaving
+  // ordinary landing-page anchors (#features, #curriculum) alone.
+  const rawHash = window.location.hash;
+  const legacyHash = rawHash.replace(/^#\/?/, '').split(/[?&]/, 1)[0];
+  if (!legacyHash) return '/';
+  const isExplicitHashRoute = rawHash.startsWith('#/') ||
+    /^(portal|admin|dashboard|login|register|guardian|parent|learn|app|student|practice|progress|syllabus)(\/|$)/i.test(legacyHash);
+  if (!isExplicitHashRoute) return '/';
+  const hashPath = normalizePath(`/${legacyHash}`);
+  if (
+    hashPath === '/portal' ||
+    hashPath === '/login' ||
+    hashPath === '/register' ||
+    hashPath.startsWith('/guardian') ||
+    hashPath.startsWith('/learn')
+  ) {
+    return hashPath;
+  }
+
+  return '/';
+}
+
+function screenForRoute(path: string, hasLearner: boolean): ScreenId | null {
+  if (path.startsWith('/portal')) return 'ADMIN';
+  if (path.startsWith('/guardian')) return 'PARENT_VIEW';
+  if (path === '/learn' || path === '/learn/') return hasLearner ? 'MY_SYLLABUS' : 'S1_PICKER';
+  if (path.startsWith('/learn/profiles')) return 'S1_PICKER';
+  if (path.startsWith('/learn/tutor')) return 'AI_TUTOR';
+  if (path.startsWith('/learn/practice')) return 'PRACTICE';
+  if (path.startsWith('/learn/progress')) return 'PROGRESS';
+  if (path.startsWith('/learn/settings')) return 'S9_SETTINGS';
+  if (path.startsWith('/learn/impact')) return 'S11_IMPACT';
+  if (path.startsWith('/learn/pack-editor')) return 'S12_PACK_EDITOR';
+  if (path.startsWith('/learn/create-profile')) return 'S2_CREATE';
+  return null;
+}
+
+function routeForScreen(screen: ScreenId): string | null {
+  switch (screen) {
+    case 'S1_PICKER':
+    case 'MY_SYLLABUS':
+    case 'LESSON_DETAIL':
+    case 'S3_HOME':
+    case 'S4_LESSON':
+      return '/learn';
+    case 'AI_TUTOR':
+    case 'S7_DOUBT':
+      return '/learn/tutor';
+    case 'PRACTICE':
+    case 'S5_PRACTICE':
+      return '/learn/practice';
+    case 'PROGRESS':
+    case 'S8_PROGRESS':
+      return '/learn/progress';
+    case 'PARENT_VIEW':
+    case 'S10_GUARDIAN':
+      return '/guardian';
+    case 'ADMIN':
+    case 'ADMIN_PANEL':
+      return '/portal';
+    case 'S2_CREATE':
+      return '/learn/create-profile';
+    case 'S9_SETTINGS':
+      return '/learn/settings';
+    case 'S11_IMPACT':
+      return '/learn/impact';
+    case 'S12_PACK_EDITOR':
+      return '/learn/pack-editor';
+    default:
+      return null;
+  }
 }
 
 const AppContent: React.FC = () => {
   const { currentScreen, setScreen, activeLearner } = useApp();
-  const { exitToast } = useNativeBackButton();
-  const isNative = isNativePlatform();
-
-  // Active route path for web routing
-  const [routePath, setRoutePath] = useState<string>(getInitialRoute);
+  const [routePath, setRoutePath] = useState<string>(routeFromLocation);
   const [authRole, setAuthRole] = useState<AuthRole>('student');
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>(() =>
+    routeFromLocation() === '/register' ? 'register' : 'login'
+  );
+  const handledRouteRef = useRef<string | null>(null);
+  const routeWasHandledAtRender = handledRouteRef.current === routePath;
 
-  // Unified web navigation helper
   const navigate = useCallback((path: string, options?: { role?: AuthRole; mode?: 'login' | 'register' }) => {
-    if (options?.role) setAuthRole(options.role);
-    if (options?.mode) setAuthMode(options.mode);
-    setRoutePath(path);
-    window.history.pushState(options || {}, '', path);
-  }, []);
+    const nextPath = normalizePath(path);
+    const nextRole = options?.role || authRole;
+    const nextMode = options?.mode || (nextPath === '/register' ? 'register' : nextPath === '/login' ? 'login' : authMode);
 
-  // Listen for browser popstate (back / forward buttons)
+    setAuthRole(nextRole);
+    setAuthMode(nextMode);
+    if (nextPath !== routePath || options) {
+      window.history.pushState({ role: nextRole, mode: nextMode }, '', nextPath);
+      setRoutePath(nextPath);
+    }
+  }, [authMode, authRole, routePath]);
+
+  // Website routing is the only route owner. The browser back/forward buttons
+  // update route state here; modal Escape handling is managed separately.
   useEffect(() => {
-    const handlePopState = () => {
-      setRoutePath(getInitialRoute());
+    const initialRoute = routeFromLocation();
+    if (window.location.pathname !== initialRoute || (initialRoute !== '/' && window.location.hash)) {
+      window.history.replaceState(window.history.state, '', `${initialRoute}${window.location.search}`);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      const nextPath = routeFromLocation();
+      const state = event.state as { role?: unknown; mode?: unknown } | null;
+      setRoutePath(nextPath);
+      setAuthRole(AUTH_ROLES.includes(state?.role as AuthRole) ? state!.role as AuthRole : 'student');
+      setAuthMode(state?.mode === 'register' || nextPath === '/register' ? 'register' : 'login');
     };
+
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Support legacy hashes and URL synchronization
-  useEffect(() => {
-    const hash = window.location.hash.toLowerCase();
-    if (hash.includes('admin') || hash.includes('portal')) {
-      if (!isNative) navigate('/portal');
-      else setScreen('ADMIN');
-    } else if (hash.includes('guardian') || hash.includes('parent')) {
-      if (!isNative) navigate('/guardian');
-      else setScreen('PARENT_VIEW');
-    } else if (hash.includes('learn') || hash.includes('syllabus')) {
-      if (!isNative) navigate('/learn');
-      else setScreen('MY_SYLLABUS');
-    } else if (hash.includes('tutor') || hash.includes('doubt')) {
-      setScreen('AI_TUTOR');
-    } else if (hash.includes('practice')) {
-      setScreen('PRACTICE');
-    } else if (hash.includes('progress')) {
-      setScreen('PROGRESS');
-    }
-  }, [isNative, navigate, setScreen]);
+  useEffect(() => navigationManager.init(() => ''), []);
 
-  // Render core learner loop screens inside AppShell
+  // A direct URL or browser Back selects the matching application screen.
+  useEffect(() => {
+    if (routeWasHandledAtRender) return;
+    handledRouteRef.current = routePath;
+    const nextScreen = screenForRoute(routePath, Boolean(activeLearner));
+    if (nextScreen) setScreen(nextScreen);
+  }, [activeLearner, routePath, routeWasHandledAtRender, setScreen]);
+
+  // In-app tabs and actions update the URL too, so browser history follows the
+  // learner's workflow rather than jumping between unrelated website pages.
+  useEffect(() => {
+    if (!routeWasHandledAtRender || !routePath.startsWith('/learn')) return;
+    const nextPath = routeForScreen(currentScreen);
+    if (nextPath && nextPath !== routePath) navigate(nextPath);
+  }, [currentScreen, navigate, routePath, routeWasHandledAtRender]);
+
   const renderLearnerScreen = () => {
     switch (currentScreen) {
-      case 'MY_SYLLABUS':
-      case 'LESSON_DETAIL':
-      case 'S3_HOME':
-      case 'S4_LESSON':
-        return <MySyllabusScreen />;
       case 'AI_TUTOR':
       case 'S7_DOUBT':
         return <AiTutorScreen />;
@@ -128,86 +215,38 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // --- A. NATIVE PACKAGED CAPACITOR APP FLOW ---
-  if (isNative) {
-    if (currentScreen === 'ADMIN' || currentScreen === 'ADMIN_PANEL') {
-      return (
-        <>
-          <EnterprisePortalScreen onReturnToStudentApp={() => setScreen('MY_SYLLABUS')} />
-          <PhoneExitToast message={exitToast} />
-        </>
-      );
-    }
-
-    if (currentScreen === 'PARENT_VIEW' || currentScreen === 'S10_GUARDIAN') {
-      return (
-        <>
-          <ParentTeacherViewScreen />
-          <PhoneExitToast message={exitToast} />
-        </>
-      );
-    }
-
-    if (!activeLearner || currentScreen === 'S1_PICKER') {
-      return (
-        <>
-          <ProfileSelectorScreen />
-          <PhoneExitToast message={exitToast} />
-        </>
-      );
-    }
-
+  if (routePath.startsWith('/portal')) {
     return (
-      <>
-        <AppShell>{renderLearnerScreen()}</AppShell>
-        <PhoneExitToast message={exitToast} />
-      </>
+      <EnterprisePortalScreen
+        onReturnToStudentApp={() => navigate('/learn')}
+        onNavigateToLogin={() => navigate('/login')}
+      />
     );
   }
 
-  // --- B. BROWSER WEBSITE FLOW (EXPLICIT PATH ROUTING) ---
-
-  // 1. Enterprise Portal (/portal or /portal/* or active ADMIN screen)
-  if (routePath.startsWith('/portal') || currentScreen === 'ADMIN' || currentScreen === 'ADMIN_PANEL') {
+  if (routePath === '/login' || routePath === '/register') {
     return (
-      <>
-        <EnterprisePortalScreen
-          onReturnToStudentApp={() => navigate('/learn')}
-          onNavigateToLogin={() => navigate('/login')}
-        />
-        <PhoneExitToast message={exitToast} />
-      </>
+      <WebsiteAuthPage
+        initialRole={authRole}
+        initialMode={routePath === '/register' ? 'register' : authMode}
+        onNavigateHome={() => navigate('/')}
+        onLoginSuccess={(role) => {
+          if (role === 'student') {
+            navigate('/learn');
+            setScreen('MY_SYLLABUS');
+          } else if (role === 'guardian') {
+            navigate('/guardian');
+            setScreen('PARENT_VIEW');
+          } else {
+            navigate('/portal');
+            setScreen('ADMIN');
+          }
+        }}
+      />
     );
   }
 
-  // 2. Full-Page Website Authentication (/login, /register, /auth)
-  if (routePath === '/login' || routePath === '/register' || routePath === '/auth') {
-    return (
-      <>
-        <WebsiteAuthPage
-          initialRole={authRole}
-          initialMode={authMode || (routePath === '/register' ? 'register' : 'login')}
-          onNavigateHome={() => navigate('/')}
-          onLoginSuccess={(role) => {
-            if (role === 'student') {
-              navigate('/learn');
-              setScreen('MY_SYLLABUS');
-            } else if (role === 'guardian') {
-              navigate('/guardian');
-              setScreen('PARENT_VIEW');
-            } else {
-              navigate('/portal');
-              setScreen('ADMIN');
-            }
-          }}
-        />
-        <PhoneExitToast message={exitToast} />
-      </>
-    );
-  }
-
-  // 3. Parent / Guardian View (/guardian, /parent)
-  if (routePath.startsWith('/guardian') || routePath.startsWith('/parent') || currentScreen === 'PARENT_VIEW') {
+  if (routePath.startsWith('/guardian')) {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between border-b border-[#E2E8F0] bg-white">
@@ -227,72 +266,59 @@ const AppContent: React.FC = () => {
           </button>
         </div>
         <ParentTeacherViewScreen />
-        <PhoneExitToast message={exitToast} />
       </div>
     );
   }
 
-  // 4. Learner App on Web (/learn, /app, /student)
-  if (
-    routePath.startsWith('/learn') ||
-    routePath.startsWith('/app') ||
-    routePath.startsWith('/student') ||
-    currentScreen === 'S1_PICKER'
-  ) {
+  if (routePath.startsWith('/learn')) {
+    if (currentScreen === 'S2_CREATE') return <S2_CreateProfile />;
+
     if (!activeLearner || currentScreen === 'S1_PICKER') {
       return (
-        <>
-          <ProfileSelectorScreen
-            onNavigateHome={() => navigate('/')}
-            onNavigateToAuth={(role, mode) =>
-              navigate(mode === 'register' ? '/register' : '/login', {
-                role: (role as AuthRole) || 'student',
-                mode: mode || 'login',
-              })
-            }
-          />
-          <PhoneExitToast message={exitToast} />
-        </>
+        <ProfileSelectorScreen
+          onNavigateHome={() => navigate('/')}
+          onNavigateToAuth={(role, mode) =>
+            navigate(mode === 'register' ? '/register' : '/login', {
+              role: (role as AuthRole) || 'student',
+              mode: mode || 'login',
+            })
+          }
+        />
       );
     }
 
-    return (
-      <>
-        <AppShell>{renderLearnerScreen()}</AppShell>
-        <PhoneExitToast message={exitToast} />
-      </>
-    );
+    return <AppShell>{renderLearnerScreen()}</AppShell>;
   }
 
-  // 5. Default Website Landing Page (/)
   return (
-    <>
-      <WebsiteLandingScreen
-        onNavigateToAuth={(role, mode) => {
-          navigate(mode === 'register' ? '/register' : '/login', {
-            role: role || 'student',
-            mode: mode || 'login',
-          });
-        }}
-        onOpenLearnerApp={() => {
-          navigate('/learn');
-        }}
-      />
-      <PhoneExitToast message={exitToast} />
-    </>
+    <WebsiteLandingScreen
+      onNavigateToAuth={(role, mode) => {
+        navigate(mode === 'register' ? '/register' : '/login', {
+          role: role || 'student',
+          mode: mode || 'login',
+        });
+      }}
+      onOpenLearnerApp={() => navigate('/learn')}
+    />
   );
 };
 
-export const App: React.FC = () => {
-  return (
-    <EnterpriseAuthProvider>
-      <AcademicProvider>
-        <AppProvider>
-          <AppContent />
-        </AppProvider>
-      </AcademicProvider>
-    </EnterpriseAuthProvider>
-  );
-};
+export const App: React.FC = () => (
+  <EnterpriseAuthProvider>
+    <AcademicProvider>
+      <AppProvider>
+          <Suspense
+            fallback={
+              <div role="status" className="min-h-screen grid place-items-center bg-[#F8FAFC] text-sm font-semibold text-[#475569]">
+                Loading Vidyapath…
+              </div>
+            }
+          >
+            <AppContent />
+          </Suspense>
+      </AppProvider>
+    </AcademicProvider>
+  </EnterpriseAuthProvider>
+);
 
 export default App;

@@ -1,12 +1,11 @@
 // Comprehensive In-App Update & Release Notes System
 import React, { useState, useEffect } from 'react';
 import {
-  Download,
   RefreshCw,
   CheckCircle2,
   Sparkles,
   X,
-  Smartphone,
+  Globe,
   ExternalLink,
   ShieldCheck,
   AlertCircle,
@@ -54,21 +53,12 @@ export const AppUpdateModal: React.FC = () => {
   useEffect(() => {
     if (!isModalOpen) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closeModal();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-
     const unreg = navigationManager.registerBackHandler(() => {
       closeModal();
       return true;
     }, 110);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
       unreg();
     };
   }, [isModalOpen, closeModal]);
@@ -143,18 +133,13 @@ export const AppUpdateModal: React.FC = () => {
                       <h3 className="font-extrabold text-sm text-[#92400E]">
                         {t.updateAvailable} (v{latestVersion})
                       </h3>
-                      {updateInfo?.apkSizeMb && (
-                        <span className="text-[10px] font-bold text-[#78350F] bg-white/80 px-2 py-0.5 rounded border border-[#FDE68A]">
-                          APK: ~{updateInfo.apkSizeMb}
-                        </span>
-                      )}
                     </div>
                     <p className="text-xs text-[#B45309] mt-0.5 font-medium leading-relaxed">
                       {currentLanguage === 'te'
-                        ? 'తాజా ఫీచర్లు, మరింత వేగవంతమైన పనితీరు మరియు భద్రతా మెరుగుదలలు సిద్ధంగా ఉన్నాయి.'
+                        ? 'కొత్త వెబ్ విడుదల అందుబాటులో ఉంది. వివరాల కోసం విడుదల గమనికలను చూడండి.'
                         : currentLanguage === 'hi'
-                        ? 'नवीनतम सुविधाएं, तेज प्रदर्शन और सुरक्षा सुधार उपलब्ध हैं।'
-                        : 'Latest features, faster performance, and security enhancements are ready to install.'}
+                        ? 'नई वेब रिलीज़ उपलब्ध है। जानकारी के लिए रिलीज़ नोट देखें।'
+                        : 'A newer website release is available. View its release notes for details.'}
                     </p>
                   </div>
                 </div>
@@ -190,15 +175,15 @@ export const AppUpdateModal: React.FC = () => {
                 </button>
               )}
 
-              {updateInfo?.hasUpdate && updateInfo.downloadUrl && (
+              {updateInfo?.hasUpdate && updateInfo.releaseUrl && (
                 <a
-                  href={updateInfo.downloadUrl}
+                  href={updateInfo.releaseUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-2.5 px-3 rounded-xl bg-[#D97706] hover:bg-[#B45309] text-white font-extrabold text-xs shadow-xs flex items-center justify-center gap-2 transition-all active:scale-98 min-h-[42px]"
                 >
-                  <Download className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>{t.updateNow} (APK)</span>
+                  <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>View release notes</span>
                   <ExternalLink className="w-3 h-3 opacity-80" />
                 </a>
               )}
@@ -226,7 +211,7 @@ export const AppUpdateModal: React.FC = () => {
           <div className="pt-3 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-xs font-black uppercase tracking-wider text-[#0F172A] flex items-center gap-1.5">
-                <Smartphone className="w-4 h-4 text-[#0F766E]" />
+                <Globe className="w-4 h-4 text-[#0F766E]" />
                 <span>{t.changelog} (What's New)</span>
               </div>
               <span className="text-[11px] text-[#64748B] font-medium">

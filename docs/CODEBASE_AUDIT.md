@@ -1,5 +1,7 @@
 # Vidyapath — Comprehensive Codebase Audit
 
+> Historical audit snapshot. Android packaging has since been removed while the web routing and sync workflow are consolidated. See [WEB_FIRST_ARCHITECTURE.md](WEB_FIRST_ARCHITECTURE.md) for the current direction and known persistence boundary.
+
 **Date:** November 2026  
 **Auditor:** Vidyapath Engineering Team  
 **Scope:** Full-stack architecture, Authentication, Database (Neon PostgreSQL), APIs, Mobile (Capacitor Android), PWA, AI Services, Storage (Cloudflare R2), and Multi-Tier Role Hierarchy.

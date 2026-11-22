@@ -39,6 +39,7 @@ interface AppContextValue {
   fontSize: 'normal' | 'large' | 'xlarge';
   dataUsedKb: number;
   syncTick: boolean;
+  syncPending: boolean;
   queuedDoubtsCount: number;
   offlineChapters: Set<string>;
   currentLanguage: SupportedLang;
@@ -70,6 +71,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [learners, setLearners] = useState<LearnerProfile[]>([]);
   const [activeLearner, setActiveLearner] = useState<LearnerProfile | null>(null);
   const activeLearnerRef = useRef<LearnerProfile | null>(null);
+  const triggerSyncRef = useRef<() => Promise<void>>(async () => {});
+  const syncTickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncRetryDelayRef = useRef(15_000);
   activeLearnerRef.current = activeLearner;
   const [skillStates, setSkillStates] = useState<Map<string, SkillState>>(new Map());
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('S1_PICKER');
@@ -84,6 +89,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const savedLang = (typeof window !== 'undefined' ? (localStorage.getItem('vidyapath_language') as SupportedLang) : null)
     || (savedPack?.startsWith('hi') ? 'hi' : savedPack?.startsWith('en') ? 'en' : 'te');
   const [syncTick, setSyncTick] = useState<boolean>(false);
+  const [syncPending, setSyncPending] = useState<boolean>(false);
   const [queuedDoubtsCount, setQueuedDoubtsCount] = useState<number>(0);
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLang>(savedLang);
 
@@ -150,14 +156,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Load skill states for active learner
   const loadLearnerSkills = useCallback(async (learnerId: string) => {
-    const states = await localDb.getAllSkillStates(learnerId);
+    const [states, queuedCount] = await Promise.all([
+      localDb.getAllSkillStates(learnerId),
+      localDb.getQueuedDoubtsCount(learnerId),
+    ]);
+    if (activeLearnerRef.current?.id !== learnerId) return;
+
     const map = new Map<string, SkillState>();
     for (const s of states) {
       map.set(s.skillId, s);
     }
     setSkillStates(map);
-
-    const queuedCount = await localDb.getQueuedDoubtsCount(learnerId);
     setQueuedDoubtsCount(queuedCount);
   }, []);
 
@@ -178,7 +187,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Online / Offline listeners
     const handleOnline = () => {
       setIsOffline(false);
-      triggerSync();
+      void triggerSyncRef.current();
     };
     const handleOffline = () => setIsOffline(true);
 
@@ -220,6 +229,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (activeLearner && currentScreen !== 'S1_PICKER') {
       autoLockTimerRef.current = setTimeout(() => {
         console.log('Shared-phone 2-minute auto-lock triggered.');
+        activeLearnerRef.current = null;
         setActiveLearner(null);
         setCurrentScreen('S1_PICKER');
       }, 120000); // 2 minutes
@@ -243,7 +253,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [resetInactivityTimer]);
 
   const selectLearner = (learner: LearnerProfile) => {
+    activeLearnerRef.current = learner;
     setActiveLearner(learner);
+    setSyncPending(false);
     setSkillStates(new Map());
     loadLearnerSkills(learner.id);
     if (learner.packId) {
@@ -331,7 +343,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const switchLearner = () => {
+    activeLearnerRef.current = null;
     setActiveLearner(null);
+    setSyncPending(false);
     setSkillStates(new Map());
     setQueuedDoubtsCount(0);
     setCurrentScreen('S1_PICKER');
@@ -362,21 +376,91 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const refreshLearnerData = async () => {
-    if (activeLearner) {
-      await loadLearnerSkills(activeLearner.id);
-    }
+    const learnerId = activeLearnerRef.current?.id;
+    if (learnerId) await loadLearnerSkills(learnerId);
+  };
+
+  const clearSyncRetry = (resetDelay = false) => {
+    if (syncRetryTimeoutRef.current) clearTimeout(syncRetryTimeoutRef.current);
+    syncRetryTimeoutRef.current = null;
+    if (resetDelay) syncRetryDelayRef.current = 15_000;
+  };
+
+  const scheduleSyncRetry = () => {
+    clearSyncRetry();
+    const delay = syncRetryDelayRef.current;
+    syncRetryTimeoutRef.current = setTimeout(() => {
+      syncRetryTimeoutRef.current = null;
+      void triggerSyncRef.current();
+    }, delay);
+    syncRetryDelayRef.current = Math.min(delay * 2, 60_000);
   };
 
   const triggerSync = async () => {
+    clearSyncRetry();
     const learner = activeLearnerRef.current;
-    if (!learner) return;
-    const res = await SyncService.syncOutbox(learner.id, pack?.version);
-    if (res.syncedEventsCount > 0 || res.answeredDoubts.length > 0) {
-      setSyncTick(true);
-      setTimeout(() => setSyncTick(false), 3000);
-      await refreshLearnerData();
+    if (!learner) {
+      setSyncPending(false);
+      clearSyncRetry(true);
+      return;
+    }
+
+    try {
+      const [attemptsBeforeSync, doubtsBeforeSync] = await Promise.all([
+        localDb.getOutboxAttempts(learner.id),
+        localDb.getDoubtsByLearner(learner.id),
+      ]);
+      const hasWork = attemptsBeforeSync.some((event) => event.learnerId === learner.id) ||
+        doubtsBeforeSync.some((doubt) => doubt.learnerId === learner.id && doubt.status === 'queued');
+      if (activeLearnerRef.current?.id !== learner.id) return;
+      if (!hasWork) {
+        setSyncPending(false);
+        clearSyncRetry(true);
+        return;
+      }
+
+      setSyncPending(true);
+      if (simulatedOffline || !navigator.onLine) return;
+
+      const syncLanguage = currentLanguage === 'hi' || currentLanguage === 'en' ? currentLanguage : 'te';
+      const res = await SyncService.syncOutbox(learner.id, pack?.version, syncLanguage);
+      const [attemptsAfterSync, doubtsAfterSync] = await Promise.all([
+        localDb.getOutboxAttempts(learner.id),
+        localDb.getDoubtsByLearner(learner.id),
+      ]);
+      if (activeLearnerRef.current?.id !== learner.id) return;
+
+      const stillHasWork = attemptsAfterSync.some((event) => event.learnerId === learner.id) ||
+        doubtsAfterSync.some((doubt) => doubt.learnerId === learner.id && doubt.status === 'queued');
+      setSyncPending(stillHasWork);
+      if (stillHasWork && navigator.onLine && !simulatedOffline) scheduleSyncRetry();
+      else if (!stillHasWork) clearSyncRetry(true);
+
+      if (res.syncedEventsCount > 0 || res.answeredDoubts.length > 0) {
+        setSyncTick(true);
+        if (syncTickTimeoutRef.current) clearTimeout(syncTickTimeoutRef.current);
+        syncTickTimeoutRef.current = setTimeout(() => setSyncTick(false), 3000);
+        await loadLearnerSkills(learner.id);
+      }
+    } catch (error) {
+      console.warn('Could not refresh the learner sync queue:', error);
+      if (activeLearnerRef.current?.id === learner.id) {
+        setSyncPending(true);
+        if (navigator.onLine && !simulatedOffline) scheduleSyncRetry();
+      }
     }
   };
+  triggerSyncRef.current = triggerSync;
+
+  useEffect(() => () => {
+    clearSyncRetry();
+    if (syncTickTimeoutRef.current) clearTimeout(syncTickTimeoutRef.current);
+  }, []);
+
+  // Flush the selected learner's outbox after profile selection or reconnect.
+  useEffect(() => {
+    if (activeLearner && navigator.onLine && !simulatedOffline) void triggerSync();
+  }, [activeLearner?.id, simulatedOffline]);
 
   const updateLearnerPin = async (learnerId: string, newPin: string) => {
     const updatedLearners = learners.map((l) => {
@@ -410,6 +494,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fontSize,
         dataUsedKb,
         syncTick,
+        syncPending,
         queuedDoubtsCount,
         offlineChapters,
         currentLanguage,

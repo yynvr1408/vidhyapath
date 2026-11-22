@@ -1,6 +1,6 @@
 // In-App Update Button & Version Checker Component
 import React from 'react';
-import { Download, RefreshCw, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react';
+import { ExternalLink, RefreshCw, CheckCircle2, Sparkles } from 'lucide-react';
 import { useAppUpdate } from '../hooks/useAppUpdate';
 import { useApp } from '../context/AppContext';
 import { getTranslations } from '../utils/translations';
@@ -43,7 +43,7 @@ export const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({ minimal = fals
           title={`${t.updateAvailable} (v${latestVersion})`}
           className="relative p-2 rounded-[10px] bg-[#D97706] text-white hover:bg-[#B45309] font-bold text-xs flex items-center justify-center min-h-[44px] min-w-[44px] shadow-sm animate-bounce"
         >
-          <Download className="w-5 h-5 text-white" />
+          <ExternalLink className="w-5 h-5 text-white" />
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
         </button>
       );
@@ -59,8 +59,7 @@ export const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({ minimal = fals
                 {t.updateAvailable} (v{latestVersion})
               </div>
               <div className="text-[11px] text-[#92400E] mt-0.5">
-                {t.currentVersionLabel}: v{currentVersion}{' '}
-                {updateInfo?.apkSizeMb ? `• ~${updateInfo.apkSizeMb}` : ''}
+                {t.currentVersionLabel}: v{currentVersion}
               </div>
             </div>
           </div>
@@ -70,8 +69,8 @@ export const AppUpdateButton: React.FC<AppUpdateButtonProps> = ({ minimal = fals
           onClick={openModal}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-[8px] bg-[#D97706] hover:bg-[#B45309] text-white font-bold text-xs shadow-xs transition-all active:scale-95"
         >
-          <Download className="w-3.5 h-3.5" />
-          <span>{t.updateNow}</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+          <span>View release notes</span>
         </button>
         {updateInfo?.releaseNotes && (
           <div className="text-[10px] text-[#78350F] bg-white/80 p-2 rounded-md border border-[#FDE68A] line-clamp-2">

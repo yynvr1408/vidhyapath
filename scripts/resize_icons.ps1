@@ -28,21 +28,6 @@ function Resize-And-Save($img, $width, $height, $targetPath) {
 Resize-And-Save $srcImage 512 512 "public\icons\icon-512.png"
 Resize-And-Save $srcImage 192 192 "public\icons\icon-192.png"
 
-# 2. Android Mipmaps
-$densities = @{
-    "mdpi" = 48
-    "hdpi" = 72
-    "xhdpi" = 96
-    "xxhdpi" = 144
-    "xxxhdpi" = 192
-}
-
-foreach ($d in $densities.Keys) {
-    $dim = $densities[$d]
-    Resize-And-Save $srcImage $dim $dim "android\app\src\main\res\mipmap-$d\ic_launcher.png"
-    Resize-And-Save $srcImage $dim $dim "android\app\src\main\res\mipmap-$d\ic_launcher_round.png"
-}
-
 $srcImage.Dispose()
 $ms.Dispose()
-Write-Host "All icons resized and deployed successfully!"
+Write-Host "Browser and PWA icons resized and deployed successfully!"

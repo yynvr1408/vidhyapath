@@ -1,6 +1,6 @@
 // Top In-App Update Alert Notification Banner
 import React from 'react';
-import { Sparkles, Download, RefreshCw, X, ArrowRight } from 'lucide-react';
+import { Sparkles, ExternalLink, RefreshCw, X } from 'lucide-react';
 import { useAppUpdate } from '../hooks/useAppUpdate';
 import { useApp } from '../context/AppContext';
 import { getTranslations } from '../utils/translations';
@@ -56,9 +56,8 @@ export const AppUpdateBanner: React.FC = () => {
             onClick={openModal}
             className="px-2.5 py-1 rounded-md bg-white text-[#92400E] hover:bg-[#FEF3C7] text-[11px] font-extrabold flex items-center gap-1 shadow-2xs active:scale-95 transition-all"
           >
-            <Download className="w-3 h-3 text-[#92400E]" />
-            <span>{t.updateNow}</span>
-            <ArrowRight className="w-3 h-3" />
+            <ExternalLink className="w-3 h-3 text-[#92400E]" />
+            <span>Release notes</span>
           </button>
         )}
 

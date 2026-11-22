@@ -1,5 +1,7 @@
 # Vidyapath — Production Readiness Checklist
 
+> Historical checklist. Its Android and verification entries predate the current web-first refactor; they are not evidence that the current changes have been tested. See [WEB_FIRST_ARCHITECTURE.md](WEB_FIRST_ARCHITECTURE.md).
+
 **Deployment Targets:** Frontend on Netlify Edge CDN, Backend on Render Web Service, Neon PostgreSQL, Cloudflare R2  
 **Compliance Standards:** Zero-PII Student Architecture, FERPA/COPPA Aligned, OWASP Top 10 Protected
 

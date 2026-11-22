@@ -143,13 +143,10 @@ export class PracticeEngine {
   public static async recordAttemptAndUpdateSkill(
     event: AttemptEvent
   ): Promise<SkillState> {
-    // 1. Save attempt event
-    await localDb.recordAttempt(event);
-
-    // 2. Retrieve or initialize skill state
-    let state = await localDb.getSkillState(event.learnerId, event.skillId);
-    if (!state) {
-      state = {
+    // Persist the attempt, outbox row, and derived mastery together so a failed
+    // IndexedDB write cannot leave half of one learner's progress behind.
+    return localDb.recordAttemptWithSkillUpdate(event, (savedState) => {
+      const state = savedState || {
         learnerId: event.learnerId,
         skillId: event.skillId,
         mastery: 0.3,
@@ -157,39 +154,30 @@ export class PracticeEngine {
         consecutiveCorrectLowHints: 0,
         lastSeen: event.ts,
       };
-    }
 
-    // 3. Update mastery
-    const oldMastery = state.mastery;
-    const newMastery = this.calculateNewMastery(oldMastery, event.correct, event.hintsUsed);
+      const newMastery = this.calculateNewMastery(state.mastery, event.correct, event.hintsUsed);
+      let newStreak = state.streak;
+      let newConsecutive = state.consecutiveCorrectLowHints;
 
-    // 4. Update streak & consecutive counters
-    let newStreak = state.streak;
-    let newConsecutive = state.consecutiveCorrectLowHints;
-
-    if (event.correct) {
-      newStreak++;
-      if (event.hintsUsed <= 1) {
-        newConsecutive++;
+      if (event.correct) {
+        newStreak++;
+        if (event.hintsUsed <= 1) {
+          newConsecutive++;
+        } else {
+          newConsecutive = 0;
+        }
       } else {
+        newStreak = 0;
         newConsecutive = 0;
       }
-    } else {
-      newStreak = 0;
-      newConsecutive = 0;
-    }
 
-    const updatedState: SkillState = {
-      ...state,
-      mastery: newMastery,
-      streak: newStreak,
-      consecutiveCorrectLowHints: newConsecutive,
-      lastSeen: event.ts,
-    };
-
-    // 5. Save updated skill state
-    await localDb.saveSkillState(updatedState);
-
-    return updatedState;
+      return {
+        ...state,
+        mastery: newMastery,
+        streak: newStreak,
+        consecutiveCorrectLowHints: newConsecutive,
+        lastSeen: event.ts,
+      };
+    });
   }
 }

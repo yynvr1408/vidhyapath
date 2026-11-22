@@ -159,11 +159,14 @@ export interface SyncPayload {
   events: AttemptEvent[];
   doubts: DoubtItem[];
   clientPackVersion: string;
+  language?: 'te' | 'hi' | 'en';
 }
 
 export interface SyncResponse {
   success: boolean;
+  durable: boolean;
   syncedEventsCount: number;
+  syncedEventIds: string[];
   answeredDoubts: DoubtItem[];
   latestPackVersion: string;
   packUpdateAvailable: boolean;

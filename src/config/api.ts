@@ -1,24 +1,14 @@
-import { isNativePlatform } from '../utils/platform';
-
 /**
- * Global API URL resolver & Network Client for Vidyapath.
- * - When running in Android / iOS Capacitor APK: Automatically routes all `/api/...` calls
- *   to the Render cloud backend (https://vidyapath.onrender.com).
- * - When deployed on Netlify: Relative URLs (/api/...) are proxied to Render by Netlify Edge CDN.
- * - When running Vite dev server locally: Proxies to http://localhost:3001.
+ * Browser API URL resolver & network client for Vidyapath.
+ * - Deployed sites use their same-origin /api proxy.
+ * - Vite development uses the local /api proxy.
+ * - VITE_API_BASE_URL can point the web app at a separate API host when needed.
  * - In all environments: Safely wraps `fetch` and `.json()` so that HTML error responses
  *   (e.g. Render waking up from sleep, 502/503) never crash the app with "<!DOCTYPE" JSON parse errors.
  */
 
-export const REMOTE_BACKEND_URL = 'https://vidyapath.onrender.com';
-
-export const isCapacitor = isNativePlatform();
-
-// Determine base URL: environment variable overrides all, followed by explicit native platform detection
 const rawEnvUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || '';
-export const API_BASE_URL = (
-  rawEnvUrl || (isCapacitor ? REMOTE_BACKEND_URL : '')
-).replace(/\/+$/, '');
+export const API_BASE_URL = rawEnvUrl.replace(/\/+$/, '');
 
 export function getApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
@@ -40,7 +30,7 @@ if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
       url = input.url;
     }
 
-    // Rewrite relative /api/... calls if API_BASE_URL is set (e.g. on Android / Capacitor)
+    // Rewrite relative /api/... calls when an external API host is configured.
     if (API_BASE_URL && (url.startsWith('/api/') || url === '/api')) {
       const resolved = getApiUrl(url);
       if (typeof input === 'string' || input instanceof URL) {

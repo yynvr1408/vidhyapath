@@ -41,11 +41,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Permissive Enterprise CORS supporting Netlify frontend, mobile Capacitor, and custom domains
+// CORS for the browser PWA, API tooling, and configured custom domains
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, Capacitor, same-origin Netlify proxy)
+      // Allow requests with no origin (e.g. local tooling or same-origin edge proxies)
       if (!origin) return callback(null, true);
       // Allow localhost, any *.netlify.app deployment, render.com, or custom domain
       if (
@@ -106,6 +106,8 @@ interface StoredAttempt {
   chosenAnswer: string;
   correct: boolean;
   hintsUsed: number;
+  timeMs: number;
+  inputMode: string;
   ts: number;
 }
 
@@ -135,42 +137,88 @@ function getPack(packId: string) {
 }
 
 // 1. Batch Sync Endpoint (/api/sync)
-app.post('/api/sync', (req: Request, res: Response) => {
-  const { learnerId, events = [], doubts = [], clientPackVersion, language } = req.body;
+app.post('/api/sync', async (req: Request, res: Response) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const { learnerId, events = [], doubts = [], clientPackVersion, language } = body;
+  const safeLearnerId = typeof learnerId === 'string' ? learnerId : '';
+  const requestedEvents = Array.isArray(events) ? events : [];
+  const requestedDoubts = Array.isArray(doubts) ? doubts : [];
+  if (process.env.DATABASE_URL && !isNeonConnected() && (requestedEvents.length || requestedDoubts.length)) {
+    return res.status(503).json({ success: false, error: 'Progress storage is starting up. Retry shortly.' });
+  }
 
   // Append new events idempotently (client UUID check) & persist to PostgreSQL
   let newEventsCount = 0;
-  for (const ev of events) {
-    if (!attemptsLog.some((a) => a.eventId === ev.eventId)) {
-      attemptsLog.push(ev);
-      newEventsCount++;
-
-      // Asynchronously persist to Neon PostgreSQL sync_events table
-      insertSyncEvent({
-        eventId: ev.eventId,
-        learnerId: ev.learnerId || learnerId,
-        questionId: ev.questionId,
-        skillId: ev.skillId,
-        chosenAnswer: ev.chosenAnswer,
-        correct: Boolean(ev.correct),
-        hintsUsed: ev.hintsUsed || 0,
-        timeMs: ev.timeMs || 0,
-        inputMode: ev.inputMode || 'tap',
-        receiptHash: ev.receiptHash || null,
-        ts: ev.timestamp || Date.now(),
-      }).catch((err) => console.warn('[Sync] Sync event persistence warning:', err.message));
+  const acceptedEvents: StoredAttempt[] = [];
+  const syncedEventIds: string[] = [];
+  for (const ev of requestedEvents) {
+    const eventLearnerId = typeof ev?.learnerId === 'string' ? ev.learnerId : '';
+    if (
+      !safeLearnerId ||
+      eventLearnerId !== safeLearnerId ||
+      typeof ev?.eventId !== 'string' ||
+      !ev.eventId ||
+      typeof ev.questionId !== 'string' ||
+      typeof ev.skillId !== 'string' ||
+      typeof ev.chosenAnswer !== 'string' ||
+      typeof ev.correct !== 'boolean'
+    ) {
+      continue;
     }
+
+    let existing = attemptsLog.find((attempt) => attempt.eventId === ev.eventId);
+    if (existing && existing.learnerId !== safeLearnerId) continue;
+
+    const accepted = {
+      ...ev,
+      learnerId: safeLearnerId,
+      hintsUsed: Number.isFinite(ev.hintsUsed) ? Number(ev.hintsUsed) : 0,
+      timeMs: Number.isFinite(ev.timeMs) ? Number(ev.timeMs) : 0,
+      inputMode: ev.inputMode === 'voice' ? 'voice' : 'tap',
+      ts: Number.isFinite(ev.ts) ? Number(ev.ts) : Date.now(),
+    } as StoredAttempt;
+    // Always upsert into Neon when available, including events first received
+    // while the server used its in-memory fallback. The database operation is
+    // idempotent, so retries can safely repair that temporary persistence gap.
+    if (isNeonConnected()) {
+      const persisted = await insertSyncEvent({
+        eventId: accepted.eventId,
+        learnerId: accepted.learnerId,
+        questionId: accepted.questionId,
+        skillId: accepted.skillId,
+        chosenAnswer: accepted.chosenAnswer,
+        correct: Boolean(accepted.correct),
+        hintsUsed: accepted.hintsUsed || 0,
+        timeMs: accepted.timeMs || 0,
+        inputMode: accepted.inputMode || 'tap',
+        receiptHash: (ev as any).receiptHash || null,
+        ts: accepted.ts || Date.now(),
+      });
+      if (!persisted) {
+        return res.status(503).json({ success: false, error: 'Progress storage is temporarily unavailable.' });
+      }
+    }
+
+    existing = attemptsLog.find((attempt) => attempt.eventId === ev.eventId);
+    if (existing && existing.learnerId !== safeLearnerId) continue;
+    if (!existing) {
+      attemptsLog.push(accepted);
+      newEventsCount++;
+    }
+
+    acceptedEvents.push(accepted);
+    syncedEventIds.push(ev.eventId);
   }
 
   // Bridge student learning progress to Enterprise Student Profile
-  if (learnerId) {
-    let matchedUser = dataStore.users.get(learnerId);
+  if (safeLearnerId) {
+    let matchedUser = dataStore.users.get(safeLearnerId);
     if (!matchedUser) {
       for (const u of dataStore.users.values()) {
         if (
           u.role === 'student' &&
-          (u.studentProfile?.rollNumber?.toUpperCase() === String(learnerId).toUpperCase() ||
-            u.id === learnerId)
+          (u.studentProfile?.rollNumber?.toUpperCase() === safeLearnerId.toUpperCase() ||
+            u.id === safeLearnerId)
         ) {
           matchedUser = u;
           break;
@@ -179,7 +227,7 @@ app.post('/api/sync', (req: Request, res: Response) => {
     }
 
     if (matchedUser && matchedUser.studentProfile) {
-      const topicIdsFromEvents = events
+      const topicIdsFromEvents = acceptedEvents
         .map((e: any) => e.topicId || (e.skillId ? e.skillId.split('_').slice(0, 2).join('_') : null))
         .filter(Boolean);
       const currentCompleted = new Set(matchedUser.studentProfile.completedTopicIds || []);
@@ -214,7 +262,10 @@ app.post('/api/sync', (req: Request, res: Response) => {
 
   const defaultReply = defaultReplies[clientLang] || defaultReplies['te'];
 
-  for (const d of doubts) {
+  for (const d of requestedDoubts) {
+    const doubtLearnerId = typeof d?.learnerId === 'string' ? d.learnerId : '';
+    if (!safeLearnerId || doubtLearnerId !== safeLearnerId || typeof d?.id !== 'string' || !d.id) continue;
+
     let answerText = defaultReply;
     if (pack && pack.commonDoubts) {
       const qLower = (d.question || '').toLowerCase();
@@ -230,16 +281,14 @@ app.post('/api/sync', (req: Request, res: Response) => {
 
     const answered = {
       ...d,
+      learnerId: safeLearnerId,
       status: 'answered',
       answer: answerText,
     };
-    serverDoubts.push(answered);
-    answeredDoubts.push(answered);
-
-    // Asynchronously persist to Neon PostgreSQL doubts_queue table
-    insertOrUpdateDoubt({
+    // When Neon is configured, acknowledge a queued doubt after its durable write.
+    const persisted = !isNeonConnected() || await insertOrUpdateDoubt({
       id: d.id || 'doubt_' + Date.now().toString(36),
-      learnerId: d.learnerId || learnerId,
+      learnerId: safeLearnerId,
       topicId: d.topicId,
       question: d.question,
       answer: answerText,
@@ -248,7 +297,14 @@ app.post('/api/sync', (req: Request, res: Response) => {
       inputMode: d.inputMode || 'text',
       status: 'answered',
       ts: d.timestamp || Date.now(),
-    }).catch((err) => console.warn('[Sync] Doubt queue persistence warning:', err.message));
+    });
+    if (!persisted) {
+      return res.status(503).json({ success: false, error: 'Progress storage is temporarily unavailable.' });
+    }
+    const savedDoubtIndex = serverDoubts.findIndex((saved) => saved.id === answered.id);
+    if (savedDoubtIndex === -1) serverDoubts.push(answered);
+    else serverDoubts[savedDoubtIndex] = answered;
+    answeredDoubts.push(answered);
   }
 
   const latestPackVersion = pack ? pack.version : '1.0.0';
@@ -256,7 +312,9 @@ app.post('/api/sync', (req: Request, res: Response) => {
 
   res.json({
     success: true,
+    durable: isNeonConnected(),
     syncedEventsCount: newEventsCount,
+    syncedEventIds,
     answeredDoubts,
     latestPackVersion,
     packUpdateAvailable,
@@ -528,8 +586,6 @@ app.get('/api/app/check-update', async (req: Request, res: Response) => {
       (lMaj === cMaj && lMin > cMin) ||
       (lMaj === cMaj && lMin === cMin && lPatch > cPatch);
 
-    const apkAsset = release.assets?.find((a: any) => typeof a.name === 'string' && a.name.endsWith('.apk'));
-
     return res.json({
       hasUpdate,
       currentVersion,
@@ -537,8 +593,7 @@ app.get('/api/app/check-update', async (req: Request, res: Response) => {
       tag: release.tag_name,
       repo: `${owner}/${repo}`,
       releaseNotes: release.body || '',
-      downloadUrl: apkAsset ? apkAsset.browser_download_url : release.html_url,
-      apkSizeMb: apkAsset?.size ? (apkAsset.size / (1024 * 1024)).toFixed(1) + ' MB' : undefined,
+      releaseUrl: release.html_url,
       publishedAt: release.published_at,
     });
   } catch (err: any) {

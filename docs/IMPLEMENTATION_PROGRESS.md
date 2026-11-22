@@ -1,5 +1,7 @@
 # Vidyapath — Implementation Progress Log
 
+> **Current status (2026-11-22):** the app now ships as a browser PWA while its route and offline-sync flows are consolidated. Earlier Android entries below are historical; Android setup is deferred. See [WEB_FIRST_ARCHITECTURE.md](WEB_FIRST_ARCHITECTURE.md).
+
 **Living Execution Document**
 
 ---

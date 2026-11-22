@@ -175,10 +175,10 @@ export const PRODUCT_UPDATES: ProductUpdateItem[] = [
     category: 'New Features',
     title: 'Initial Release: The Last-Mile Multilingual Learning Engine',
     description:
-      'Offline-first educational Progressive Web App and Android APK built for shared budget smartphones in rural and semi-urban India. Complete Class 10 AP State Board Mathematics launch pack.',
+      'Offline-first educational Progressive Web App for shared budget smartphones in rural and semi-urban India. Complete Class 10 AP State Board Mathematics launch pack.',
     highlights: [
       '100% offline functionality with IndexedDB persistence',
-      'Ultra-compact 4.07 MB standalone Android APK',
+      'Responsive browser learning flow with offline practice and local progress storage',
       'Multi-sibling shared profile support on a single budget device',
     ],
   },

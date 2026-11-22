@@ -59,31 +59,6 @@ function Create-Maskable-Icon($img, $canvasSize, $targetPath) {
     Write-Host "Created Maskable: $targetPath ($canvasSize x $canvasSize)"
 }
 
-function Create-Adaptive-Foreground($img, $canvasSize, $targetPath) {
-    $bmp = New-Object System.Drawing.Bitmap($canvasSize, $canvasSize)
-    $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-    $g.Clear([System.Drawing.Color]::Transparent)
-    
-    # Android Adaptive foreground safe zone is 66% (72/108) of canvas
-    $innerSize = [int]($canvasSize * 0.66)
-    $offset = [int](($canvasSize - $innerSize) / 2)
-    
-    $g.DrawImage($img, $offset, $offset, $innerSize, $innerSize)
-    $g.Dispose()
-    
-    $dir = [System.IO.Path]::GetDirectoryName($targetPath)
-    if (-not (Test-Path $dir)) {
-        New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    }
-    
-    $bmp.Save($targetPath, [System.Drawing.Imaging.ImageFormat]::Png)
-    $bmp.Dispose()
-    Write-Host "Created Adaptive Foreground: $targetPath ($canvasSize x $canvasSize)"
-}
-
 function Create-Ico-File($img, $targetPath) {
     $bmp = New-Object System.Drawing.Bitmap(48, 48)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -127,38 +102,6 @@ Resize-And-Save $srcImage 180 180 "icons\apple-touch-icon.png"
 Resize-And-Save $srcImage 32 32 "icons\favicon-32x32.png"
 Create-Ico-File $srcImage "icons\favicon.ico"
 
-# 3. Android Mipmap densities
-$androidDensities = @{
-    "mdpi" = @{ launcher = 48; foreground = 108 }
-    "hdpi" = @{ launcher = 72; foreground = 162 }
-    "xhdpi" = @{ launcher = 96; foreground = 216 }
-    "xxhdpi" = @{ launcher = 144; foreground = 324 }
-    "xxxhdpi" = @{ launcher = 192; foreground = 432 }
-}
-
-foreach ($d in $androidDensities.Keys) {
-    $lDim = $androidDensities[$d].launcher
-    $fDim = $androidDensities[$d].foreground
-    
-    # Legacy Full Launcher Icons
-    Resize-And-Save $srcImage $lDim $lDim "android\app\src\main\res\mipmap-$d\ic_launcher.png"
-    Resize-And-Save $srcImage $lDim $lDim "android\app\src\main\res\mipmap-$d\ic_launcher_round.png"
-    
-    # Modern Adaptive Foreground Icons
-    Create-Adaptive-Foreground $srcImage $fDim "android\app\src\main\res\mipmap-$d\ic_launcher_foreground.png"
-}
-
-# 4. Remove default capacitor vector if present that interferes with adaptive foreground
-$defaultVector = "android\app\src\main\res\drawable-v24\ic_launcher_foreground.xml"
-if (Test-Path $defaultVector) {
-    Remove-Item $defaultVector -Force
-    Write-Host "Removed obsolete vector override: $defaultVector"
-}
-
-# 5. Sync to android public web assets
-Copy-Item "public\icons\*" "android\app\src\main\assets\public\icons\" -Recurse -Force
-Copy-Item "public\favicon.ico" "android\app\src\main\assets\public\favicon.ico" -Force
-
 $srcImage.Dispose()
 $ms.Dispose()
-Write-Host "All website and Android app icons successfully generated and deployed!"
+Write-Host "Browser and PWA icons successfully generated!"

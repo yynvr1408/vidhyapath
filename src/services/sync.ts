@@ -1,80 +1,100 @@
 import { localDb } from '../db/indexedDb';
 import { SyncPayload, SyncResponse, DoubtItem } from '../types';
 
+export interface SyncResult {
+  syncedEventsCount: number;
+  answeredDoubts: DoubtItem[];
+  hasUpdate: boolean;
+}
+
+const EMPTY_RESULT: SyncResult = { syncedEventsCount: 0, answeredDoubts: [], hasUpdate: false };
+
 export class SyncService {
-  private static isSyncing = false;
+  private static inFlight = new Map<string, Promise<SyncResult>>();
 
-  /**
-   * Syncs pending outbox attempt events and queued doubts with the server
-   */
-  public static async syncOutbox(
+  /** Sync one learner's pending work. Different profiles can sync independently. */
+  public static syncOutbox(
     learnerId: string,
-    currentPackVersion: string = '1.0.0'
-  ): Promise<{ syncedEventsCount: number; answeredDoubts: DoubtItem[]; hasUpdate: boolean }> {
-    if (this.isSyncing) {
-      return { syncedEventsCount: 0, answeredDoubts: [], hasUpdate: false };
-    }
+    currentPackVersion: string = '1.0.0',
+    language: 'te' | 'hi' | 'en' = 'te'
+  ): Promise<SyncResult> {
+    const activeSync = this.inFlight.get(learnerId);
+    if (activeSync) return activeSync;
 
-    if (!navigator.onLine) {
-      return { syncedEventsCount: 0, answeredDoubts: [], hasUpdate: false };
-    }
+    const sync = this.performSync(learnerId, currentPackVersion, language).finally(() => {
+      this.inFlight.delete(learnerId);
+    });
+    this.inFlight.set(learnerId, sync);
+    return sync;
+  }
 
-    this.isSyncing = true;
+  private static async performSync(
+    learnerId: string,
+    currentPackVersion: string,
+    language: 'te' | 'hi' | 'en'
+  ): Promise<SyncResult> {
+    if (!navigator.onLine) return EMPTY_RESULT;
+
     try {
-      const pendingAttempts = await localDb.getOutboxAttempts();
-      const learnerDoubts = await localDb.getDoubtsByLearner(learnerId);
-      const queuedDoubts = learnerDoubts.filter((d) => d.status === 'queued');
+      // Filter by owner on both the database query and the payload boundary.
+      const [storedAttempts, learnerDoubts] = await Promise.all([
+        localDb.getOutboxAttempts(learnerId),
+        localDb.getDoubtsByLearner(learnerId),
+      ]);
+      const pendingAttempts = storedAttempts.filter((event) => event.learnerId === learnerId);
+      const queuedDoubts = learnerDoubts.filter(
+        (doubt) => doubt.learnerId === learnerId && doubt.status === 'queued'
+      );
 
-      if (pendingAttempts.length === 0 && queuedDoubts.length === 0) {
-        this.isSyncing = false;
-        return { syncedEventsCount: 0, answeredDoubts: [], hasUpdate: false };
-      }
+      if (pendingAttempts.length === 0 && queuedDoubts.length === 0) return EMPTY_RESULT;
 
       const payload: SyncPayload = {
         learnerId,
         events: pendingAttempts,
         doubts: queuedDoubts,
         clientPackVersion: currentPackVersion,
+        language,
       };
 
-      const res = await fetch('/api/sync', {
+      const response = await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      if (!response.ok) return EMPTY_RESULT;
 
-      if (res.ok) {
-        const data: SyncResponse = await res.json();
+      const data = (await response.json()) as SyncResponse;
+      if (!data.success) return EMPTY_RESULT;
+      // Do not discard the browser outbox when the API only accepted work into
+      // its process-local development fallback.
+      if (data.durable !== true) return { ...EMPTY_RESULT, hasUpdate: Boolean(data.packUpdateAvailable) };
 
-        // 1. Clear synced attempts from outbox
-        if (pendingAttempts.length > 0) {
-          const syncedIds = pendingAttempts.map((e) => e.eventId);
-          await localDb.clearOutboxAttempts(syncedIds);
-        }
+      // Only remove rows the server explicitly accepted, and never accept an ID
+      // that was not included in this learner's request.
+      const submittedIds = new Set(pendingAttempts.map((event) => event.eventId));
+      const syncedIds = Array.isArray(data.syncedEventIds)
+        ? data.syncedEventIds.filter((eventId) => submittedIds.has(eventId))
+        : [];
+      if (syncedIds.length > 0) await localDb.clearOutboxAttempts(syncedIds);
 
-        // 2. Mark answered doubts
-        if (data.answeredDoubts && data.answeredDoubts.length > 0) {
-          for (const d of data.answeredDoubts) {
-            await localDb.saveDoubt({
-              ...d,
-              status: 'answered',
-            });
-          }
-        }
-
-        this.isSyncing = false;
-        return {
-          syncedEventsCount: data.syncedEventsCount || pendingAttempts.length,
-          answeredDoubts: data.answeredDoubts || [],
-          hasUpdate: data.packUpdateAvailable || false,
-        };
+      const submittedDoubtIds = new Set(queuedDoubts.map((doubt) => doubt.id));
+      const answeredDoubts = Array.isArray(data.answeredDoubts)
+        ? data.answeredDoubts.filter(
+            (doubt) => doubt.learnerId === learnerId && submittedDoubtIds.has(doubt.id)
+          )
+        : [];
+      for (const doubt of answeredDoubts) {
+        await localDb.saveDoubt({ ...doubt, status: 'answered' });
       }
+
+      return {
+        syncedEventsCount: syncedIds.length,
+        answeredDoubts,
+        hasUpdate: Boolean(data.packUpdateAvailable),
+      };
     } catch (err) {
       console.warn('Sync outbox failed (offline or network delay):', err);
-    } finally {
-      this.isSyncing = false;
+      return EMPTY_RESULT;
     }
-
-    return { syncedEventsCount: 0, answeredDoubts: [], hasUpdate: false };
   }
 }

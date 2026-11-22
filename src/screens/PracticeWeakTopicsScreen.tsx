@@ -39,6 +39,8 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [sessionResults, setSessionResults] = useState<{ correct: boolean; hintsUsed: number }[]>([]);
   const [isSessionFinished, setIsSessionFinished] = useState(false);
+  const [isSavingAnswer, setIsSavingAnswer] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Initialize 5 questions
   useEffect(() => {
@@ -66,13 +68,16 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
   const quizStateKey = activeLearner ? `vidyapath_quiz_state_${activeLearner.id}` : null;
 
   const handleSelectAnswer = async (inputStr: string, inputMode: 'tap' | 'voice' = 'tap') => {
-    if (!activeLearner || !currentQ || activeFeedback) return;
+    if (!activeLearner || !currentQ || activeFeedback || isSavingAnswer) return;
 
     const timeSpentMs = Date.now() - startTime;
     const result = DeterministicAnswerChecker.checkAnswer(currentQ, inputStr, pack);
 
     const attemptEvent: AttemptEvent = {
-      eventId: 'att_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      eventId:
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : 'att_' + Date.now() + '_' + Math.random().toString(36).slice(2),
       learnerId: activeLearner.id,
       questionId: currentQ.id,
       skillId: currentQ.skillId,
@@ -85,27 +90,45 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
       ts: Date.now(),
     };
 
-    await PracticeEngine.recordAttemptAndUpdateSkill(attemptEvent);
-    await refreshLearnerData();
+    setIsSavingAnswer(true);
+    setSaveError(null);
+    try {
+      await PracticeEngine.recordAttemptAndUpdateSkill(attemptEvent);
 
-    const updatedResults = [...sessionResults, { correct: result.isCorrect, hintsUsed: hintLevel }];
-    setSessionResults(updatedResults);
-    setActiveFeedback(result);
+      const updatedResults = [...sessionResults, { correct: result.isCorrect, hintsUsed: hintLevel }];
+      setSessionResults(updatedResults);
+      setActiveFeedback(result);
+      void triggerSync();
+      void refreshLearnerData().catch((error) => {
+        console.warn('Saved practice progress, but could not refresh the screen state:', error);
+      });
 
-    // Auto-save mid-quiz answers to local storage immediately
-    if (quizStateKey) {
-      try {
-        localStorage.setItem(
-          quizStateKey,
-          JSON.stringify({
-            topicId: selectedTopicId,
-            currentIndex,
-            questionId: currentQ.id,
-            savedResults: updatedResults,
-            ts: Date.now(),
-          })
-        );
-      } catch {}
+      // Auto-save mid-quiz answers to local storage immediately
+      if (quizStateKey) {
+        try {
+          localStorage.setItem(
+            quizStateKey,
+            JSON.stringify({
+              topicId: selectedTopicId,
+              currentIndex,
+              questionId: currentQ.id,
+              savedResults: updatedResults,
+              ts: Date.now(),
+            })
+          );
+        } catch {}
+      }
+    } catch (error) {
+      console.error('Could not save the practice answer locally:', error);
+      setSaveError(
+        currentLanguage === 'te'
+          ? 'మీ సమాధానాన్ని ఈ పరికరంలో సేవ్ చేయలేకపోయాం. దయచేసి మళ్లీ ప్రయత్నించండి.'
+          : currentLanguage === 'hi'
+          ? 'आपका उत्तर इस डिवाइस पर सेव नहीं हो सका। कृपया फिर से प्रयास करें।'
+          : 'Your answer could not be saved on this device. Please try again.'
+      );
+    } finally {
+      setIsSavingAnswer(false);
     }
   };
 
@@ -252,6 +275,12 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
         </h2>
       </div>
 
+      {saveError && (
+        <div role="alert" className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm font-semibold text-[#991B1B]">
+          {saveError}
+        </div>
+      )}
+
       {/* 4 Large Radio / Option Buttons (>= 48px Touch Targets) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {(['A', 'B', 'C', 'D'] as const).map((optKey, idx) => {
@@ -260,7 +289,7 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
             <button
               key={optKey}
               type="button"
-              disabled={!!activeFeedback}
+              disabled={!!activeFeedback || isSavingAnswer}
               onClick={() => handleSelectAnswer(optKey, 'tap')}
               className="bg-[#FFFFFF] hover:bg-[#F0FDFA] hover:border-[#0F766E] border border-[#E2E8F0] rounded-[12px] p-4 flex items-center gap-3.5 text-left transition-all active:scale-98 shadow-2xs min-h-[58px] group"
             >
@@ -356,7 +385,7 @@ export const PracticeWeakTopicsScreen: React.FC = () => {
           onClick={() => {
             if (hintLevel < 3) setHintLevel((p) => p + 1);
           }}
-          disabled={hintLevel >= 3 || !!activeFeedback}
+          disabled={hintLevel >= 3 || !!activeFeedback || isSavingAnswer}
           className="flex-1 flex items-center justify-center gap-2 py-3 px-3 rounded-[12px] bg-[#FFFFFF] hover:bg-[#F8FAFC] border border-[#E2E8F0] font-bold text-sm text-[#475569] hover:text-[#0F766E] disabled:opacity-40 min-h-[48px] shadow-2xs"
         >
           <Lightbulb className="w-4 h-4 text-[#D97706]" />

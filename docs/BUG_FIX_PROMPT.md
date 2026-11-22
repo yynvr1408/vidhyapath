@@ -10,7 +10,7 @@ Vidyapath is an installable React + Vite PWA for offline-first maths practice (C
 
 - **Frontend:** React + Vite PWA in `src/` (IndexedDB, Service Worker, sync outbox).
 - **Backend:** Express API in `server/` (TypeScript), backed by Neon Postgres.
-- **Mobile:** Capacitor Android wrapper.
+- **Android:** Packaging is deferred; the current supported product is the browser PWA.
 - **Host OS:** Windows. Use Windows-compatible shell commands and path separators.
 
 Verification commands (run from the project root in PowerShell or cmd):

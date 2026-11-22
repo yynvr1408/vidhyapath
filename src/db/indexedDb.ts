@@ -1,7 +1,7 @@
 import { LearnerProfile, AttemptEvent, SkillState, DoubtItem } from '../types';
 
 const DB_NAME = 'Vidyapath_DB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export class LocalDatabase {
   private db: IDBDatabase | null = null;
@@ -35,8 +35,11 @@ export class LocalDatabase {
         }
 
         // Sync Outbox
-        if (!db.objectStoreNames.contains('outbox_sync')) {
-          db.createObjectStore('outbox_sync', { keyPath: 'eventId' });
+        const outboxStore = db.objectStoreNames.contains('outbox_sync')
+          ? (request.transaction as IDBTransaction).objectStore('outbox_sync')
+          : db.createObjectStore('outbox_sync', { keyPath: 'eventId' });
+        if (!outboxStore.indexNames.contains('learnerId')) {
+          outboxStore.createIndex('learnerId', 'learnerId', { unique: false });
         }
 
         // Doubts
@@ -145,6 +148,41 @@ export class LocalDatabase {
     });
   }
 
+  async recordAttemptWithSkillUpdate(
+    event: AttemptEvent,
+    updateSkillState: (state: SkillState | null) => SkillState
+  ): Promise<SkillState> {
+    const db = await this.getDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['attempts', 'outbox_sync', 'skill_states'], 'readwrite');
+      const attemptsStore = tx.objectStore('attempts');
+      const outboxStore = tx.objectStore('outbox_sync');
+      const skillStore = tx.objectStore('skill_states');
+      let updatedState: SkillState | null = null;
+      const readState = skillStore.get([event.learnerId, event.skillId]);
+
+      readState.onsuccess = () => {
+        try {
+          updatedState = updateSkillState((readState.result as SkillState | undefined) || null);
+          attemptsStore.put(event);
+          outboxStore.put(event);
+          skillStore.put(updatedState);
+        } catch (error) {
+          tx.abort();
+          reject(error);
+        }
+      };
+
+      readState.onerror = () => reject(readState.error);
+      tx.oncomplete = () => {
+        if (updatedState) resolve(updatedState);
+        else reject(new Error('Could not update the learner skill state.'));
+      };
+      tx.onerror = () => reject(tx.error || new Error('Could not save the practice attempt.'));
+      tx.onabort = () => reject(tx.error || new Error('Could not save the practice attempt.'));
+    });
+  }
+
   async getAttemptsByLearner(learnerId: string): Promise<AttemptEvent[]> {
     const db = await this.getDb();
     return new Promise((resolve, reject) => {
@@ -157,12 +195,12 @@ export class LocalDatabase {
     });
   }
 
-  async getOutboxAttempts(): Promise<AttemptEvent[]> {
+  async getOutboxAttempts(learnerId?: string): Promise<AttemptEvent[]> {
     const db = await this.getDb();
     return new Promise((resolve, reject) => {
       const tx = db.transaction('outbox_sync', 'readonly');
       const store = tx.objectStore('outbox_sync');
-      const req = store.getAll();
+      const req = learnerId ? store.index('learnerId').getAll(learnerId) : store.getAll();
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
     });
@@ -224,9 +262,10 @@ export class LocalDatabase {
     return new Promise((resolve, reject) => {
       const tx = db.transaction('doubts', 'readwrite');
       const store = tx.objectStore('doubts');
-      const req = store.put(doubt);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
+      store.put(doubt);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error('Could not save the learner doubt.'));
     });
   }
 

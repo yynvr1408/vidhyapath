@@ -8,11 +8,9 @@ import {
   BookOpen,
   ArrowRight,
   Sparkles,
-  Download,
   CheckCircle2,
   KeyRound,
   FileText,
-  Smartphone,
   Globe,
   Award,
   Layers,
@@ -88,8 +86,8 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
               onClick={onOpenLearnerApp}
               className="py-2 px-4 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>{currentLanguage === 'te' ? 'లెర్నర్ యాప్ ఓపెన్ చేయి' : currentLanguage === 'hi' ? 'लर्नर ऐप खोलें' : 'Open Learner App'}</span>
+              <Globe className="w-3.5 h-3.5" />
+              <span>{currentLanguage === 'te' ? 'వెబ్ లెర్నింగ్ ఓపెన్ చేయి' : currentLanguage === 'hi' ? 'वेब लर्निंग खोलें' : 'Open Web Learning'}</span>
             </button>
           </div>
         </div>
@@ -161,15 +159,6 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
               <span>{currentLanguage === 'te' ? 'సంస్థ & ఉపాధ్యాయుల పోర్టల్' : currentLanguage === 'hi' ? 'संस्थान एवं शिक्षक पोर्टल' : 'Institution & Teacher Portal'}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={openModal}
-              className="py-3 px-4 rounded-2xl bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#92400E] border border-[#FDE68A] text-sm font-bold transition-all shadow-xs active:scale-95 cursor-pointer flex items-center gap-2"
-              title="Download Android APK"
-            >
-              <Download className="w-4 h-4" />
-              <span>APK v{currentVersion}</span>
-            </button>
           </div>
         </div>
       </section>
@@ -406,7 +395,7 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
               Institution Portal
             </button>
             <button type="button" onClick={openModal} className="hover:underline text-[#D97706]">
-              App v{currentVersion}
+              Web v{currentVersion}
             </button>
           </div>
         </div>

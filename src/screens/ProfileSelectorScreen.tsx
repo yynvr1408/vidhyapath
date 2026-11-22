@@ -448,17 +448,17 @@ export const ProfileSelectorScreen: React.FC<ProfileSelectorScreenProps> = ({
         </div>
       </div>
 
-      {/* 5. Clean Footer with App Version, APK Update Action & Privacy Note */}
+      {/* 5. Clean Footer with Web Version & Privacy Note */}
       <footer className="pt-3 border-t border-[#E2E8F0] flex flex-col items-center text-center gap-2">
         <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#0F766E]">
           <button
             type="button"
             onClick={openModal}
             className="hover:underline inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-[#FEF3C7] text-[#D97706] transition-colors"
-            title="Check for App Updates & APK Downloads"
+            title="Check for website updates"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>{hasUpdate ? `Update Available (v${currentVersion})` : `App Version: v${currentVersion}`}</span>
+            <span>{hasUpdate ? `Update Available (v${currentVersion})` : `Web Version: v${currentVersion}`}</span>
           </button>
         </div>
 

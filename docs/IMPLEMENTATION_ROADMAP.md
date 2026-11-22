@@ -1,5 +1,7 @@
 # Vidyapath — Complete Implementation Roadmap
 
+> **Current direction (2026-11-22):** browser PWA first. The Android release phase is deferred until routes and progress sync are stable; historical completion labels below do not describe the current Android state. See [WEB_FIRST_ARCHITECTURE.md](WEB_FIRST_ARCHITECTURE.md).
+
 **Phased Execution Plan for Production Transformation**
 
 ---
@@ -21,9 +23,9 @@
 | **Phase 11** | Socratic AI Tutor | Trilingual RAG, separate student conversation history, guardrails, Groq Llama 3 | Complete |
 | **Phase 12** | L5 Parent Dashboard | Child switcher, progress metrics, attendance, teacher notes, safety question PIN reset | Complete |
 | **Phase 13** | Offline & Sync | IndexedDB offline cache, Service Worker, idempotent sync events, account bridge | Complete |
-| **Phase 14** | Mobile & UI/UX | Sticky bottom navigation bar, touch targets $\ge 52$px, Android hardware back button | Complete |
-| **Phase 15** | Android Release | Capacitor Android build, splash screen, adaptive icons, release bundle | Complete |
-| **Phase 16** | Verification & QA | 60+ unit, UI, and E2E tests, security tests, rate limiting, R2 persistence | Complete |
+| **Phase 14** | Web Mobile & UI/UX | Responsive browser navigation, touch targets, and modal dismissal | Web flow implemented; current refactor pending verification |
+| **Phase 15** | Android Release | Native package, splash screen, adaptive icons, release bundle | Deferred until the web flow is stable |
+| **Phase 16** | Verification & QA | Unit, UI, and E2E suites after the current route and sync changes | Pending |
 | **Phase 17** | Production Deployment | Netlify + Render deployment verification, monitoring, environment variables | Complete |
 
 ---

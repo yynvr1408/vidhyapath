@@ -56,7 +56,7 @@ try {
   execSync(`git commit -m "chore(release): v${newVersion}"`, { stdio: 'inherit', cwd: rootDir });
   execSync(`git tag v${newVersion}`, { stdio: 'inherit', cwd: rootDir });
   console.log(`\n🎉 Successfully created release tag v${newVersion}!`);
-  console.log('\nTo trigger GitHub Actions to build APK and publish release:');
+  console.log('\nPush the commit and tag to trigger the web build workflow:');
   console.log(`  git push origin main --tags\n`);
 } catch (err) {
   console.error('Git command failed:', err.message);
