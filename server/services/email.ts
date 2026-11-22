@@ -16,15 +16,23 @@ export interface EmailOptions {
 
 export class EmailService {
   private static serviceId = process.env.EMAILJS_SERVICE_ID || '';
+  private static serviceIdVerification = process.env.EMAILJS_SERVICE_ID_VERIFICATION || process.env.EMAILJS_SERVICE_ID || '';
   private static defaultTemplateId = process.env.EMAILJS_TEMPLATE_ID || '';
   private static templateVerification = process.env.EMAILJS_TEMPLATE_VERIFICATION || process.env.EMAILJS_TEMPLATE_ID || '';
   private static templatePasswordReset = process.env.EMAILJS_TEMPLATE_PASSWORD_RESET || process.env.EMAILJS_TEMPLATE_ID || '';
   private static templateNotification = process.env.EMAILJS_TEMPLATE_NOTIFICATION || process.env.EMAILJS_TEMPLATE_ID || '';
   private static publicKey = process.env.EMAILJS_PUBLIC_KEY || '';
   private static privateKey = process.env.EMAILJS_PRIVATE_KEY || '';
+  private static publicKeyVerification = process.env.EMAILJS_PUBLIC_KEY_VERIFICATION || process.env.EMAILJS_PUBLIC_KEY || '';
+  private static privateKeyVerification = process.env.EMAILJS_PRIVATE_KEY_VERIFICATION || process.env.EMAILJS_PRIVATE_KEY || '';
 
-  static isConfigured(): boolean {
-    return Boolean(this.serviceId && (this.defaultTemplateId || this.templateVerification) && this.publicKey);
+  static isConfigured(category?: 'verification' | 'password_reset' | 'notification'): boolean {
+    if (category === 'verification') {
+      const sId = this.serviceIdVerification || this.serviceId;
+      const pKey = this.publicKeyVerification || this.publicKey;
+      return Boolean(sId && (this.templateVerification || this.defaultTemplateId) && pKey);
+    }
+    return Boolean(this.serviceId && (this.defaultTemplateId || this.templateNotification || this.templatePasswordReset) && this.publicKey);
   }
 
   // Get active EmailJS template ID for the 3 production templates
@@ -46,8 +54,13 @@ export class EmailService {
     const { toEmail, toName, subject, templateCategory, templateParams } = opts;
     const resolvedTemplateId = this.getTemplateId(templateCategory);
 
+    const isVerification = templateCategory === 'verification';
+    const activeServiceId = isVerification ? (this.serviceIdVerification || this.serviceId) : this.serviceId;
+    const activePublicKey = isVerification ? (this.publicKeyVerification || this.publicKey) : this.publicKey;
+    const activePrivateKey = isVerification ? (this.privateKeyVerification || this.privateKey) : this.privateKey;
+
     // In local dev/testing without credentials, log the email safely
-    if (!this.isConfigured()) {
+    if (!this.isConfigured(templateCategory)) {
       console.log(`\n======================================================`);
       console.log(`[TRANSACTIONAL EMAIL - SIMULATED (EmailJS not configured)]`);
       console.log(`To: "${toName}" <${toEmail}>`);
@@ -72,10 +85,10 @@ export class EmailService {
           'User-Agent': 'Vidyapath-Server/1.0',
         },
         body: JSON.stringify({
-          service_id: this.serviceId,
+          service_id: activeServiceId,
           template_id: resolvedTemplateId,
-          user_id: this.publicKey,
-          accessToken: this.privateKey || undefined,
+          user_id: activePublicKey,
+          accessToken: activePrivateKey || undefined,
           template_params: {
             to_name: toName,
             to_email: toEmail,
