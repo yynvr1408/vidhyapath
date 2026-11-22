@@ -1,0 +1,405 @@
+// Enterprise Multi-Tier Educational Management Portal (Levels 1 to 4)
+import React, { useState, useEffect } from 'react';
+import {
+  EnterpriseShell,
+  EnterpriseScreenId,
+} from '../components/layout/EnterpriseShell';
+import { Subject } from '../types/enterprise';
+import { useEnterpriseAuth } from '../context/EnterpriseAuthContext';
+import { useApp } from '../context/AppContext';
+import { useAcademic } from '../context/AcademicContext';
+import { SuperAdminDashboard } from './dashboards/SuperAdminDashboard';
+import { InstitutionAdminDashboard } from './dashboards/InstitutionAdminDashboard';
+import { AcademicAdminDashboard } from './dashboards/AcademicAdminDashboard';
+import { TeacherDashboard } from './dashboards/TeacherDashboard';
+import { StudentDashboard } from './dashboards/StudentDashboard';
+import { GuardianDashboard } from './dashboards/GuardianDashboard';
+import { SubjectEnvironmentScreen } from './lms/SubjectEnvironmentScreen';
+import { SyllabusManagerScreen } from './academic/SyllabusManagerScreen';
+import { OfflineLearningCenter } from './offline/OfflineLearningCenter';
+import { AiTutorPortal } from './ai/AiTutorPortal';
+import { InstitutionsQueueScreen } from './admin/InstitutionsQueueScreen';
+import { UsersDirectoryScreen } from './admin/UsersDirectoryScreen';
+import { AuditLogsScreen } from './admin/AuditLogsScreen';
+import { AssignmentsHubScreen } from './lms/AssignmentsHubScreen';
+import { AnnouncementsScreen } from './admin/AnnouncementsScreen';
+import { GuardianDigestScreen } from './dashboards/GuardianDigestScreen';
+import {
+  BookOpen,
+  ArrowLeft,
+  Sparkles,
+  Layers,
+  ChevronRight,
+  Lock,
+} from 'lucide-react';
+import { navigationManager } from '../services/navigationManager';
+
+interface EnterprisePortalScreenProps {
+  onReturnToStudentApp?: () => void;
+  onNavigateToLogin?: () => void;
+  onSignOut?: () => void;
+}
+
+const PORTAL_SCREENS: EnterpriseScreenId[] = [
+  'DASHBOARD', 'SUBJECT_VIEW', 'AI_TUTOR', 'SYLLABUS_MANAGER',
+  'OFFLINE_CENTER', 'FOUNDATION_MASCOTS', 'PRACTICE_ENGINE', 'MY_PROGRESS',
+  'GUARDIAN_DIGEST', 'INSTITUTIONS_QUEUE', 'USERS_DIRECTORY', 'AUDIT_LOGS',
+  'ASSIGNMENTS', 'ANNOUNCEMENTS',
+];
+
+const pathToScreenMap: Record<string, EnterpriseScreenId> = {
+  'dashboard': 'DASHBOARD',
+  'syllabus': 'SYLLABUS_MANAGER',
+  'syllabus-manager': 'SYLLABUS_MANAGER',
+  'curriculum': 'SYLLABUS_MANAGER',
+  'users': 'USERS_DIRECTORY',
+  'users-directory': 'USERS_DIRECTORY',
+  'directory': 'USERS_DIRECTORY',
+  'institutions': 'INSTITUTIONS_QUEUE',
+  'institutions-queue': 'INSTITUTIONS_QUEUE',
+  'approvals': 'INSTITUTIONS_QUEUE',
+  'audit-logs': 'AUDIT_LOGS',
+  'audit': 'AUDIT_LOGS',
+  'assignments': 'ASSIGNMENTS',
+  'announcements': 'ANNOUNCEMENTS',
+  'guardian-digest': 'GUARDIAN_DIGEST',
+  'digest': 'GUARDIAN_DIGEST',
+  'subject': 'SUBJECT_VIEW',
+  'subject-view': 'SUBJECT_VIEW',
+  'classroom': 'SUBJECT_VIEW',
+  'ai-tutor': 'AI_TUTOR',
+  'offline-center': 'OFFLINE_CENTER',
+  'offline': 'OFFLINE_CENTER',
+};
+
+const getScreenFromUrl = (): EnterpriseScreenId => {
+  if (typeof window === 'undefined') return 'DASHBOARD';
+  const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+  const parts = path.split('/').filter(Boolean);
+  if (parts[0] === 'portal' && parts[1]) {
+    const matched = pathToScreenMap[parts[1]];
+    if (matched) return matched;
+  }
+  const queryTab = new URLSearchParams(window.location.search).get('tab')?.toLowerCase();
+  if (queryTab && pathToScreenMap[queryTab]) {
+    return pathToScreenMap[queryTab];
+  }
+  return 'DASHBOARD';
+};
+
+export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
+  onReturnToStudentApp,
+  onNavigateToLogin,
+  onSignOut,
+}) => {
+  const { user, activeRole, loading } = useEnterpriseAuth();
+  const { setScreen: setAppScreen } = useApp();
+  const { subjects } = useAcademic();
+
+  const [currentScreen, setCurrentScreen] = useState<EnterpriseScreenId>(getScreenFromUrl);
+  const [activeSubject, setActiveSubject] = useState<Subject | null>(null);
+
+  // Sync tab with URL back/forward history
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentScreen(getScreenFromUrl());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleReturn = () => {
+    if (onReturnToStudentApp) {
+      onReturnToStudentApp();
+    } else {
+      window.history.pushState({}, '', '/learn');
+      setAppScreen('MY_SYLLABUS');
+    }
+  };
+
+  // Register hierarchical back-button handler inside Enterprise Portal
+  useEffect(() => {
+    const unregister = navigationManager.registerBackHandler(() => {
+      // If in deep portal screen, navigate back to DASHBOARD
+      if (currentScreen !== 'DASHBOARD') {
+        setCurrentScreen('DASHBOARD');
+        window.history.pushState({ screen: 'DASHBOARD' }, '', '/portal');
+        return true;
+      }
+
+      // If at root DASHBOARD, return to student learning loop
+      handleReturn();
+      return true;
+    }, 45);
+
+    return () => unregister();
+  }, [currentScreen, onReturnToStudentApp]);
+
+  // GATING 1: Loading state during session restoration
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-12 h-12 border-4 border-[#0F766E] border-t-transparent rounded-full animate-spin mb-4" />
+        <h2 className="text-base font-extrabold text-[#0F172A]">Verifying Vidyapath Portal Session...</h2>
+        <p className="text-xs text-[#64748B] mt-1 font-medium">Restoring encrypted role credentials</p>
+      </div>
+    );
+  }
+
+  // GATING 2: Unauthenticated User Gate (Require login to access portal)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4 sm:p-6 text-[#0F172A]">
+        <div className="bg-white rounded-3xl border border-[#CBD5E1] shadow-xl max-w-md w-full p-6 sm:p-8 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-[#F0FDFA] border border-[#CCFBF1] text-[#0F766E] flex items-center justify-center mx-auto">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div>
+            <h1 className="text-xl font-extrabold text-[#0F172A]">Vidyapath Enterprise Portal</h1>
+            <p className="text-xs text-[#64748B] mt-1 font-medium leading-relaxed">
+              Authentication required. Sign in with your institutional credentials (Administrator, Teacher, Guardian, or Student) to access your portal.
+            </p>
+          </div>
+
+          <div className="pt-2 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigateToLogin) {
+                  onNavigateToLogin();
+                } else {
+                  window.history.pushState({}, '', '/login');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }
+              }}
+              className="w-full py-3 px-4 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>Go to Sign In Page</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleReturn}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#64748B] text-xs font-bold transition-all cursor-pointer"
+            >
+              Return to Website
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Navigation dispatcher from sidebar/drawer with clean browser history synchronization
+  const handlePortalNavigation = (screen: EnterpriseScreenId) => {
+    if (screen === 'PRACTICE_ENGINE' || screen === 'MY_PROGRESS' || screen === 'FOUNDATION_MASCOTS') {
+      setAppScreen(screen === 'PRACTICE_ENGINE' ? 'PRACTICE' : screen === 'MY_PROGRESS' ? 'PROGRESS' : 'PARENT_VIEW');
+      return;
+    }
+    setCurrentScreen(screen);
+    const slug = screen.toLowerCase().replace(/_/g, '-');
+    const newPath = screen === 'DASHBOARD' ? '/portal' : `/portal/${slug}`;
+    if (window.location.pathname !== newPath) {
+      window.history.pushState({ screen }, '', newPath);
+    }
+  };
+
+  // Render role-specific main dashboard
+  const renderDashboard = () => {
+    switch (activeRole) {
+      case 'super_admin':
+        return <SuperAdminDashboard />;
+      case 'institution_admin':
+        return (
+          <InstitutionAdminDashboard
+            onNavigateToSyllabus={() => handlePortalNavigation('SYLLABUS_MANAGER')}
+          />
+        );
+      case 'academic_admin':
+      case 'coordinator':
+      case 'exam_admin':
+        return <AcademicAdminDashboard />;
+      case 'teacher':
+        return (
+          <TeacherDashboard
+            onOpenSubject={(subj) => {
+              setActiveSubject(subj);
+              handlePortalNavigation('SUBJECT_VIEW');
+            }}
+            onOpenAiTutor={() => handlePortalNavigation('AI_TUTOR')}
+          />
+        );
+      case 'student':
+        return (
+          <StudentDashboard
+            onOpenSubject={(subj) => {
+              setActiveSubject(subj);
+              handlePortalNavigation('SUBJECT_VIEW');
+            }}
+            onOpenAiTutor={() => handlePortalNavigation('AI_TUTOR')}
+            onOpenOfflineCenter={() => handlePortalNavigation('OFFLINE_CENTER')}
+          />
+        );
+      case 'guardian':
+        return <GuardianDashboard />;
+      default:
+        return <SuperAdminDashboard />;
+    }
+  };
+
+  // Render Subject Classroom View
+  const renderSubjectClassroom = () => {
+    if (activeSubject) {
+      return (
+        <SubjectEnvironmentScreen
+          subject={activeSubject}
+          onBack={() => {
+            setActiveSubject(null);
+            handlePortalNavigation('DASHBOARD');
+          }}
+          onOpenAiTutor={() => handlePortalNavigation('AI_TUTOR')}
+        />
+      );
+    }
+
+    // No active subject selected yet: render Subject Selection Grid
+    return (
+      <div className="space-y-6 animate-fadeIn">
+        <div className="flex items-center justify-between pb-4 border-b border-[#E2E8F0]">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => handlePortalNavigation('DASHBOARD')}
+              className="p-2 rounded-xl bg-white border border-[#CBD5E1] text-[#475569] hover:bg-[#F8FAFC]"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-xl font-extrabold text-[#0F172A] flex items-center gap-2">
+                <Layers className="w-6 h-6 text-[#0F766E]" />
+                Subject Classroom &amp; Course Materials
+              </h1>
+              <p className="text-xs text-[#64748B] font-medium">
+                Select a registered course subject to access video lectures, topic handouts, and practice sets.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {subjects.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-[#E2E8F0] p-12 text-center max-w-lg mx-auto space-y-3">
+            <BookOpen className="w-12 h-12 text-[#94A3B8] mx-auto opacity-60" />
+            <h3 className="font-extrabold text-base text-[#0F172A]">No Enrolled Subjects Available</h3>
+            <p className="text-xs text-[#64748B] leading-relaxed">
+              Your profile is not yet linked to specific subject curricula. Upload a syllabus or enroll in a course from the curriculum manager.
+            </p>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => handlePortalNavigation('SYLLABUS_MANAGER')}
+                className="px-4 py-2.5 rounded-xl bg-[#0F766E] text-white text-xs font-bold shadow-2xs hover:bg-[#115E59]"
+              >
+                Go to Syllabus Manager
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {subjects.map((subj) => (
+              <div
+                key={subj.id}
+                className="bg-white rounded-2xl border border-[#E2E8F0] p-5 shadow-2xs hover:border-[#0F766E] hover:shadow-md transition-all flex flex-col justify-between gap-4"
+              >
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[#0F766E] bg-[#F0FDFA] px-2 py-0.5 rounded-md border border-[#0F766E]/20">
+                    {subj.code}
+                  </span>
+                  <h3 className="font-extrabold text-base text-[#0F172A] mt-2 leading-snug">
+                    {subj.name}
+                  </h3>
+                  <p className="text-xs text-[#64748B] mt-1">
+                    Semester {subj.semester} · {subj.credits} Credits
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-[#F1F5F9] flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#475569]">
+                    {subj.credits} Credits
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubject(subj)}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-bold flex items-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <span>Enter Classroom</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render the selected view
+  const renderContent = () => {
+    switch (currentScreen) {
+      case 'DASHBOARD':
+        return renderDashboard();
+      case 'SUBJECT_VIEW':
+        return renderSubjectClassroom();
+      case 'SYLLABUS_MANAGER':
+        return <SyllabusManagerScreen />;
+      case 'OFFLINE_CENTER':
+        return <OfflineLearningCenter onBack={() => handlePortalNavigation('DASHBOARD')} />;
+      case 'AI_TUTOR':
+        return <AiTutorPortal onBack={() => handlePortalNavigation('DASHBOARD')} />;
+      case 'INSTITUTIONS_QUEUE':
+        return <InstitutionsQueueScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
+      case 'USERS_DIRECTORY':
+        return <UsersDirectoryScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
+      case 'AUDIT_LOGS':
+        return <AuditLogsScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
+      case 'ASSIGNMENTS':
+        return <AssignmentsHubScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
+      case 'ANNOUNCEMENTS':
+        return <AnnouncementsScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
+      case 'GUARDIAN_DIGEST':
+        return <GuardianDigestScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
+      case 'FOUNDATION_MASCOTS':
+      case 'PRACTICE_ENGINE':
+      case 'MY_PROGRESS':
+        return renderDashboard();
+      default:
+        return renderDashboard();
+    }
+  };
+
+  return (
+    <div className="relative w-full min-h-screen bg-[#F8FAFC]">
+      {/* Top Banner to jump between Enterprise Portal and Student Learning Loop */}
+      <div className="sticky top-0 z-50 bg-[#0F766E] text-white px-4 py-2 flex items-center justify-between text-xs font-bold shadow-xs">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#CCFBF1]" />
+          <span>Vidyapath Enterprise Administration &amp; LMS Portal</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleReturn}
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-[#0F766E] hover:bg-[#F0FDFA] font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Return to Student Learning App</span>
+        </button>
+      </div>
+
+      <EnterpriseShell currentScreen={currentScreen} setScreen={handlePortalNavigation} onSignOut={onSignOut}>
+        {renderContent()}
+      </EnterpriseShell>
+    </div>
+  );
+};

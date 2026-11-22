@@ -1,0 +1,727 @@
+import './env.js';
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import multer from 'multer';
+import { insertSyncEvent, insertOrUpdateDoubt, isNeonConnected } from './db/neon.js';
+import { dataStore } from './db/store.js';
+import { isGroqConfigured, askGroqTutor, transcribeGroqWhisper, generateGroqStudySummary } from './services/groq.js';
+import { synthesizeElevenLabsVoice, isElevenLabsConfigured } from './services/elevenlabs.js';
+import { uploadToR2, uploadToStorage, isR2Configured } from './services/r2Storage.js';
+import { enterpriseApiRouter } from './routes/api.js';
+import { healthRouter } from './routes/health.js';
+import { idempotencyMiddleware } from './middleware/idempotency.js';
+import { generalApiLimiter } from './middleware/rateLimiter.js';
+import { AuthenticatedRequest, requireAuth, requireRole } from './services/auth.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const allowedOrigins = new Set((process.env.ALLOWED_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean));
+
+// CORS for the browser PWA, API tooling, and configured custom domains
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. local tooling or same-origin edge proxies)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+      if (process.env.NODE_ENV !== 'production' && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
+        return callback(null, true);
+      }
+      if (process.env.NODE_ENV === 'production') {
+        return callback(new Error(`Origin ${origin} not permitted by CORS policy`));
+      }
+      return callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Requested-With', 'X-Forwarded-Host'],
+    exposedHeaders: ['Idempotency-Key', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'X-Cache'],
+  })
+);
+app.use(express.json({ limit: '10mb' }));
+
+// Memory storage for Multer (Zero files written to Render's ephemeral disk)
+const memoryStorage = multer.memoryStorage();
+const uploadMiddleware = multer({
+  storage: memoryStorage,
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
+});
+
+// Optional legacy static uploads reader (no writes to disk)
+const uploadsDir = path.resolve(__dirname, '../public/uploads');
+if (fs.existsSync(uploadsDir)) {
+  app.use('/uploads', express.static(uploadsDir));
+}
+
+// Health & readiness probes (unlimited for load balancer / K8s ingress)
+app.use(healthRouter);
+
+// Global Sliding-Window Rate Limiter
+app.use(generalApiLimiter);
+
+// Enterprise Idempotency on mutating requests
+app.use(idempotencyMiddleware);
+
+// Enterprise API routes
+app.use('/api', enterpriseApiRouter);
+
+// In-memory data store for server-side events, cohorts, and guardian tokens
+interface StoredAttempt {
+  eventId: string;
+  learnerId: string;
+  questionId: string;
+  skillId: string;
+  chosenAnswer: string;
+  correct: boolean;
+  hintsUsed: number;
+  timeMs: number;
+  inputMode: string;
+  ts: number;
+}
+
+const attemptsLog: StoredAttempt[] = [];
+const serverDoubts: any[] = [];
+
+// Helper: load packs from public directory
+const packsDir = path.resolve(__dirname, '../public/packs');
+
+const SAFE_PACK_ID = /^[A-Za-z0-9_-]{1,64}$/;
+function isSafePackId(id: unknown): id is string {
+  return typeof id === 'string' && SAFE_PACK_ID.test(id);
+}
+
+function getPack(packId: string) {
+  if (!isSafePackId(packId)) return null;
+  try {
+    const filePath = path.join(packsDir, `${packId}.json`);
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('Error reading pack:', err);
+  }
+  return null;
+}
+
+// 1. Batch Sync Endpoint (/api/sync)
+app.post('/api/sync', requireAuth, requireRole(['student']), async (req: AuthenticatedRequest, res: Response) => {
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const { learnerId, events = [], doubts = [], clientPackVersion, language } = body;
+  const account = dataStore.users.get(req.user!.userId);
+  const ownedLearnerIds = new Set([req.user!.userId, account?.studentProfile?.rollNumber].filter(Boolean));
+  if (!ownedLearnerIds.has(String(learnerId || '').trim())) {
+    return res.status(403).json({ success: false, error: 'Progress can only be synced for the signed-in student.' });
+  }
+  const safeLearnerId = typeof learnerId === 'string' ? learnerId : '';
+  const requestedEvents = Array.isArray(events) ? events : [];
+  const requestedDoubts = Array.isArray(doubts) ? doubts : [];
+  // Process sync events in-memory and persist to PostgreSQL if connected.
+  // durable: isNeonConnected() signals to client whether events are stored in durable DB.
+
+  // Append new events idempotently (client UUID check) & persist to PostgreSQL
+  let newEventsCount = 0;
+  const acceptedEvents: StoredAttempt[] = [];
+  const syncedEventIds: string[] = [];
+  for (const ev of requestedEvents) {
+    const eventLearnerId = typeof ev?.learnerId === 'string' ? ev.learnerId : '';
+    if (
+      !safeLearnerId ||
+      eventLearnerId !== safeLearnerId ||
+      typeof ev?.eventId !== 'string' ||
+      !ev.eventId ||
+      typeof ev.questionId !== 'string' ||
+      typeof ev.skillId !== 'string' ||
+      typeof ev.chosenAnswer !== 'string' ||
+      typeof ev.correct !== 'boolean'
+    ) {
+      continue;
+    }
+
+    let existing = attemptsLog.find((attempt) => attempt.eventId === ev.eventId);
+    if (existing && existing.learnerId !== safeLearnerId) continue;
+
+    const accepted = {
+      ...ev,
+      learnerId: safeLearnerId,
+      hintsUsed: Number.isFinite(ev.hintsUsed) ? Number(ev.hintsUsed) : 0,
+      timeMs: Number.isFinite(ev.timeMs) ? Number(ev.timeMs) : 0,
+      inputMode: ev.inputMode === 'voice' ? 'voice' : 'tap',
+      ts: Number.isFinite(ev.ts) ? Number(ev.ts) : Date.now(),
+    } as StoredAttempt;
+    // Always upsert into Neon when available, including events first received
+    // while the server used its in-memory fallback. The database operation is
+    // idempotent, so retries can safely repair that temporary persistence gap.
+    if (isNeonConnected()) {
+      const persisted = await insertSyncEvent({
+        eventId: accepted.eventId,
+        learnerId: accepted.learnerId,
+        questionId: accepted.questionId,
+        skillId: accepted.skillId,
+        chosenAnswer: accepted.chosenAnswer,
+        correct: Boolean(accepted.correct),
+        hintsUsed: accepted.hintsUsed || 0,
+        timeMs: accepted.timeMs || 0,
+        inputMode: accepted.inputMode || 'tap',
+        receiptHash: (ev as any).receiptHash || null,
+        ts: accepted.ts || Date.now(),
+      });
+      if (!persisted) {
+        return res.status(503).json({ success: false, error: 'Progress storage is temporarily unavailable.' });
+      }
+    }
+
+    existing = attemptsLog.find((attempt) => attempt.eventId === ev.eventId);
+    if (existing && existing.learnerId !== safeLearnerId) continue;
+    if (!existing) {
+      attemptsLog.push(accepted);
+      newEventsCount++;
+    }
+
+    acceptedEvents.push(accepted);
+    syncedEventIds.push(ev.eventId);
+  }
+
+  // Bridge student learning progress to Enterprise Student Profile
+  if (safeLearnerId) {
+    let matchedUser = dataStore.users.get(safeLearnerId);
+    if (!matchedUser) {
+      for (const u of dataStore.users.values()) {
+        if (
+          u.role === 'student' &&
+          (u.studentProfile?.rollNumber?.toUpperCase() === safeLearnerId.toUpperCase() ||
+            u.id === safeLearnerId)
+        ) {
+          matchedUser = u;
+          break;
+        }
+      }
+    }
+
+    if (matchedUser && matchedUser.studentProfile) {
+      const topicIdsFromEvents = acceptedEvents
+        .map((e: any) => e.topicId || (e.skillId ? e.skillId.split('_').slice(0, 2).join('_') : null))
+        .filter(Boolean);
+      const currentCompleted = new Set(matchedUser.studentProfile.completedTopicIds || []);
+      for (const tid of topicIdsFromEvents) {
+        currentCompleted.add(tid);
+      }
+      matchedUser.studentProfile.completedTopicIds = Array.from(currentCompleted);
+      dataStore.users.set(matchedUser.id, matchedUser);
+    }
+  }
+
+  // Answer any queued doubts with trilingual language pack support (Telugu, Hindi, English)
+  const answeredDoubts: any[] = [];
+  const clientLang = String(language || '').trim().toLowerCase();
+  const packId = clientLang.startsWith('hi')
+    ? 'hi-10-maths-cbse'
+    : clientLang.startsWith('en')
+    ? 'en-10-maths-cbse'
+    : 'te-10-maths-ap';
+
+  const pack = getPack(packId) || getPack('te-10-maths-ap');
+
+  const defaultReplies: Record<string, string> = {
+    te: 'గణిత సూత్రాన్ని ఉపయోగించి దశలవారీగా సాధించండి. మీ సందేహం పరిష్కరించబడింది!',
+    hi: 'गणित के सूत्र का उपयोग करके चरणबद्ध तरीके से हल करें। आपका संदेह हल हो गया है!',
+    en: 'Solve step-by-step using mathematical formulas. Your doubt has been addressed!',
+  };
+
+  const defaultReply = defaultReplies[clientLang] || defaultReplies['te'];
+
+  for (const d of requestedDoubts) {
+    const doubtLearnerId = typeof d?.learnerId === 'string' ? d.learnerId : '';
+    if (!safeLearnerId || doubtLearnerId !== safeLearnerId || typeof d?.id !== 'string' || !d.id) continue;
+
+    let answerText = defaultReply;
+    if (pack && pack.commonDoubts) {
+      const qLower = (d.question || '').toLowerCase();
+      const matched = pack.commonDoubts.find(
+        (cd: any) =>
+          qLower.includes(cd.q.toLowerCase()) ||
+          (cd.keywords && cd.keywords.some((k: string) => qLower.includes(k.toLowerCase())))
+      );
+      if (matched) {
+        answerText = matched.a;
+      }
+    }
+
+    const answered = {
+      ...d,
+      learnerId: safeLearnerId,
+      status: 'answered',
+      answer: answerText,
+    };
+    // When Neon is configured, acknowledge a queued doubt after its durable write.
+    const persisted = !isNeonConnected() || await insertOrUpdateDoubt({
+      id: d.id || 'doubt_' + Date.now().toString(36),
+      learnerId: safeLearnerId,
+      topicId: d.topicId,
+      question: d.question,
+      answer: answerText,
+      audioUrl: d.audioUrl,
+      photoUrl: d.photoUrl,
+      inputMode: d.inputMode || 'text',
+      status: 'answered',
+      ts: d.timestamp || Date.now(),
+    });
+    if (!persisted) {
+      return res.status(503).json({ success: false, error: 'Progress storage is temporarily unavailable.' });
+    }
+    const savedDoubtIndex = serverDoubts.findIndex((saved) => saved.id === answered.id);
+    if (savedDoubtIndex === -1) serverDoubts.push(answered);
+    else serverDoubts[savedDoubtIndex] = answered;
+    answeredDoubts.push(answered);
+  }
+
+  const latestPackVersion = pack ? pack.version : '1.0.0';
+  const packUpdateAvailable = clientPackVersion && clientPackVersion !== latestPackVersion;
+
+  res.json({
+    success: true,
+    durable: isNeonConnected(),
+    syncedEventsCount: newEventsCount,
+    syncedEventIds,
+    answeredDoubts,
+    latestPackVersion,
+    packUpdateAvailable,
+  });
+});
+
+// AI tutor model (optional). Configured only via server env vars. The key is never
+// sent to the client or logged. Any OpenAI-compatible /chat/completions endpoint works.
+const TUTOR_TIMEOUT_MS = 15000;
+const TUTOR_MAX_WORDS = 120;
+const tutorCache = new Map<string, string>();
+
+function getTutorConfig() {
+  const baseUrl = (process.env.TUTOR_API_BASE_URL || '').trim();
+  const model = (process.env.TUTOR_MODEL || '').trim();
+  const apiKey = (process.env.TUTOR_API_KEY || '').trim();
+  if (!baseUrl || !model || !apiKey) return null;
+  return { baseUrl: baseUrl.replace(/\/+$/, ''), model, apiKey };
+}
+
+function trimToWords(text: string, maxWords: number): string {
+  return text.trim().split(/\s+/).filter(Boolean).slice(0, maxWords).join(' ');
+}
+
+const REPLY_LANGUAGE_NAMES: Record<string, string> = { en: 'English', hi: 'Hindi', te: 'Telugu' };
+
+function buildTutorSystemPrompt(
+  pack: any,
+  topicTitle: string | undefined,
+  mistakeTag: unknown,
+  replyLanguage: string
+): string {
+  const langKey = replyLanguage === 'hi' ? 'hi' : replyLanguage === 'en' ? 'en' : 'te';
+  const langName = REPLY_LANGUAGE_NAMES[langKey];
+  const lines = [
+    `You are a tutor for class ${pack.class}, subject ${pack.subject}, board ${pack.board}, language code ${langKey}.`,
+  ];
+  if (topicTitle) lines.push(`Current topic: ${topicTitle}.`);
+  if (typeof mistakeTag === 'string' && mistakeTag.trim()) {
+    lines.push(`The learner's last mistake tag: ${mistakeTag.trim()}.`);
+  }
+  lines.push(
+    'Rules:',
+    `- Reply EXCLUSIVELY in simple spoken-style ${langName} (language code ${langKey}). Never reply in any other language.`,
+    '- Use short sentences.',
+    '- Give a hint first. Never give the final answer first.',
+    '- Give the final answer only if the learner asks again.',
+    '- Reply in at most 120 words.',
+    `- If the question is off-topic, unsafe, or asks for personal data, refuse kindly in ${langName} and steer back to the lesson.`,
+    '- Use only content from this pack. Do not invent facts. Do not judge whether a learner answer is correct.'
+  );
+  return lines.join('\n');
+}
+
+async function askTutorModel(systemPrompt: string, question: string, photoBase64?: string): Promise<string> {
+  const config = getTutorConfig();
+  if (!config) return '';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TUTOR_TIMEOUT_MS);
+  try {
+    let userMessageContent: any = question;
+    if (photoBase64 && typeof photoBase64 === 'string') {
+      const url = photoBase64.startsWith('data:') ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
+      userMessageContent = [
+        { type: 'text', text: question },
+        { type: 'image_url', image_url: { url } },
+      ];
+    }
+    const response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessageContent },
+        ],
+        max_tokens: 300,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      console.error(`Tutor model request failed with status ${response.status}`);
+      return '';
+    }
+    const data: any = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    return typeof content === 'string' ? content : '';
+  } catch (err: any) {
+    console.error('Tutor model request failed:', err?.name === 'AbortError' ? 'timeout' : 'network or parse error');
+    return '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 2. AI Tutor Endpoint (/api/tutor/ask)
+app.post('/api/tutor/ask', requireAuth, requireRole(['student', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), async (req: AuthenticatedRequest, res: Response) => {
+  const { packId, learnerId, doubt, topicId, mistakeTag, language, photoBase64 } = req.body;
+  if (packId && !isSafePackId(packId)) {
+    return res.status(400).json({ answer: 'Invalid pack id' });
+  }
+
+  // Strict language enforcement: strictly and only 'te', 'hi', and 'en'
+  const ALLOWED_LANGUAGES = ['te', 'hi', 'en'] as const;
+  if (language && !ALLOWED_LANGUAGES.includes(language as any)) {
+    return res.status(400).json({
+      error: `Unsupported language code: '${language}'. Vidyapath strictly supports only 'te', 'hi', and 'en'.`
+    });
+  }
+
+  const pack = getPack(packId || 'te-10-maths-ap');
+  const targetLanguage = (language && ALLOWED_LANGUAGES.includes(language as any))
+    ? language
+    : (pack && ALLOWED_LANGUAGES.includes(pack.language as any) ? pack.language : 'te');
+
+  const doubtText = (doubt || '').trim();
+  const lower = doubtText.toLowerCase();
+
+  // Guardrail 1: Personal info / unsafe
+  const unsafePatterns = [
+    'phone', 'password', 'money', 'hack', 'contact', 'email',
+    'ఫోన్', 'పాస్‌వర్డ్', 'డబ్బు', 'చిరునామా',
+    'फोन', 'पासवर्ड', 'पैसे', 'नंबर', 'पता'
+  ];
+  if (unsafePatterns.some((p) => lower.includes(p))) {
+    const refusal = targetLanguage === 'hi'
+      ? 'क्षमा करें, मैं केवल कक्षा 10 गणित के प्रश्नों में मदद कर सकता हूँ। कृपया अपना गणितीय प्रश्न पूछें।'
+      : targetLanguage === 'en'
+      ? 'I apologize, but I can only assist with Class 10 Mathematics questions. Please ask a mathematics question.'
+      : 'క్షమించండి, నేను కేవలం 10వ తరగతి గణితం సందేహాలలో మాత్రమే సహాయం చేయగలను. దయచేసి మీ లెక్కల సందేహాన్ని అడగండి.';
+    return res.json({
+      source: 'fallback',
+      answer: refusal
+    });
+  }
+
+  // Guardrail 2: Off-topic general conversation
+  const offTopicPatterns = ['సినిమా', 'cricket', 'రాజకీయాలు', 'cinema', 'movie', 'फिल्म', 'राजनीति'];
+  if (offTopicPatterns.some((p) => lower.includes(p))) {
+    const offTopic = targetLanguage === 'hi'
+      ? 'हम अभी कक्षा 10 गणित का अध्ययन कर रहे हैं। वास्तविक संख्याएँ या बहुपद के बारे में अपना प्रश्न पूछें।'
+      : targetLanguage === 'en'
+      ? 'We are currently studying Class 10 Mathematics. Please ask a question about Real Numbers or Polynomials.'
+      : 'మనం ఇప్పుడు 10వ తరగతి గణితం చదువుకుంటున్నాము. వాస్తవ సంఖ్యలు లేదా సమితుల గురించి మీ ప్రశ్నను అడగండి.';
+    return res.json({
+      source: 'fallback',
+      answer: offTopic
+    });
+  }
+
+  // Model answer: only when TUTOR_API_BASE_URL, TUTOR_MODEL and TUTOR_API_KEY are all set.
+  // Any failure, empty reply, or timeout falls through to the offline answers below.
+  if (doubtText && pack) {
+    const resolvedPackId = packId || 'te-10-maths-ap';
+    const replyLanguage = targetLanguage;
+    const cacheKey = `${resolvedPackId}|${replyLanguage}|${topicId || ''}|${lower}`;
+    const cached = tutorCache.get(cacheKey);
+    if (cached) return res.json({ source: 'model', answer: cached });
+    if (getTutorConfig()) {
+      const topic = Array.isArray(pack.topics) ? pack.topics.find((t: any) => t.id === topicId) : undefined;
+      const systemPrompt = buildTutorSystemPrompt(pack, topic?.title, mistakeTag, replyLanguage);
+      const reply = trimToWords(await askTutorModel(systemPrompt, doubtText, photoBase64), TUTOR_MAX_WORDS);
+      if (reply) {
+        tutorCache.set(cacheKey, reply);
+        return res.json({ source: 'model', answer: reply });
+      }
+    }
+  }
+
+  // Precomputed common doubts check
+  if (pack && pack.commonDoubts) {
+    const matched = pack.commonDoubts.find((cd: any) =>
+      lower.includes(cd.q.toLowerCase()) || (cd.keywords && cd.keywords.some((k: string) => lower.includes(k.toLowerCase())))
+    );
+    if (matched) {
+      return res.json({ source: 'fallback', answer: matched.a });
+    }
+  }
+
+  // Pedagogical Hint-First Tutor generation in target language
+  let tutorAnswer = '';
+  if (targetLanguage === 'en') {
+    if (lower.includes('hcf') || lower.includes('gcd') || lower.includes('euclid')) {
+      tutorAnswer = "Euclid's division lemma: a = bq + r (0 ≤ r < b). First step: divide the larger number by the smaller, and repeat until the remainder is 0. The last divisor is the HCF.";
+    } else if (lower.includes('union') || lower.includes('∪')) {
+      tutorAnswer = 'Union (A ∪ B) combines all elements from both sets. Important: write each element without duplicates.';
+    } else if (lower.includes('intersection') || lower.includes('∩')) {
+      tutorAnswer = 'Intersection (A ∩ B) contains only the common elements present in both sets.';
+    } else if (lower.includes('difference') || lower.includes('a - b')) {
+      tutorAnswer = 'A - B contains elements in A that are not in B. Remove the common elements from A.';
+    } else if (lower.includes('terminating') || lower.includes('decimal')) {
+      tutorAnswer = 'Factorise the denominator q as 2ⁿ · 5ᵐ. If only prime factors 2 or 5 are present, it is a terminating decimal.';
+    } else {
+      tutorAnswer = 'Hint: Identify the fundamental formula for this problem. Try the first step, and I will guide you to the answer!';
+    }
+  } else if (targetLanguage === 'hi') {
+    if (lower.includes('hcf') || lower.includes('मसा') || lower.includes('यूक्लिड') || lower.includes('euclid')) {
+      tutorAnswer = 'यूक्लिड विभाजन प्रमेयिका: a = bq + r (0 ≤ r < b)। पहला कदम: बड़ी संख्या को छोटी संख्या से भाग दें और शेषफल 0 आने तक दोहराएं। अंतिम भाजक ही HCF होगा।';
+    } else if (lower.includes('union') || lower.includes('संघ') || lower.includes('∪')) {
+      tutorAnswer = 'संघ (A ∪ B) का अर्थ दोनों समुच्चयों के सभी अवयवों को मिलाना है। महत्वपूर्ण: कोई भी अवयव दोहराया नहीं जाना चाहिए।';
+    } else if (lower.includes('intersection') || lower.includes('सर्वनिष्ठ') || lower.includes('∩')) {
+      tutorAnswer = 'सर्वनिष्ठ (A ∩ B) में केवल वे अवयव होते हैं जो दोनों समुच्चयों में उभयनिष्ठ (कॉमन) हों।';
+    } else if (lower.includes('शांत') || lower.includes('दशमलव')) {
+      tutorAnswer = 'हर q को 2ⁿ · 5ᵐ के रूप में गुणनखंडित करें। यदि हर में केवल 2 या 5 हों, तो दशमलव प्रसार शांत होगा।';
+    } else {
+      tutorAnswer = 'संकेत: प्रश्न के मूल सूत्र पर ध्यान दें। पहला चरण हल करने का प्रयास करें, आगे का मार्गदर्शन मिलेगा!';
+    }
+  } else {
+    // Telugu
+    if (lower.includes('hcf') || lower.includes('గసాభా') || lower.includes('యూక్లిడ్') || lower.includes('euclid')) {
+      tutorAnswer = 'యూక్లిడ్ భాగహార సూత్రం: a = bq + r (0 ≤ r < b). మొదటి అడుగు: పెద్ద సంఖ్యను విభాజ్యంగా (a), చిన్న సంఖ్యను విభాజకంగా (b) తీసుకోండి. శేషం 0 వచ్చేవరకు కొనసాగించండి.';
+    } else if (lower.includes('సమ్మేళనం') || lower.includes('union') || lower.includes('∪')) {
+      tutorAnswer = 'సమ్మేళనం (A ∪ B) అనగా రెండు సమితులలోని అన్ని మూలకాలను కలపడం. ముఖ్య గమనిక: ఏ మూలకమూ రెండుసార్లు రాయకూడదు.';
+    } else if (lower.includes('ఛేదనం') || lower.includes('intersection') || lower.includes('∩')) {
+      tutorAnswer = 'ఛేదనం (A ∩ B) అనగా కేవలం రెండు సమితులలోనూ ఉమ్మడిగా (రెంటిలోనూ) ఉన్న మూలకాలను మాత్రమే సమితిగా రాయడం.';
+    } else if (lower.includes('భేదం') || lower.includes('difference') || lower.includes('a - b')) {
+      tutorAnswer = 'A - B అంటే మొదటి సమితి A లో ఉంటూ, రెండవ సమితి B లో లేని మూలకాలు. ఉమ్మడి మూలకాలను A నుండి తొలగించండి.';
+    } else if (lower.includes('దశాంశం') || lower.includes('terminating')) {
+      tutorAnswer = 'హారం q ని 2ⁿ · 5ᵐ రూపంలో రాయండి. 2 లేదా 5 తప్ప మరే ఇతర ప్రధాన సంఖ్య హారంలో లేకపోతే అది అంతమయ్యే దశాంశం.';
+    } else {
+      tutorAnswer = 'సూచన: సమస్యలోని ప్రాథమిక సూత్రాన్ని గమనించండి. మొదట ఇచ్చిన సంఖ్యలను సూత్రంలో ప్రతిక్షేపించండి. మొదటి దశను ప్రయత్నించండి, సమాధానం సమీపిస్తుంది!';
+    }
+  }
+
+  return res.json({ source: 'fallback', answer: tutorAnswer });
+});
+
+// 5. Pack Management Endpoints (/api/packs & /api/admin/packs)
+app.get('/api/packs', (req: Request, res: Response) => {
+  try {
+    const files = fs.readdirSync(packsDir).filter((f) => f.endsWith('.json'));
+    const packs = files.map((f) => {
+      const content = JSON.parse(fs.readFileSync(path.join(packsDir, f), 'utf-8'));
+      return {
+        id: content.id,
+        version: content.version,
+        language: content.language,
+        languageName: content.languageName,
+        class: content.class,
+        subject: content.subject,
+        board: content.board,
+        isStub: !!content.isStub,
+        topicsCount: content.topics ? content.topics.length : 0,
+        questionsCount: content.questions ? content.questions.length : 0,
+      };
+    });
+    return res.json(packs);
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to read packs' });
+  }
+});
+
+app.get('/api/admin/packs', requireAuth, requireRole(['super_admin']), (req: Request, res: Response) => {
+  try {
+    const files = fs.readdirSync(packsDir).filter((f) => f.endsWith('.json'));
+    const packs = files.map((f) => {
+      const content = JSON.parse(fs.readFileSync(path.join(packsDir, f), 'utf-8'));
+      return {
+        id: content.id,
+        version: content.version,
+        language: content.language,
+        languageName: content.languageName,
+        class: content.class,
+        subject: content.subject,
+        board: content.board,
+        isStub: !!content.isStub,
+        topicsCount: content.topics ? content.topics.length : 0,
+        questionsCount: content.questions ? content.questions.length : 0,
+      };
+    });
+    return res.json(packs);
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to read packs' });
+  }
+});
+
+app.get('/api/admin/packs/:id', requireAuth, requireRole(['super_admin']), (req: Request, res: Response) => {
+  if (!isSafePackId(req.params.id)) return res.status(400).json({ error: 'Invalid pack id' });
+  const pack = getPack(req.params.id);
+  if (!pack) return res.status(404).json({ error: 'Pack not found' });
+  return res.json(pack);
+});
+
+// Pack live schema validator
+app.post('/api/admin/packs/validate', requireAuth, requireRole(['super_admin']), (req: Request, res: Response) => {
+  const pack = req.body;
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (!pack.id) errors.push('Missing required field: id');
+  if (!pack.version) errors.push('Missing required field: version');
+  if (!pack.language) errors.push('Missing required field: language');
+  if (!pack.topics || !Array.isArray(pack.topics) || pack.topics.length === 0) {
+    errors.push('Pack must contain at least 1 topic in topics[]');
+  }
+  if (!pack.questions || !Array.isArray(pack.questions)) {
+    errors.push('Pack must contain questions array');
+  }
+
+  // Validate duplicate IDs
+  const qIds = new Set<string>();
+  const allSkills = new Set<string>();
+  if (pack.topics) {
+    for (const t of pack.topics) {
+      if (t.skills) {
+        for (const s of t.skills) allSkills.add(s);
+      }
+    }
+  }
+
+  if (pack.questions) {
+    for (const q of pack.questions) {
+      if (qIds.has(q.id)) {
+        errors.push(`Duplicate question id found: "${q.id}"`);
+      }
+      qIds.add(q.id);
+
+      if (!q.skillId || !allSkills.has(q.skillId)) {
+        errors.push(`Question "${q.id}" references unknown skillId: "${q.skillId}"`);
+      }
+
+      if (!['A', 'B', 'C', 'D'].includes(q.answer)) {
+        errors.push(`Question "${q.id}" has invalid answer key: "${q.answer}" (must be A, B, C, or D)`);
+      }
+
+      if (!q.hintLadder || q.hintLadder.length < 3) {
+        warnings.push(`Question "${q.id}" has fewer than 3 hints in hintLadder`);
+      }
+    }
+  }
+
+  return res.json({
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    summary: {
+      topicsCount: pack.topics?.length || 0,
+      skillsCount: allSkills.size,
+      questionsCount: pack.questions?.length || 0,
+    }
+  });
+});
+
+app.post('/api/admin/packs/publish', requireAuth, requireRole(['super_admin']), (_req: Request, res: Response) => {
+  return res.status(409).json({ error: 'Content packs are deployed with the frontend. Download the validated JSON and include it in frontend/public/packs before deployment.' });
+});
+
+app.post('/api/upload', requireAuth, requireRole(['student', 'guardian', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), uploadMiddleware.single('file'), async (req: Request, res: Response) => {
+  try {
+    // 1. In-memory multipart file upload via multer
+    if (req.file) {
+      const fileKey = `${Date.now()}_${req.file.originalname}`;
+      const fileUrl = await uploadToR2(req.file.buffer, fileKey, req.file.mimetype);
+      return res.json({ success: true, fileUrl, key: fileKey });
+    }
+
+    // 2. In-memory Base64 JSON payload upload
+    const { fileName, fileData, contentType } = req.body;
+    if (fileName && fileData) {
+      const buffer = Buffer.from(fileData, 'base64');
+      const fileUrl = await uploadToR2(buffer, fileName, contentType || 'application/octet-stream');
+      return res.json({ success: true, fileUrl, key: fileName });
+    }
+
+    return res.status(400).json({ error: 'Missing file in multipart form or fileData in JSON body.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Upload to R2 failed: ' + err.message });
+  }
+});
+
+// POST /api/tutor/voice: In-memory voice upload to R2 + Groq Whisper transcription (0 disk writes)
+app.post('/api/tutor/voice', requireAuth, requireRole(['student', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), uploadMiddleware.single('audio'), async (req: Request, res: Response) => {
+  try {
+    let audioBuffer: Buffer | null = null;
+    let mimeType = 'audio/webm';
+    let filename = `voice_${Date.now()}.webm`;
+
+    if (req.file) {
+      audioBuffer = req.file.buffer;
+      mimeType = req.file.mimetype || 'audio/webm';
+      filename = req.file.originalname || filename;
+    } else if (req.body.audioData) {
+      audioBuffer = Buffer.from(req.body.audioData, 'base64');
+      mimeType = req.body.mimeType || mimeType;
+    }
+
+    if (!audioBuffer) {
+      return res.status(400).json({ error: 'Missing audio file or audioData' });
+    }
+
+    const audioUrl = await uploadToR2(audioBuffer, filename, mimeType);
+    const transcript = await transcribeGroqWhisper(audioBuffer, mimeType, req.body.language);
+
+    return res.json({
+      success: true,
+      audioUrl,
+      transcript: transcript || '',
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Voice processing failed: ' + err.message });
+  }
+});
+
+// POST /api/tutor/photo-doubt: In-memory photo doubt upload to R2 (0 disk writes)
+app.post('/api/tutor/photo-doubt', requireAuth, requireRole(['student', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), uploadMiddleware.single('photo'), async (req: Request, res: Response) => {
+  try {
+    let photoBuffer: Buffer | null = null;
+    let mimeType = 'image/jpeg';
+    let filename = `photo_${Date.now()}.jpg`;
+
+    if (req.file) {
+      photoBuffer = req.file.buffer;
+      mimeType = req.file.mimetype || 'image/jpeg';
+      filename = req.file.originalname || filename;
+    } else if (req.body.photoData) {
+      photoBuffer = Buffer.from(req.body.photoData, 'base64');
+      mimeType = req.body.mimeType || mimeType;
+    }
+
+    if (!photoBuffer) {
+      return res.status(400).json({ error: 'Missing photo file or photoData' });
+    }
+
+    const photoUrl = await uploadToR2(photoBuffer, filename, mimeType);
+    return res.json({ success: true, photoUrl });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Photo doubt upload failed: ' + err.message });
+  }
+});
+
+export { app };

@@ -6,6 +6,8 @@ node_modules/
 # Production build
 dist/
 dist-ssr/
+frontend/dist/
+backend/dist/
 
 # Logs
 npm-debug.log*
@@ -27,4 +29,5 @@ pnpm-debug.log*
 *.sln
 *.sw?
 .codebenders/
-public/uploads/
+backend/public/uploads/
+frontend/public/uploads/

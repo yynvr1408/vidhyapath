@@ -1,0 +1,767 @@
+{
+  "id": "en-10-maths-cbse",
+  "version": "1.0.0",
+  "language": "en",
+  "languageName": "English (Class 10 CBSE/State)",
+  "class": 10,
+  "subject": "maths",
+  "board": "CBSE/NCERT",
+  "locales": {
+    "stt": "en-IN",
+    "tts": "en-IN",
+    "rtl": false
+  },
+  "uiStrings": {
+    "appTitle": "Vidyapath",
+    "tagline": "The Last-Mile Tutor for Class 10 Maths",
+    "whoIsLearning": "Who is learning today?",
+    "addNewLearner": "+ Add New Student",
+    "switchLearner": "Switch Student",
+    "enterPin": "Enter 4-Digit PIN",
+    "wrongPin": "Incorrect PIN. Please try again.",
+    "optionalPinPrompt": "Set 4-Digit PIN (Optional)",
+    "chooseAvatar": "Choose Student Avatar",
+    "pickColor": "Select Accent Color",
+    "saveProfile": "Save Profile",
+    "home": "Home",
+    "learn": "Learn",
+    "practice": "Practice",
+    "askDoubt": "Ask a Doubt",
+    "myProgress": "My Progress",
+    "settings": "Settings",
+    "todayGoal": "Today's Goal",
+    "sessionsLeft": "1 session remaining",
+    "progressSaved": "Progress saved locally (Offline Safe)",
+    "noInternet": "No Internet (Offline Mode · Zero Data)",
+    "onlineReady": "Online Connected",
+    "syncSuccess": "All details synced successfully",
+    "listen": "Hear",
+    "hint": "Hint",
+    "hintLevel": "Hint Step",
+    "nextStep": "Next Question",
+    "checkAnswer": "Check Answer",
+    "greatJob": "Great job! That's correct!",
+    "tryAgain": "Let's inspect closely",
+    "lookCloser": "Let's examine carefully",
+    "remedyHeading": "Key Concept to Remember:",
+    "trySimilar": "Practice a similar question?",
+    "sessionComplete": "Congratulations! Session Complete",
+    "lanternGlowIncreased": "Your Village Lantern glow has increased!",
+    "accuracy": "Accuracy",
+    "pointsEarned": "Score Earned",
+    "backToHome": "Return Home",
+    "start": "Start",
+    "speakAnswer": "Speak Answer",
+    "listeningNow": "Listening... Please speak",
+    "voiceUnsupported": "Voice input is not supported in this browser. Please tap an option.",
+    "typeDoubtPlaceholder": "Type your doubt here or ask with mic...",
+    "askVoice": "Tap Mic to Ask",
+    "askPhoto": "Take Photo to Ask",
+    "sendDoubt": "Send Doubt",
+    "offlineQueueNotice": "You are currently offline. Your question has been queued and will be answered upon connection.",
+    "queuedDoubtsCount": "Queued Doubts",
+    "commonDoubtsHeading": "Frequently Asked Questions (Offline Answers)",
+    "recentDoubts": "Recent Doubts",
+    "didThisHelp": "Was this explanation helpful?",
+    "yesHelpful": "Yes, understood!",
+    "noNeedMore": "Need more clarity",
+    "lowDataMode": "Low Data Mode",
+    "lowDataDesc": "Saves mobile data. Images and external network calls are disabled.",
+    "fontSize": "Font Size",
+    "dataUsed": "Data Consumed",
+    "clearCache": "Clear AI Tutor Cache",
+    "guardianLink": "Guardian Summary Link",
+    "guardianDesc": "Shareable read-only summary for parents and mentors",
+    "copyLink": "Copy Guardian Link",
+    "linkCopied": "Link copied to clipboard!",
+    "chapter": "Chapter",
+    "skill": "Skill",
+    "masteryLevel": "Mastery Level",
+    "mastered": "Mastered",
+    "needsPractice": "Needs Practice",
+    "villageLanterns": "Village Lanterns of Learning",
+    "villageDesc": "As you master each mathematical skill, the lanterns across the village glow brighter!"
+  },
+  "topics": [
+    {
+      "id": "ch1_real_numbers",
+      "title": "Chapter 1: Real Numbers",
+      "titleEn": "Chapter 1: Real Numbers",
+      "description": "Euclid's Division Lemma, HCF, Fundamental Theorem of Arithmetic, Decimals, and Irrational Numbers.",
+      "skills": [
+        "euclid_division",
+        "hcf_by_euclid",
+        "prime_factorization",
+        "terminating_decimals",
+        "irrational_proofs"
+      ],
+      "cards": [
+        {
+          "id": "card_ch1_1",
+          "stepNumber": 1,
+          "heading": "Euclid's Division Lemma",
+          "conceptText": "For any two positive integers 'a' and 'b', there exist unique integers 'q' and 'r' satisfying a = bq + r, where 0 ≤ r < b. Here a = Dividend, b = Divisor, q = Quotient, and r = Remainder.",
+          "workedExample": {
+            "problem": "Express 17 divided by 5 in Euclid's form.",
+            "steps": [
+              "Dividing 17 by 5 gives: 5 x 3 = 15",
+              "Remainder = 17 - 15 = 2",
+              "Notice 0 ≤ 2 < 5 is satisfied",
+              "Therefore: 17 = (5 x 3) + 2"
+            ],
+            "finalAnswer": "17 = 5(3) + 2"
+          },
+          "keyTakeaway": "The remainder (r) must always be strictly less than the divisor (b) and greater than or equal to zero (0 ≤ r < b)."
+        },
+        {
+          "id": "card_ch1_2",
+          "stepNumber": 2,
+          "heading": "Fundamental Theorem of Arithmetic",
+          "conceptText": "Every composite number can be uniquely expressed as a product of prime powers, apart from the order of factors. For example, 72 = 2³ x 3².",
+          "workedExample": {
+            "problem": "Find the prime factorisation of 72.",
+            "steps": [
+              "72 ÷ 2 = 36",
+              "36 ÷ 2 = 18",
+              "18 ÷ 2 = 9",
+              "9 ÷ 3 = 3",
+              "3 ÷ 3 = 1",
+              "72 = 2 x 2 x 2 x 3 x 3 = 2³ x 3²"
+            ],
+            "finalAnswer": "72 = 2³ x 3²"
+          },
+          "keyTakeaway": "HCF = Product of smallest power of each common prime factor. LCM = Product of greatest power of each prime factor."
+        },
+        {
+          "id": "card_ch1_3",
+          "stepNumber": 3,
+          "heading": "Terminating and Non-Terminating Repeating Decimals",
+          "conceptText": "A rational number p/q in simplest form has a terminating decimal expansion if and only if the denominator q has prime factorisation of the form 2ⁿ · 5ᵐ (where n, m are non-negative integers).",
+          "workedExample": {
+            "problem": "Does 13/25 have a terminating decimal representation?",
+            "steps": [
+              "Denominator q = 25",
+              "25 = 5² = 2⁰ x 5²",
+              "Denominator is of the form 2ⁿ · 5ᵐ (n=0, m=2)"
+            ],
+            "finalAnswer": "It has a terminating decimal representation."
+          },
+          "keyTakeaway": "The denominator must only contain prime factors of 2 and/or 5. If any other prime factor (such as 3, 7, 11) is present, it is non-terminating repeating."
+        }
+      ]
+    },
+    {
+      "id": "ch2_sets_polynomials",
+      "title": "Chapter 2: Sets & Polynomials",
+      "titleEn": "Chapter 2: Sets & Polynomials",
+      "description": "Set representations, Union, Intersection, Difference of Sets, Venn Diagrams, and Zeroes of Polynomials.",
+      "skills": [
+        "set_representation",
+        "set_union",
+        "set_intersection",
+        "set_difference"
+      ],
+      "cards": [
+        {
+          "id": "card_ch2_1",
+          "stepNumber": 1,
+          "heading": "Union of Sets (A ∪ B)",
+          "conceptText": "The union of sets A and B contains all elements that belong to A, B, or both. A ∪ B = {x : x ∈ A or x ∈ B}. Repetitions are counted only once.",
+          "workedExample": {
+            "problem": "If A = {1, 2, 3} and B = {3, 4, 5}, find A ∪ B.",
+            "steps": [
+              "Elements in A: 1, 2, 3",
+              "Elements in B: 3, 4, 5",
+              "Combine all elements without duplicate: 1, 2, 3, 4, 5"
+            ],
+            "finalAnswer": "A ∪ B = {1, 2, 3, 4, 5}"
+          },
+          "keyTakeaway": "Union brings everything together: n(A ∪ B) = n(A) + n(B) - n(A ∩ B)."
+        },
+        {
+          "id": "card_ch2_2",
+          "stepNumber": 2,
+          "heading": "Intersection of Sets (A ∩ B)",
+          "conceptText": "The intersection of sets A and B contains only elements that belong to both A and B. If A ∩ B = ∅, they are disjoint sets.",
+          "workedExample": {
+            "problem": "If A = {2, 4, 6, 8} and B = {4, 8, 12}, find A ∩ B.",
+            "steps": [
+              "Compare elements of A and B",
+              "Common elements present in both sets are 4 and 8"
+            ],
+            "finalAnswer": "A ∩ B = {4, 8}"
+          },
+          "keyTakeaway": "Intersection takes only what is strictly common to both sets."
+        },
+        {
+          "id": "card_ch2_3",
+          "stepNumber": 3,
+          "heading": "Difference of Sets (A - B)",
+          "conceptText": "The set difference A - B is the set of elements that belong to A but not to B. A - B = {x : x ∈ A and x ∉ B}.",
+          "workedExample": {
+            "problem": "If A = {1, 2, 3, 4} and B = {3, 4, 5, 6}, find A - B.",
+            "steps": [
+              "Elements of A: 1, 2, 3, 4",
+              "Elements also in B: 3, 4 (remove these)",
+              "Remaining elements exclusive to A: 1, 2"
+            ],
+            "finalAnswer": "A - B = {1, 2}"
+          },
+          "keyTakeaway": "A - B is not equal to B - A. Select only elements belonging strictly to the first set."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q101",
+      "skillId": "euclid_division",
+      "difficulty": 1,
+      "text": "In Euclid's Division Lemma a = bq + r, what condition must the remainder 'r' satisfy?",
+      "options": [
+        "0 < r ≤ b",
+        "0 ≤ r < b",
+        "0 < r < b",
+        "r > b"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "0 <= r < b",
+        "0 ≤ r < b",
+        "b"
+      ],
+      "hintLadder": [
+        "The remainder must always be smaller than the divisor 'b', and it can also be zero.",
+        "Zero or greater (0 ≤ r), and strictly less than divisor (< b).",
+        "The exact mathematical condition is 0 ≤ r < b. Hence Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "included_equal_to_b",
+        "C": "forgot_zero_remainder",
+        "D": "remainder_greater_than_divisor"
+      },
+      "explanation": "According to Euclid's Division Lemma, the remainder r always satisfies 0 ≤ r < b."
+    },
+    {
+      "id": "q102",
+      "skillId": "euclid_division",
+      "difficulty": 1,
+      "text": "When 37 is divided by 7, what are the quotient q and remainder r in the form a = bq + r?",
+      "options": [
+        "q = 4, r = 9",
+        "q = 5, r = 2",
+        "q = 6, r = 1",
+        "q = 5, r = 7"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "q=5, r=2",
+        "5, 2",
+        "b"
+      ],
+      "hintLadder": [
+        "Recall multiplication table of 7: 7 x 5 = 35. Subtract 35 from 37.",
+        "37 = (7 x 5) + 2. Here 2 is less than 7 (0 ≤ 2 < 7).",
+        "Therefore, quotient q = 5 and remainder r = 2. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "remainder_greater_than_divisor",
+        "C": "wrong_multiplication",
+        "D": "remainder_equals_divisor"
+      },
+      "explanation": "37 = 7(5) + 2, where 0 ≤ 2 < 7. Thus q = 5 and r = 2."
+    },
+    {
+      "id": "q103",
+      "skillId": "euclid_division",
+      "difficulty": 2,
+      "text": "When any positive integer 'a' is divided by 4, what are the possible values for the remainder r?",
+      "options": [
+        "1, 2, 3, 4",
+        "0, 1, 2, 3",
+        "0, 1, 2, 3, 4",
+        "1, 2, 3"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "0, 1, 2, 3",
+        "0,1,2,3",
+        "b"
+      ],
+      "hintLadder": [
+        "The condition is 0 ≤ r < 4.",
+        "r can take values starting from 0 up to 3.",
+        "Since r < 4, r cannot be 4. The possible values are 0, 1, 2, 3. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "missed_zero",
+        "C": "included_divisor_itself",
+        "D": "forgot_zero_remainder"
+      },
+      "explanation": "Since divisor b = 4, 0 ≤ r < 4 gives r ∈ {0, 1, 2, 3}."
+    },
+    {
+      "id": "q104",
+      "skillId": "hcf_by_euclid",
+      "difficulty": 1,
+      "text": "What is the HCF of 12 and 18 using Euclid's division algorithm?",
+      "options": [
+        "3",
+        "6",
+        "2",
+        "12"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "6",
+        "six",
+        "b"
+      ],
+      "hintLadder": [
+        "Divide 18 by 12: 18 = 12(1) + 6.",
+        "Now divide 12 by the remainder 6: 12 = 6(2) + 0.",
+        "The remainder is 0. The divisor at this stage is 6. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "not_highest_common_factor",
+        "C": "not_highest_common_factor",
+        "D": "chose_smaller_number"
+      },
+      "explanation": "18 = 12(1) + 6, and 12 = 6(2) + 0. The HCF is 6."
+    },
+    {
+      "id": "q105",
+      "skillId": "hcf_by_euclid",
+      "difficulty": 2,
+      "text": "What is the HCF of 45 and 105 using Euclid's method?",
+      "options": [
+        "5",
+        "15",
+        "30",
+        "45"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "15",
+        "fifteen",
+        "b"
+      ],
+      "hintLadder": [
+        "Step 1: 105 = 45(2) + 15.",
+        "Step 2: Divide 45 by 15: 45 = 15(3) + 0.",
+        "The remainder reached 0. The divisor is 15. Hence HCF is 15. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "not_highest_common_factor",
+        "C": "chose_first_remainder",
+        "D": "chose_smaller_number"
+      },
+      "explanation": "105 = 45(2) + 15, and 45 = 15(3) + 0. Therefore HCF(105, 45) = 15."
+    },
+    {
+      "id": "q106",
+      "skillId": "prime_factorization",
+      "difficulty": 1,
+      "text": "Which of the following is the correct prime factorisation of 36?",
+      "options": [
+        "4 x 9",
+        "2² x 3²",
+        "2³ x 3",
+        "6²"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "2^2 x 3^2",
+        "2² x 3²",
+        "b"
+      ],
+      "hintLadder": [
+        "Divide 36 by primes: 36 = 2 x 18 = 2 x 2 x 9.",
+        "Factor 9: 9 = 3 x 3.",
+        "Therefore, 36 = 2² x 3². Note that 4 and 6 are composite numbers, not primes. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "used_composite_numbers",
+        "C": "wrong_multiplication",
+        "D": "used_composite_numbers"
+      },
+      "explanation": "Prime factorisation requires prime bases only: 36 = 2² x 3²."
+    },
+    {
+      "id": "q107",
+      "skillId": "prime_factorization",
+      "difficulty": 2,
+      "text": "If HCF(a, b) = 6 and LCM(a, b) = 36, and a = 12, what is the value of b?",
+      "options": [
+        "18",
+        "24",
+        "72",
+        "9"
+      ],
+      "answer": "A",
+      "acceptedForms": [
+        "A",
+        "18",
+        "eighteen",
+        "a"
+      ],
+      "hintLadder": [
+        "Use the fundamental relation: a x b = HCF x LCM.",
+        "Substitute values: 12 x b = 6 x 36 = 216.",
+        "b = 216 ÷ 12 = 18. Option A is correct."
+      ],
+      "distractorMistakes": {
+        "B": "wrong_multiplication",
+        "C": "divided_by_hcf_twice",
+        "D": "wrong_multiplication"
+      },
+      "explanation": "a x b = HCF x LCM => 12 x b = 6 x 36 => b = 18."
+    },
+    {
+      "id": "q108",
+      "skillId": "terminating_decimals",
+      "difficulty": 1,
+      "text": "Which of the following fractions has a terminating decimal representation?",
+      "options": [
+        "7 / 15",
+        "3 / 8",
+        "2 / 3",
+        "5 / 14"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "3/8",
+        "b"
+      ],
+      "hintLadder": [
+        "Inspect the prime factors of the denominators.",
+        "15 = 3 x 5 (contains 3), 3 = 3, 14 = 2 x 7 (contains 7).",
+        "Denominator of 3/8 is 8 = 2³. Since it has only 2s in its factorisation, 3/8 is terminating (0.375). Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "contains_factor_3",
+        "C": "contains_factor_3",
+        "D": "contains_factor_7"
+      },
+      "explanation": "Denominator 8 = 2³ contains only prime factor 2. Thus 3/8 is terminating."
+    },
+    {
+      "id": "q109",
+      "skillId": "terminating_decimals",
+      "difficulty": 2,
+      "text": "After how many decimal places will the decimal representation of 17 / (2² x 5³) terminate?",
+      "options": [
+        "2 places",
+        "3 places",
+        "5 places",
+        "1 place"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "3",
+        "3 places",
+        "b"
+      ],
+      "hintLadder": [
+        "Observe the powers of 2 and 5 in the denominator: 2² and 5³.",
+        "The number of decimal places is determined by the maximum power: max(2, 3).",
+        "Here max(2, 3) = 3. Therefore it terminates after 3 decimal places. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "chose_smaller_power",
+        "C": "added_the_powers",
+        "D": "chose_difference"
+      },
+      "explanation": "Max power of 2 and 5 in denominator is 3. Hence it terminates after 3 places."
+    },
+    {
+      "id": "q110",
+      "skillId": "irrational_proofs",
+      "difficulty": 1,
+      "text": "Which of the following numbers is an irrational number?",
+      "options": [
+        "√4",
+        "√5",
+        "√9",
+        "√16"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "√5",
+        "sqrt(5)",
+        "b"
+      ],
+      "hintLadder": [
+        "Calculate square roots: √4 = 2, √9 = 3, √16 = 4 (all integers / rational).",
+        "5 is not a perfect square, so √5 cannot be written as p/q.",
+        "Therefore √5 is an irrational number. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "perfect_square_4",
+        "C": "perfect_square_9",
+        "D": "perfect_square_16"
+      },
+      "explanation": "√5 is non-terminating and non-recurring; it is irrational."
+    },
+    {
+      "id": "q201",
+      "skillId": "set_representation",
+      "difficulty": 1,
+      "text": "If A = {x : x is a prime number less than 10}, what is the roster form of set A?",
+      "options": [
+        "{1, 2, 3, 5, 7}",
+        "{2, 3, 5, 7}",
+        "{2, 3, 5, 7, 9}",
+        "{3, 5, 7}"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "{2, 3, 5, 7}",
+        "{2,3,5,7}",
+        "b"
+      ],
+      "hintLadder": [
+        "Remember: 1 is neither prime nor composite.",
+        "Primes less than 10 are: 2, 3, 5, 7 (9 is composite because 3 x 3 = 9).",
+        "Therefore A = {2, 3, 5, 7}. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "treated_1_as_prime",
+        "C": "used_composite_numbers",
+        "D": "missed_power_of_two"
+      },
+      "explanation": "The prime numbers under 10 are strictly 2, 3, 5, and 7."
+    },
+    {
+      "id": "q202",
+      "skillId": "set_union",
+      "difficulty": 1,
+      "text": "If A = {1, 2, 3} and B = {3, 4, 5}, what is A ∪ B?",
+      "options": [
+        "{1, 2, 3, 3, 4, 5}",
+        "{1, 2, 3, 4, 5}",
+        "{3}",
+        "{1, 2, 4, 5}"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "{1, 2, 3, 4, 5}",
+        "b"
+      ],
+      "hintLadder": [
+        "Union brings together all elements from both sets.",
+        "Common elements like 3 are written only once.",
+        "Combining without repetition gives {1, 2, 3, 4, 5}. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "counted_duplicates",
+        "C": "chose_common_elements",
+        "D": "assumed_nothing_left"
+      },
+      "explanation": "A ∪ B = {1, 2, 3, 4, 5} with no duplicate entries."
+    },
+    {
+      "id": "q203",
+      "skillId": "set_intersection",
+      "difficulty": 1,
+      "text": "If A = {a, b, c, d} and B = {c, d, e, f}, what is A ∩ B?",
+      "options": [
+        "{a, b}",
+        "{c, d}",
+        "{e, f}",
+        "{a, b, c, d, e, f}"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "{c, d}",
+        "{c,d}",
+        "b"
+      ],
+      "hintLadder": [
+        "Intersection takes elements that appear in both sets.",
+        "Elements in both A and B are c and d.",
+        "Therefore A ∩ B = {c, d}. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "calculated_A_minus_B_instead",
+        "C": "difference_swap",
+        "D": "confused_with_union"
+      },
+      "explanation": "Only 'c' and 'd' belong to both sets A and B."
+    },
+    {
+      "id": "q204",
+      "skillId": "set_difference",
+      "difficulty": 1,
+      "text": "If A = {1, 2, 3, 4} and B = {3, 4, 5, 6}, what is A - B?",
+      "options": [
+        "{3, 4}",
+        "{1, 2}",
+        "{5, 6}",
+        "{1, 2, 5, 6}"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "{1, 2}",
+        "{1,2}",
+        "b"
+      ],
+      "hintLadder": [
+        "A - B means elements belonging to A but not to B.",
+        "Start with A = {1, 2, 3, 4}. Remove 3 and 4 because they are in B.",
+        "Remaining elements: {1, 2}. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "chose_common_elements",
+        "C": "difference_swap",
+        "D": "confused_with_union"
+      },
+      "explanation": "A - B contains elements exclusive to A: {1, 2}."
+    },
+    {
+      "id": "q205",
+      "skillId": "set_difference",
+      "difficulty": 2,
+      "text": "If A = {1, 2, 3} and B = {4, 5, 6} (disjoint sets), what is A - B?",
+      "options": [
+        "∅ (Empty Set)",
+        "A",
+        "B",
+        "{1, 2, 3, 4, 5, 6}"
+      ],
+      "answer": "B",
+      "acceptedForms": [
+        "B",
+        "A",
+        "{1, 2, 3}",
+        "b"
+      ],
+      "hintLadder": [
+        "Notice that A and B have no common elements at all (A ∩ B = ∅).",
+        "Since none of A's elements are in B, nothing is removed from A.",
+        "Therefore A - B = A. Option B is correct."
+      ],
+      "distractorMistakes": {
+        "A": "assumed_nothing_left",
+        "C": "swapped_with_B",
+        "D": "confused_with_union"
+      },
+      "explanation": "When A and B are disjoint, no elements are removed from A, so A - B = A."
+    }
+  ],
+  "mistakeRemedies": {
+    "forgot_remainder": "Remember that the remainder must always be strictly less than the divisor (0 ≤ r < b). Never omit the remainder.",
+    "remainder_greater_than_divisor": "The remainder cannot be greater than the divisor! If dividing by 7, remainder must be between 0 and 6.",
+    "wrong_multiplication": "Check your multiplication table. The quotient multiplied by divisor must be as close to the dividend as possible without exceeding it.",
+    "remainder_equals_divisor": "The remainder can never equal the divisor. If it does, the quotient should increase by 1.",
+    "included_equal_to_b": "The remainder 'r' cannot equal 'b', it must be strictly less than b (< b).",
+    "forgot_zero_remainder": "The remainder can be 0 when the division is exact (r = 0).",
+    "included_divisor_itself": "The divisor itself is never a valid remainder. Dividing by 4 gives remainders 0, 1, 2, 3.",
+    "missed_zero": "Zero is a valid remainder: 0 ≤ r < b.",
+    "not_highest_common_factor": "The factor you found is common, but it is not the highest common factor (HCF).",
+    "incomplete_factor": "A larger common factor exists. Continue Euclid's division until remainder is 0.",
+    "chose_smaller_number": "The smaller number is not automatically the HCF. Complete the division algorithm.",
+    "partial_factor": "This is only a partial factor. Take the final non-zero divisor.",
+    "chose_first_remainder": "The first remainder is not the HCF. The divisor at the step where remainder becomes 0 is the HCF.",
+    "missed_power_of_two": "Check how many times 2 divides the number. Don't forget the power exponent.",
+    "squared_wrong_factor": "Make sure to attach the power to the exact prime factor being multiplied.",
+    "used_composite_numbers": "Prime factorisation must use prime numbers only (2, 3, 5, 7...). Do not leave 4, 6, 9 as bases.",
+    "divided_by_hcf_twice": "Use formula: a x b = HCF x LCM. Therefore b = (HCF x LCM) ÷ a.",
+    "assumed_ends_with_zero": "To end with the digit 0, the prime factorisation must contain both 2 and 5.",
+    "contains_factor_3": "Because 3 is in the denominator, this is non-terminating repeating. Terminating decimals require only 2 or 5 in the denominator.",
+    "contains_factor_7": "A factor of 7 in the denominator makes it non-terminating repeating.",
+    "contains_factor_11": "A factor of 11 in denominator means it cannot terminate.",
+    "chose_difference": "The number of places is not the difference between powers, but the maximum power: max(n, m).",
+    "chose_smaller_power": "Take the maximum power of 2 and 5, not the smaller power.",
+    "added_the_powers": "Do not add the powers. Take max(n, m).",
+    "perfect_square_4": "4 is a perfect square (2² = 4), so √4 = 2 is a rational number.",
+    "perfect_square_9": "9 is a perfect square (3² = 9), so √9 = 3 is rational.",
+    "perfect_square_16": "16 is a perfect square (4² = 16), so √16 = 4 is rational.",
+    "assumed_rational_dominates": "Adding or subtracting a rational and an irrational number always yields an irrational number.",
+    "treated_1_as_prime": "1 is neither prime nor composite!",
+    "counted_duplicates": "Elements in a set are listed without repetition.",
+    "chose_element_count": "Number of subsets is given by 2ⁿ, not n.",
+    "missed_empty_set": "The empty set (∅) is always a subset of every set.",
+    "calculated_A_minus_B_instead": "Notice the question asked for B - A, not A - B.",
+    "chose_common_elements": "That is the intersection A ∩ B, not the difference.",
+    "difference_swap": "A - B is different from B - A. Always take elements belonging only to the first set.",
+    "assumed_nothing_left": "There are elements remaining in the first set.",
+    "swapped_with_B": "Make sure you keep the elements of the first set.",
+    "confused_with_union": "Do not combine the sets; this is a set difference."
+  },
+  "commonDoubts": [
+    {
+      "id": "cd1",
+      "topicId": "ch1_real_numbers",
+      "q": "How to quickly check if a fraction has a terminating decimal?",
+      "a": "Reduce the fraction to lowest terms. Then factorise the denominator. If the denominator has ONLY prime factors 2 and/or 5 (form 2ⁿ · 5ᵐ), it terminates. If it contains 3, 7, 11 etc., it is non-terminating repeating.",
+      "keywords": [
+        "terminating",
+        "decimal",
+        "denominator",
+        "2",
+        "5"
+      ]
+    },
+    {
+      "id": "cd2",
+      "topicId": "ch1_real_numbers",
+      "q": "What is Euclid's Division Lemma used for?",
+      "a": "Euclid's Division Lemma states that for any two positive integers a and b, a = bq + r with 0 ≤ r < b. It is primarily used to systematically compute the Highest Common Factor (HCF) of two large numbers.",
+      "keywords": [
+        "euclid",
+        "lemma",
+        "hcf",
+        "remainder"
+      ]
+    },
+    {
+      "id": "cd3",
+      "topicId": "ch1_real_numbers",
+      "q": "Why is the square root of 2 or 3 irrational?",
+      "a": "Because they cannot be written in the form p/q where p and q are co-prime integers. When assumed rational, proof by contradiction reveals that both p and q would share a common factor, violating the definition.",
+      "keywords": [
+        "irrational",
+        "proof",
+        "square root",
+        "contradiction"
+      ]
+    },
+    {
+      "id": "cd4",
+      "topicId": "ch2_sets_polynomials",
+      "q": "What is the difference between A - B and B - A?",
+      "a": "A - B contains elements that belong to A but NOT to B. B - A contains elements that belong to B but NOT to A. They are not equal unless A and B are identical sets.",
+      "keywords": [
+        "difference",
+        "sets",
+        "A-B",
+        "B-A"
+      ]
+    },
+    {
+      "id": "cd5",
+      "topicId": "ch2_sets_polynomials",
+      "q": "What are disjoint sets?",
+      "a": "Two sets A and B are disjoint if they share no elements in common. Mathematically, their intersection is the empty set: A ∩ B = ∅.",
+      "keywords": [
+        "disjoint",
+        "empty set",
+        "intersection"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 [build]
-  command = "npm run build"
+  base = "frontend"
+  command = "npm ci && npm run build"
   publish = "dist"
 
 [build.environment]
@@ -12,7 +13,7 @@
   to = "https://vidyapath.onrender.com/api/:splat"
   status = 200
   force = true
-  headers = { X-Forwarded-Host = "vidyapath-pwa" }
+  headers = { X-Forwarded-Host = "vidyapath-web" }
 
 # 2. Edge Proxy for Static File Uploads (Syllabus PDFs, Handouts, Voice clips)
 [[redirects]]

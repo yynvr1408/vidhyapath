@@ -5,9 +5,10 @@ services:
     plan: free
     region: oregon
     branch: main
+    rootDir: backend
     buildCommand: npm ci && npm run build
     startCommand: npm start
-    healthCheckPath: /healthz
+    healthCheckPath: /readyz
     envVars:
       - key: NODE_ENV
         value: production
@@ -15,7 +16,13 @@ services:
         value: 3001
       - key: DATABASE_URL
         sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
       - key: JWT_SECRET
+        sync: false
+      - key: BOOTSTRAP_SUPER_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_SUPER_ADMIN_PASSWORD
         sync: false
       - key: GROQ_API_KEY
         sync: false
@@ -53,11 +60,3 @@ services:
         value: template_ut8bwdc
       - key: EMAILJS_INVITE_TEMPLATE_ID
         value: template_2e14nac
-      - key: GITHUB_REPO_OWNER
-        value: yynvr1408
-      - key: GITHUB_REPO_NAME
-        value: vidhyapath
-      - key: GITHUB_RELEASE_REPO
-        value: yynvr1408/vidhyapath
-      - key: GITHUB_PAT_TOKEN
-        sync: false

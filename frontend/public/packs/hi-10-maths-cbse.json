@@ -1,0 +1,287 @@
+{
+  "id": "hi-10-maths-cbse",
+  "version": "1.0.0",
+  "isStub": false,
+  "language": "hi",
+  "languageName": "हिन्दी (Hindi Class 10 CBSE)",
+  "class": 10,
+  "subject": "maths",
+  "board": "CBSE",
+  "locales": {
+    "stt": "hi-IN",
+    "tts": "hi-IN",
+    "rtl": false
+  },
+  "uiStrings": {
+    "appTitle": "विद्यापथ",
+    "tagline": "कक्षा 10 गणित के लिए स्मार्ट ट्यूटर",
+    "whoIsLearning": "आज कौन सीख रहा है?",
+    "addNewLearner": "+ नया शिक्षार्थी जोड़ें",
+    "switchLearner": "शिक्षार्थी बदलें",
+    "enterPin": "4 अंकों का पिन दर्ज करें",
+    "wrongPin": "गलत पिन। पुनः प्रयास करें।",
+    "optionalPinPrompt": "पिन सेट करें (वैकल्पिक)",
+    "chooseAvatar": "अवतार चुनें",
+    "pickColor": "रंग चुनें",
+    "saveProfile": "प्रोफ़ाइल सहेजें",
+    "home": "होम",
+    "learn": "सीखें",
+    "practice": "अभ्यास करें",
+    "askDoubt": "संदेह पूछें",
+    "myProgress": "मेरी प्रगति",
+    "settings": "सेटिंग्स",
+    "todayGoal": "आज का लक्ष्य",
+    "sessionsLeft": "1 सत्र शेष",
+    "progressSaved": "प्रगति सुरक्षित सहेजी गई",
+    "noInternet": "इंटरनेट नहीं है (ऑफ़लाइन मोड)",
+    "onlineReady": "ऑनलाइन कनेक्टेड",
+    "syncSuccess": "सफलतापूर्वक सिंक हुआ",
+    "listen": "सुनें",
+    "hint": "संकेत",
+    "hintLevel": "संकेत चरण",
+    "nextStep": "अगला प्रश्न",
+    "checkAnswer": "उत्तर जांचें",
+    "greatJob": "बहुत बढ़िया! सही उत्तर!",
+    "tryAgain": "आइए इसे ध्यान से देखें",
+    "lookCloser": "आइए इसे ध्यान से देखें",
+    "remedyHeading": "याद रखने योग्य बात:",
+    "trySimilar": "समान प्रश्न का अभ्यास करें?",
+    "sessionComplete": "बधाई हो! सत्र पूर्ण हुआ",
+    "lanternGlowIncreased": "आपकी लालटेन की चमक बढ़ गई!",
+    "accuracy": "सटीकता",
+    "pointsEarned": "अर्जित अंक",
+    "backToHome": "होम पर वापस जाएं",
+    "start": "शुरू करें",
+    "speakAnswer": "उत्तर बोलें",
+    "listeningNow": "सुन रहे हैं... बोलिए",
+    "voiceUnsupported": "इस ब्राउज़र में वॉयस इनपुट समर्थित नहीं है।",
+    "typeDoubtPlaceholder": "अपना संदेह यहाँ लिखें...",
+    "askVoice": "माइक दबाकर पूछें",
+    "askPhoto": "फ़ोटो लेकर पूछें",
+    "sendDoubt": "संदेह भेजें",
+    "offlineQueueNotice": "आप ऑफ़लाइन हैं। नेटवर्क आने पर उत्तर मिलेगा।",
+    "queuedDoubtsCount": "कतारबद्ध संदेह",
+    "commonDoubtsHeading": "अक्सर पूछे जाने वाले प्रश्न (ऑफ़लाइन उत्तर)",
+    "recentDoubts": "हाल के संदेह",
+    "didThisHelp": "क्या इस उत्तर से मदद मिली?",
+    "yesHelpful": "हाँ, समझ आ गया",
+    "noNeedMore": "और स्पष्टीकरण चाहिए",
+    "lowDataMode": "कम डेटा मोड",
+    "lowDataDesc": "डेटा बचाता है। चित्र और वॉयस अपलोड बंद हैं।",
+    "fontSize": "फ़ॉन्ट का आकार",
+    "dataUsed": "उपयोग किया गया डेटा",
+    "clearCache": "AI कैश साफ़ करें",
+    "guardianLink": "अभिभावक लिंक",
+    "guardianDesc": "अभिभावक को प्रगति दिखाने के लिए लिंक",
+    "copyLink": "लिंक कॉपी करें",
+    "linkCopied": "लिंक कॉपी हो गया!",
+    "chapter": "अध्याय",
+    "skill": "कौशल",
+    "masteryLevel": "दक्षता स्तर",
+    "mastered": "पूर्ण रूप से सीखा",
+    "needsPractice": "और अभ्यास की आवश्यकता",
+    "villageLanterns": "गाँव की लालटेनें",
+    "villageDesc": "जैसे-जैसे आप सीखते हैं, गाँव की लालटेनें और अधिक चमकती हैं!"
+  },
+  "topics": [
+    {
+      "id": "hi_ch1_real_numbers",
+      "title": "अध्याय 1: वास्तविक संख्याएँ",
+      "titleEn": "Chapter 1: Real Numbers",
+      "description": "यूक्लिड विभाजन प्रमेयिका, HCF, और अंकगणित की आधारभूत प्रमेय।",
+      "skills": ["hi_euclid_division", "hi_hcf", "hi_prime_factorization", "hi_decimals"],
+      "cards": [
+        {
+          "id": "card_hi_1",
+          "stepNumber": 1,
+          "heading": "यूक्लिड विभाजन प्रमेयिका (Euclid's Division Lemma)",
+          "conceptText": "दो धनात्मक पूर्णांकों a और b के लिए, a = bq + r जहाँ 0 ≤ r < b होता है।",
+          "workedExample": {
+            "problem": "17 को 5 से भाग देने पर यूक्लिड रूप में लिखें।",
+            "steps": ["17 = (5 x 3) + 2", "यहाँ 0 ≤ 2 < 5 है"],
+            "finalAnswer": "17 = 5(3) + 2"
+          },
+          "keyTakeaway": "शेषफल हमेशा भाजक से छोटा और शून्य या उससे बड़ा होता है (0 ≤ r < b)।"
+        }
+      ]
+    },
+    {
+      "id": "hi_ch2_polynomials",
+      "title": "अध्याय 2: बहुपद (Polynomials)",
+      "titleEn": "Chapter 2: Polynomials",
+      "description": "बहुपदों के शून्यक और गुणांकों के बीच संबंध।",
+      "skills": ["hi_zeroes", "hi_relations"],
+      "cards": [
+        {
+          "id": "card_hi_2",
+          "stepNumber": 1,
+          "heading": "द्विघात बहुपद के शून्यक",
+          "conceptText": "यदि α और β द्विघात बहुपद ax² + bx + c के शून्यक हैं, तो शून्यकों का योग α + β = -b/a और गुणनफल αβ = c/a होता है।",
+          "workedExample": {
+            "problem": "बहुपद x² - 5x + 6 के शून्यक ज्ञात कीजिए।",
+            "steps": ["x² - 2x - 3x + 6 = 0", "x(x - 2) - 3(x - 2) = 0", "(x - 2)(x - 3) = 0"],
+            "finalAnswer": "x = 2 और x = 3"
+          },
+          "keyTakeaway": "α + β = -b/a तथा αβ = c/a."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "hq101",
+      "skillId": "hi_euclid_division",
+      "difficulty": 1,
+      "text": "यूक्लिड विभाजन प्रमेयिका a = bq + r में शेषफल 'r' के लिए कौन सा संबंध सत्य है?",
+      "options": [
+        "0 < r ≤ b",
+        "0 ≤ r < b",
+        "0 < r < b",
+        "r > b"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "0 <= r < b", "0 ≤ r < b", "बी"],
+      "hintLadder": [
+        "शेषफल हमेशा भाजक 'b' से छोटा और 0 या 0 से बड़ा होना चाहिए।",
+        "0 ≤ r और r < b को एक साथ लिखें।",
+        "सही नियम 0 ≤ r < b है। विकल्प B सही है।"
+      ],
+      "distractorMistakes": {
+        "A": "included_equal_to_b",
+        "C": "forgot_zero",
+        "D": "greater_than_divisor"
+      },
+      "explanation": "यूक्लिड विभाजन प्रमेयिका के अनुसार 0 ≤ r < b."
+    },
+    {
+      "id": "hq102",
+      "skillId": "hi_hcf",
+      "difficulty": 1,
+      "text": "12 और 18 का म.स.प. (HCF) क्या होगा?",
+      "options": [
+        "3",
+        "6",
+        "2",
+        "12"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "6", "छह", "बी"],
+      "hintLadder": [
+        "18 = 12(1) + 6.",
+        "12 = 6(2) + 0.",
+        "अंतिम भाजक 6 है। अतः HCF = 6। विकल्प B सही है।"
+      ],
+      "distractorMistakes": {
+        "A": "incomplete_factor",
+        "C": "small_factor",
+        "D": "first_number"
+      },
+      "explanation": "HCF(18, 12) = 6."
+    },
+    {
+      "id": "hq103",
+      "skillId": "hi_prime_factorization",
+      "difficulty": 1,
+      "text": "36 का सही अभाज्य गुणनखंडन (Prime Factorisation) क्या है?",
+      "options": [
+        "4 x 9",
+        "2² x 3²",
+        "6²",
+        "2 x 18"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "2² x 3²", "2^2 x 3^2", "बी"],
+      "hintLadder": [
+        "36 को अभाज्य संख्याओं में तोड़ें: 36 = 2 x 2 x 3 x 3।",
+        "4 और 6 अभाज्य संख्याएँ नहीं हैं।",
+        "अतः 36 = 2² x 3²। विकल्प B सही है।"
+      ],
+      "distractorMistakes": {
+        "A": "composite_bases",
+        "C": "composite_bases",
+        "D": "incomplete"
+      },
+      "explanation": "36 = 2² x 3²."
+    },
+    {
+      "id": "hq201",
+      "skillId": "hi_zeroes",
+      "difficulty": 1,
+      "text": "द्विघात बहुपद x² - 5x + 6 के शून्यकों का योग (Sum of zeroes) क्या होगा?",
+      "options": [
+        "-5",
+        "5",
+        "6",
+        "-6"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "5", "पाँच", "बी"],
+      "hintLadder": [
+        "सूत्र: शून्यकों का योग α + β = -b / a.",
+        "यहाँ a = 1 और b = -5.",
+        "-(-5) / 1 = 5. विकल्प B सही है।"
+      ],
+      "distractorMistakes": {
+        "A": "sign_error",
+        "C": "chose_product",
+        "D": "sign_error_product"
+      },
+      "explanation": "α + β = -(-5)/1 = 5."
+    },
+    {
+      "id": "hq202",
+      "skillId": "hi_relations",
+      "difficulty": 1,
+      "text": "द्विघात बहुपद x² - 5x + 6 के शून्यकों का गुणनफल (Product of zeroes) क्या होगा?",
+      "options": [
+        "5",
+        "6",
+        "-6",
+        "-5"
+      ],
+      "answer": "B",
+      "acceptedForms": ["B", "6", "छह", "बी"],
+      "hintLadder": [
+        "सूत्र: शून्यकों का गुणनफल αβ = c / a.",
+        "यहाँ c = 6 और a = 1.",
+        "6 / 1 = 6. विकल्प B सही है।"
+      ],
+      "distractorMistakes": {
+        "A": "chose_sum",
+        "C": "sign_error",
+        "D": "sign_error_sum"
+      },
+      "explanation": "αβ = c/a = 6/1 = 6."
+    }
+  ],
+  "mistakeRemedies": {
+    "included_equal_to_b": "शेषफल कभी भी भाजक के बराबर नहीं हो सकता, हमेशा उससे छोटा (r < b) होता है।",
+    "forgot_zero": "शेषफल 0 भी हो सकता है जब संख्या पूरी तरह विभाजित हो।",
+    "greater_than_divisor": "शेषफल कभी भी भाजक से बड़ा नहीं हो सकता।",
+    "incomplete_factor": "यह उभयनिष्ठ गुणनखंड है, परन्तु सबसे बड़ा (महत्तम) नहीं है।",
+    "small_factor": "और बड़ी संख्या से भाग हो सकता है।",
+    "first_number": "पहली संख्या ही म.स.प. नहीं होती।",
+    "composite_bases": "अभाज्य गुणनखंडन में केवल अभाज्य संख्याएँ (2, 3, 5, 7...) होनी चाहिए, 4 या 6 नहीं।",
+    "incomplete": "गुणनखंडन को अंत तक अभाज्य संख्याओं में तोड़ें।",
+    "sign_error": "चिह्न का ध्यान रखें: α + β = -b/a, इसलिए -(-5) = +5 होगा।",
+    "chose_product": "यह शून्यकों का गुणनफल है, योग नहीं। सूत्र α + β = -b/a याद रखें।",
+    "sign_error_product": "शून्यकों का गुणनफल αβ = c/a होता है।",
+    "chose_sum": "यह शून्यकों का योग है। गुणनफल αβ = c/a होता है।"
+  },
+  "commonDoubts": [
+    {
+      "id": "hcd1",
+      "topicId": "hi_ch1_real_numbers",
+      "q": "यूक्लिड विभाजन प्रमेयिका का मुख्य उपयोग क्या है?",
+      "a": "दो धनात्मक पूर्णांकों का म.स.प. (HCF) चरणबद्ध तरीके से ज्ञात करने के लिए यूक्लिड विभाजन प्रमेयिका का उपयोग किया जाता है।",
+      "keywords": ["यूक्लिड", "प्रमेयिका", "HCF"]
+    },
+    {
+      "id": "hcd2",
+      "topicId": "hi_ch2_polynomials",
+      "q": "द्विघात बहुपद के शून्यक और गुणांकों में क्या संबंध है?",
+      "a": "द्विघात बहुपद ax² + bx + c में शून्यकों का योग = -b/a और गुणनफल = c/a होता है।",
+      "keywords": ["बहुपद", "शून्यक", "गुणांक"]
+    }
+  ]
+}
