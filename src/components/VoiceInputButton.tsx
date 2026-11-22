@@ -31,6 +31,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
   const msgs = SPEECH_ERROR_MESSAGES[langKey];
 
   const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
   const stoppingRef = useRef(false);
@@ -54,6 +55,7 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     }
 
     setErrorNotice(null);
+    setInterimTranscript('');
     setIsListening(true);
     stoppingRef.current = false;
 
@@ -61,16 +63,22 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       effectiveLocale,
       (text) => {
         setIsListening(false);
+        setInterimTranscript('');
         onTranscript(text);
       },
       (err) => {
         // Aborting by the student triggers an error event in some browsers; ignore it.
         if (stoppingRef.current) return;
         setIsListening(false);
+        setInterimTranscript('');
         setErrorNotice(err);
       },
       () => {
         setIsListening(false);
+        setInterimTranscript('');
+      },
+      (interim) => {
+        setInterimTranscript(interim);
       }
     );
   };
@@ -80,6 +88,10 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     stopRef.current?.();
     stopRef.current = null;
     setIsListening(false);
+    if (interimTranscript) {
+      onTranscript(interimTranscript);
+    }
+    setInterimTranscript('');
   };
 
   // Lets the parent screen start/stop listening (e.g. from the welcome card).
@@ -127,20 +139,27 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
           <div
             role="status"
             aria-live="polite"
-            className="basis-full flex items-center gap-3 bg-[#FEF2F2] border-2 border-[#DC2626] rounded-[12px] p-2.5"
+            className="basis-full flex flex-col gap-1.5 bg-[#FEF2F2] border-2 border-[#DC2626] rounded-[12px] p-2.5 shadow-xs"
           >
-            <span className="relative flex h-3.5 w-3.5 shrink-0">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-[#DC2626] opacity-75 animate-ping" />
-              <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-[#DC2626]" />
-            </span>
-            <span className="flex-1 min-w-0 text-sm font-extrabold text-[#991B1B]">{t.listeningNow}</span>
-            <button
-              type="button"
-              onClick={handleStopListening}
-              className="px-3 min-h-[44px] rounded-[10px] bg-[#DC2626] hover:bg-[#B91C1C] text-white text-sm font-bold shrink-0 active:scale-95"
-            >
-              {t.stopListening}
-            </button>
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3.5 w-3.5 shrink-0">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-[#DC2626] opacity-75 animate-ping" />
+                <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-[#DC2626]" />
+              </span>
+              <span className="flex-1 min-w-0 text-sm font-extrabold text-[#991B1B]">{t.listeningNow}</span>
+              <button
+                type="button"
+                onClick={handleStopListening}
+                className="px-3 min-h-[44px] rounded-[10px] bg-[#DC2626] hover:bg-[#B91C1C] text-white text-sm font-bold shrink-0 active:scale-95"
+              >
+                {t.stopListening}
+              </button>
+            </div>
+            {interimTranscript && (
+              <div className="text-xs text-[#7F1D1D] bg-[#FEE2E2] px-2.5 py-1 rounded-[6px] italic font-medium truncate">
+                "{interimTranscript}"
+              </div>
+            )}
           </div>
         )}
         <button

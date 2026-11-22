@@ -149,10 +149,14 @@ export const AiTutorScreen: React.FC = () => {
     });
     return idx;
   })();
-  const welcomeStarters = (pack?.commonDoubts || [])
-    .filter((cd) => cd.topicId === activeTopicId)
-    .slice(0, 2)
-    .map((cd) => cd.q);
+  const welcomeStarters = [
+    t.starterExplainChapter,
+    t.starterDailyExample,
+    ...((pack?.commonDoubts || [])
+      .filter((cd) => cd.topicId === activeTopicId)
+      .slice(0, 2)
+      .map((cd) => cd.q)),
+  ].filter(Boolean).slice(0, 4);
   const replyChips = [t.replyChipSimpler, t.replyChipExample, t.replyChipStepByStep];
 
   return (
@@ -273,9 +277,10 @@ export const AiTutorScreen: React.FC = () => {
                     setDoubtText(q);
                     handleSubmitDoubt(q);
                   }}
-                  className="min-h-[48px] px-4 py-2.5 rounded-[12px] bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] text-sm font-bold border border-[#CCFBF1] text-left active:scale-95 transition-colors"
+                  className="min-h-[48px] px-4 py-2.5 rounded-[12px] bg-[#FFFFFF] hover:bg-[#F0FDFA] text-[#0F766E] text-sm sm:text-base font-bold border border-[#CCFBF1] text-left active:scale-95 transition-colors shadow-2xs flex items-center gap-2"
                 >
-                  ⚡ {q}
+                  <span className="text-base shrink-0">⚡</span>
+                  <span className="leading-snug">{q}</span>
                 </button>
               ))}
             </div>
@@ -432,10 +437,13 @@ export const AiTutorScreen: React.FC = () => {
             <button
               type="button"
               aria-label={t.removePhoto}
-              onClick={() => setPhotoPreview(null)}
-              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#0F172A] text-white flex items-center justify-center shadow-xs active:scale-95"
+              onClick={() => {
+                setPhotoPreview(null);
+                setDoubtText('');
+              }}
+              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#DC2626] hover:bg-[#B91C1C] text-white flex items-center justify-center shadow-md active:scale-95 transition-transform"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 stroke-[2.5]" />
             </button>
           </div>
         )}
@@ -456,7 +464,7 @@ export const AiTutorScreen: React.FC = () => {
             type="button"
             title={t.photoUploadTitle}
             onClick={() => fileInputRef.current?.click()}
-            className="min-h-[48px] min-w-[56px] px-2 rounded-[12px] bg-[#F0FDFA] hover:bg-[#CCFBF1] text-[#0F766E] border border-[#CCFBF1] flex flex-col items-center justify-center gap-0.5 text-xs font-bold active:scale-95 shrink-0 transition-all"
+            className="min-h-[48px] min-w-[56px] px-2.5 rounded-[12px] bg-[#0F766E] hover:bg-[#115E59] text-white flex flex-col items-center justify-center gap-0.5 text-xs font-bold active:scale-95 shrink-0 transition-all shadow-xs"
           >
             <Camera className="w-5 h-5 stroke-[2.2]" />
             <span>{t.cameraPhoto}</span>

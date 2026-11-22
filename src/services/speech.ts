@@ -186,7 +186,8 @@ export class SpeechService {
     locale: string = 'te-IN',
     onResult: (transcript: string) => void,
     onError: (errorMsg: string) => void,
-    onEnd: () => void
+    onEnd: () => void,
+    onInterim?: (interimText: string) => void
   ): () => void {
     const lang = getSpeechLangFromLocale(locale);
     const msgs = SPEECH_ERROR_MESSAGES[lang];
@@ -204,13 +205,28 @@ export class SpeechService {
 
       recognition.lang = locale;
       recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
       recognition.maxAlternatives = 3;
 
       recognition.onresult = (event: any) => {
-        if (event.results && event.results.length > 0) {
-          const topResult = event.results[0][0].transcript;
-          onResult(topResult);
+        if (!event.results || event.results.length === 0) return;
+        let interim = '';
+        let final = '';
+        for (let i = 0; i < event.results.length; i++) {
+          const res = event.results[i];
+          if (res.isFinal === false) {
+            interim += res[0]?.transcript || '';
+          } else {
+            final += res[0]?.transcript || '';
+          }
+        }
+        if (interim && onInterim) {
+          onInterim(interim);
+        }
+        if (final) {
+          onResult(final);
+        } else if (!interim && event.results[0] && event.results[0][0]) {
+          onResult(event.results[0][0].transcript);
         }
       };
 
