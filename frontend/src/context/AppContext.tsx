@@ -1,20 +1,16 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { ContentPack, LearnerProfile, SkillState } from '../types';
-import { localDb } from '../db/indexedDb';
-import { SyncService } from '../services/sync';
-import { SupportedLang } from '../utils/translations';
-import { useEnterpriseAuth } from './EnterpriseAuthContext';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { ContentPack, LearnerProfile, SkillState } from '../types';
+import type { SupportedLang } from '../utils/translations';
 
 export type ScreenId =
-  | 'S1_PICKER'       // Main Profile Picker / Home
-  | 'MY_SYLLABUS'     // 1. My Syllabus (Learn) - Default after unlock
-  | 'LESSON_DETAIL'   // Chapter Concept Cards & worked examples
-  | 'AI_TUTOR'        // 2. AI Tutor (Ask Doubt)
-  | 'PRACTICE'        // 3. Practice & Weak Topics
-  | 'PROGRESS'        // 4. My Progress (Student View)
-  | 'PARENT_VIEW'     // 5. Parent / Teacher View
-  | 'ADMIN'           // 6. Admin & Curriculum Panel
-  // Backwards-compatible aliases
+  | 'S1_PICKER'
+  | 'MY_SYLLABUS'
+  | 'LESSON_DETAIL'
+  | 'AI_TUTOR'
+  | 'PRACTICE'
+  | 'PROGRESS'
+  | 'PARENT_VIEW'
+  | 'ADMIN'
   | 'ADMIN_PANEL'
   | 'S2_CREATE'
   | 'S3_HOME'
@@ -44,6 +40,7 @@ interface AppContextValue {
   queuedDoubtsCount: number;
   offlineChapters: Set<string>;
   currentLanguage: SupportedLang;
+
   // Actions
   setScreen: (screen: ScreenId) => void;
   selectTopic: (topicId: string | null) => void;
@@ -68,132 +65,27 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user: accountUser, loading: accountLoading } = useEnterpriseAuth();
-  const [pack, setPack] = useState<ContentPack | null>(null);
-  const [learners, setLearners] = useState<LearnerProfile[]>([]);
-  const [learnersLoaded, setLearnersLoaded] = useState(false);
-  const [activeLearner, setActiveLearner] = useState<LearnerProfile | null>(null);
-  const activeLearnerRef = useRef<LearnerProfile | null>(null);
-  const triggerSyncRef = useRef<() => Promise<void>>(async () => {});
-  const syncTickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const syncRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const syncRetryDelayRef = useRef(15_000);
-  activeLearnerRef.current = activeLearner;
-  const [skillStates, setSkillStates] = useState<Map<string, SkillState>>(new Map());
-  const [currentScreen, setCurrentScreen] = useState<ScreenId>('S1_PICKER');
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
-  const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
+  const getInitialLang = (): SupportedLang => {
+    if (typeof window === 'undefined') return 'te';
+    const saved = localStorage.getItem('vidyapath_language') as SupportedLang;
+    if (saved && ['te', 'hi', 'en'].includes(saved)) return saved;
+    return 'te';
+  };
+
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLang>(getInitialLang);
+  const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false);
   const [simulatedOffline, setSimulatedOffline] = useState<boolean>(false);
-  const [offlineChapters, setOfflineChapters] = useState<Set<string>>(new Set(['ch1_real_numbers']));
-  const [lowDataMode, setLowDataMode] = useState<boolean>(false);
+  const [lowDataMode, setLowDataMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('vidyapath_low_data') === 'true';
+  });
   const [fontSize, setFontSizeState] = useState<'normal' | 'large' | 'xlarge'>('normal');
   const [dataUsedKb, setDataUsedKb] = useState<number>(34);
-  const savedPack = typeof window !== 'undefined' ? localStorage.getItem('vidyapath_language_pack') : null;
-  const savedLang = (typeof window !== 'undefined' ? (localStorage.getItem('vidyapath_language') as SupportedLang) : null)
-    || (savedPack?.startsWith('hi') ? 'hi' : savedPack?.startsWith('en') ? 'en' : 'te');
-  const [syncTick, setSyncTick] = useState<boolean>(false);
-  const [syncPending, setSyncPending] = useState<boolean>(false);
-  const [queuedDoubtsCount, setQueuedDoubtsCount] = useState<number>(0);
-  const [currentLanguage, setCurrentLanguage] = useState<SupportedLang>(savedLang);
+  const [currentScreen, setCurrentScreen] = useState<ScreenId>('ADMIN');
 
-  // Inactivity timer for shared-phone 2-minute auto-lock
-  const autoLockTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Load active pack
-  const loadPack = async (packId?: string) => {
-    try {
-      const activePackId = packId || localStorage.getItem('vidyapath_language_pack') || (savedLang === 'hi' ? 'hi-10-maths-cbse' : savedLang === 'en' ? 'en-10-maths-cbse' : 'te-10-maths-ap');
-      const res = await fetch(`/packs/${activePackId}.json`);
-      if (res.ok) {
-        const data: ContentPack = await res.json();
-        setPack(data);
-        if (data.language.startsWith('hi')) setCurrentLanguage('hi');
-        else if (data.language.startsWith('te')) setCurrentLanguage('te');
-        else setCurrentLanguage('en');
-      }
-    } catch (err) {
-      console.warn('Failed to fetch pack:', err);
-    }
-  };
-
-  // Switch pack
-  const switchPack = async (packId: string) => {
-    localStorage.setItem('vidyapath_language_pack', packId);
-    await loadPack(packId);
-  };
-
-  // Switch language directly (Telugu, Hindi, English)
-  const switchLanguage = async (lang: SupportedLang) => {
-    setCurrentLanguage(lang);
-    localStorage.setItem('vidyapath_language', lang);
-    if (lang === 'hi') {
-      await switchPack('hi-10-maths-cbse');
-    } else if (lang === 'te') {
-      await switchPack('te-10-maths-ap');
-    } else {
-      // Default to English
-      await switchPack('en-10-maths-cbse');
-    }
-  };
-
-  // Load real registered learners from local database & purge any legacy mock/demo accounts
-  const loadExistingLearners = async () => {
-    try {
-      const existing = await localDb.getLearners();
-      const legacyMockIds = ['learner_cheetah', 'learner_elephant', 'learner_lion', 'learner_ravi'];
-
-      // Purge any legacy mock records from persistent IndexedDB
-      for (const l of existing) {
-        if (legacyMockIds.includes(l.id)) {
-          await localDb.deleteLearner(l.id);
-        }
-      }
-
-      const realLearners = existing.filter((l) => !legacyMockIds.includes(l.id));
-      setLearners(realLearners);
-    } catch (err) {
-      console.warn('Failed to load real learners:', err);
-      setLearners([]);
-    } finally {
-      setLearnersLoaded(true);
-    }
-  };
-
-  // Load skill states for active learner
-  const loadLearnerSkills = useCallback(async (learnerId: string) => {
-    const [states, queuedCount] = await Promise.all([
-      localDb.getAllSkillStates(learnerId),
-      localDb.getQueuedDoubtsCount(learnerId),
-    ]);
-    if (activeLearnerRef.current?.id !== learnerId) return;
-
-    const map = new Map<string, SkillState>();
-    for (const s of states) {
-      map.set(s.skillId, s);
-    }
-    setSkillStates(map);
-    setQueuedDoubtsCount(queuedCount);
-  }, []);
-
-  // Initialize
   useEffect(() => {
-    const savedPack = localStorage.getItem('vidyapath_language_pack') || 'te-10-maths-ap';
-    loadPack(savedPack);
-    loadExistingLearners();
-
-    // Load persisted settings
-    localDb.getSetting<boolean>('lowDataMode', false).then(setLowDataMode);
-    localDb.getSetting<'normal' | 'large' | 'xlarge'>('fontSize', 'normal').then(setFontSizeState);
-    localDb.getSetting<number>('dataUsedKb', 34).then(setDataUsedKb);
-    localDb.getSetting<string[]>('offline_chapters', ['ch1_real_numbers']).then((arr) => {
-      if (arr && Array.isArray(arr)) setOfflineChapters(new Set(arr));
-    });
-
-    // Online / Offline listeners
-    const handleOnline = () => {
-      setIsOffline(false);
-      void triggerSyncRef.current();
-    };
+    if (typeof window === 'undefined') return;
+    const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
 
     window.addEventListener('online', handleOnline);
@@ -205,355 +97,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Toggle chapter offline download
-  const toggleChapterOffline = (topicId: string) => {
-    setOfflineChapters((prev) => {
-      const next = new Set(prev);
-      if (next.has(topicId)) {
-        next.delete(topicId);
-      } else {
-        next.add(topicId);
-      }
-      localDb.setSetting('offline_chapters', Array.from(next));
-      return next;
-    });
-  };
-
-  // Toggle simulated offline mode
-  const toggleSimulatedOffline = () => {
-    setSimulatedOffline((prev) => !prev);
-  };
-
-  // Shared-phone 2-minute auto-lock
-  const resetInactivityTimer = useCallback(() => {
-    if (autoLockTimerRef.current) {
-      clearTimeout(autoLockTimerRef.current);
+  const switchLanguage = useCallback(async (lang: SupportedLang) => {
+    setCurrentLanguage(lang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vidyapath_language', lang);
     }
-
-    // Only auto-lock if currently inside a student profile
-    if (activeLearner && currentScreen !== 'S1_PICKER') {
-      autoLockTimerRef.current = setTimeout(() => {
-        console.log('Shared-phone 2-minute auto-lock triggered.');
-        activeLearnerRef.current = null;
-        setActiveLearner(null);
-        setCurrentScreen('S1_PICKER');
-      }, 120000); // 2 minutes
-    }
-  }, [activeLearner, currentScreen]);
-
-  useEffect(() => {
-    const handleActivity = () => resetInactivityTimer();
-    window.addEventListener('click', handleActivity);
-    window.addEventListener('touchstart', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-
-    resetInactivityTimer();
-
-    return () => {
-      window.removeEventListener('click', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      if (autoLockTimerRef.current) clearTimeout(autoLockTimerRef.current);
-    };
-  }, [resetInactivityTimer]);
-
-  const selectLearner = (learner: LearnerProfile) => {
-    activeLearnerRef.current = learner;
-    setActiveLearner(learner);
-    setSyncPending(false);
-    setSkillStates(new Map());
-    loadLearnerSkills(learner.id);
-    if (learner.packId) {
-      loadPack(learner.packId);
-    }
-    setCurrentScreen('MY_SYLLABUS'); // Default landing page after unlocking profile!
-  };
-
-  const loginWithCode = async (code: string): Promise<{ success: boolean; learner?: LearnerProfile; message?: string }> => {
-    const clean = code.trim().toUpperCase();
-    if (!clean) {
-      return {
-        success: false,
-        message: currentLanguage === 'te'
-          ? 'దయచేసి మీ ప్రత్యేక విద్యార్థి కోడ్‌ను నమోదు చేయండి.'
-          : currentLanguage === 'hi'
-          ? 'कृपया अपना विशेष छात्र कोड दर्ज करें।'
-          : 'Please enter your unique student code.',
-      };
-    }
-    const matched = await localDb.findLearnerByLoginCode(clean);
-    if (matched) {
-      selectLearner(matched);
-      return { success: true, learner: matched };
-    }
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ loginCode: clean, pin: '' }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success && data.user) {
-        const remoteProfile: LearnerProfile = {
-          id: data.user.id || 'learner_' + Date.now(),
-          nickname: data.user.fullName || clean,
-          loginCode: clean,
-          classGrade: data.user.studentProfile?.grade || 10,
-          avatarEmoji: '🧑‍🎓',
-          avatarColor: '#0F766E',
-          packId: 'te-10-maths-ap',
-          createdAt: Date.now(),
-        };
-        await localDb.saveLearner(remoteProfile);
-        const updated = await localDb.getLearners();
-        setLearners(updated);
-        selectLearner(remoteProfile);
-        return { success: true, learner: remoteProfile };
-      }
-    } catch (_) {}
-
-    return {
-      success: false,
-      message: currentLanguage === 'te'
-        ? 'ఈ కోడ్‌తో ఏ విద్యార్థి ప్రొఫైల్ కనుగొనబడలేదు. దయచేసి కోడ్‌ను సరిచూసుకోండి.'
-        : currentLanguage === 'hi'
-        ? 'इस कोड के साथ कोई छात्र प्रोफ़ाइल नहीं मिली। कृपया कोड जांचें।'
-        : 'No student profile found with this code. Please check your student code.',
-    };
-  };
-
-  const createLearner = async (learner: LearnerProfile) => {
-    try {
-      await localDb.saveLearner(learner);
-      const updated = await localDb.getLearners();
-      setLearners(updated);
-      selectLearner(learner);
-    } catch (err) {
-      console.warn('Failed to save learner:', err);
-    }
-  };
-
-  // Restore the authenticated student's browser learning profile from the
-  // account session. This keeps browser refreshes from asking for a second PIN.
-  useEffect(() => {
-    if (accountLoading || !learnersLoaded || accountUser?.role !== 'student' || !accountUser.studentProfile) return;
-    if (activeLearnerRef.current?.id === accountUser.id) return;
-
-    const rollNumber = accountUser.studentProfile.rollNumber;
-    const existing = learners.find((learner) => learner.id === accountUser.id || learner.loginCode?.toUpperCase() === rollNumber.toUpperCase());
-    if (existing) {
-      selectLearner(existing);
-      return;
-    }
-
-    const restoredProfile: LearnerProfile = {
-      id: accountUser.id,
-      nickname: accountUser.fullName,
-      loginCode: rollNumber,
-      avatarEmoji: '🧑‍🎓',
-      avatarColor: '#0F766E',
-      classGrade: accountUser.studentProfile.classGrade || accountUser.studentProfile.semester,
-      packId: accountUser.studentProfile.board?.toLowerCase().includes('cbse') ? 'en-10-maths-cbse' : 'te-10-maths-ap',
-      createdAt: accountUser.createdAt,
-    };
-    void createLearner(restoredProfile);
-  }, [accountLoading, accountUser?.id, accountUser?.role, accountUser?.studentProfile, learners, learnersLoaded]);
-
-  const updateLearnerProfile = async (profile: LearnerProfile) => {
-    try {
-      await localDb.saveLearner(profile);
-      const updated = await localDb.getLearners();
-      setLearners(updated);
-      if (activeLearnerRef.current && activeLearnerRef.current.id === profile.id) {
-        setActiveLearner(profile);
-      }
-    } catch (err) {
-      console.warn('Failed to update learner:', err);
-    }
-  };
-
-  const switchLearner = () => {
-    activeLearnerRef.current = null;
-    setActiveLearner(null);
-    setSyncPending(false);
-    setSkillStates(new Map());
-    setQueuedDoubtsCount(0);
-    setCurrentScreen('S1_PICKER');
-  };
-
-  const toggleLowDataMode = async () => {
-    const next = !lowDataMode;
-    setLowDataMode(next);
-    await localDb.setSetting('lowDataMode', next);
-  };
-
-  const setFontSize = async (size: 'normal' | 'large' | 'xlarge') => {
-    setFontSizeState(size);
-    await localDb.setSetting('fontSize', size);
-  };
-
-  const incrementDataUsage = (bytes: number) => {
-    const addedKb = Math.ceil(bytes / 1024);
-    setDataUsedKb((prev) => {
-      const next = prev + addedKb;
-      localDb.setSetting('dataUsedKb', next);
-      return next;
-    });
-  };
-
-  const clearAiCache = async () => {
-    await localDb.clearTutorCache();
-  };
-
-  const refreshLearnerData = async () => {
-    const learnerId = activeLearnerRef.current?.id;
-    if (learnerId) await loadLearnerSkills(learnerId);
-  };
-
-  const clearSyncRetry = (resetDelay = false) => {
-    if (syncRetryTimeoutRef.current) clearTimeout(syncRetryTimeoutRef.current);
-    syncRetryTimeoutRef.current = null;
-    if (resetDelay) syncRetryDelayRef.current = 15_000;
-  };
-
-  const scheduleSyncRetry = () => {
-    clearSyncRetry();
-    const delay = syncRetryDelayRef.current;
-    syncRetryTimeoutRef.current = setTimeout(() => {
-      syncRetryTimeoutRef.current = null;
-      void triggerSyncRef.current();
-    }, delay);
-    syncRetryDelayRef.current = Math.min(delay * 2, 60_000);
-  };
-
-  const triggerSync = async () => {
-    clearSyncRetry();
-    const learner = activeLearnerRef.current;
-    if (!learner) {
-      setSyncPending(false);
-      clearSyncRetry(true);
-      return;
-    }
-
-    try {
-      const [attemptsBeforeSync, doubtsBeforeSync] = await Promise.all([
-        localDb.getOutboxAttempts(learner.id),
-        localDb.getDoubtsByLearner(learner.id),
-      ]);
-      const hasWork = attemptsBeforeSync.some((event) => event.learnerId === learner.id) ||
-        doubtsBeforeSync.some((doubt) => doubt.learnerId === learner.id && doubt.status === 'queued');
-      if (activeLearnerRef.current?.id !== learner.id) return;
-      if (!hasWork) {
-        setSyncPending(false);
-        clearSyncRetry(true);
-        return;
-      }
-
-      setSyncPending(true);
-      if (simulatedOffline || !navigator.onLine) return;
-
-      const syncLanguage = currentLanguage === 'hi' || currentLanguage === 'en' ? currentLanguage : 'te';
-      const res = await SyncService.syncOutbox(learner.id, pack?.version, syncLanguage);
-      const [attemptsAfterSync, doubtsAfterSync] = await Promise.all([
-        localDb.getOutboxAttempts(learner.id),
-        localDb.getDoubtsByLearner(learner.id),
-      ]);
-      if (activeLearnerRef.current?.id !== learner.id) return;
-
-      const stillHasWork = attemptsAfterSync.some((event) => event.learnerId === learner.id) ||
-        doubtsAfterSync.some((doubt) => doubt.learnerId === learner.id && doubt.status === 'queued');
-      setSyncPending(stillHasWork);
-      if (stillHasWork && navigator.onLine && !simulatedOffline) scheduleSyncRetry();
-      else if (!stillHasWork) clearSyncRetry(true);
-
-      if (res.syncedEventsCount > 0 || res.answeredDoubts.length > 0) {
-        setSyncTick(true);
-        if (syncTickTimeoutRef.current) clearTimeout(syncTickTimeoutRef.current);
-        syncTickTimeoutRef.current = setTimeout(() => setSyncTick(false), 3000);
-        await loadLearnerSkills(learner.id);
-      }
-    } catch (error) {
-      console.warn('Could not refresh the learner sync queue:', error);
-      if (activeLearnerRef.current?.id === learner.id) {
-        setSyncPending(true);
-        if (navigator.onLine && !simulatedOffline) scheduleSyncRetry();
-      }
-    }
-  };
-  triggerSyncRef.current = triggerSync;
-
-  useEffect(() => () => {
-    clearSyncRetry();
-    if (syncTickTimeoutRef.current) clearTimeout(syncTickTimeoutRef.current);
   }, []);
 
-  // Flush the selected learner's outbox after profile selection or reconnect.
-  useEffect(() => {
-    if (activeLearner && navigator.onLine && !simulatedOffline) void triggerSync();
-  }, [activeLearner?.id, simulatedOffline]);
-
-  const updateLearnerPin = async (learnerId: string, newPin: string) => {
-    const updatedLearners = learners.map((l) => {
-      if (l.id === learnerId) {
-        return { ...l, pin: newPin, pinHash: newPin };
+  const toggleLowDataMode = useCallback(async () => {
+    setLowDataMode((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vidyapath_low_data', String(next));
       }
-      return l;
+      return next;
     });
-    setLearners(updatedLearners);
-    const target = updatedLearners.find((l) => l.id === learnerId);
-    if (target) {
-      await localDb.saveLearner(target);
-      if (activeLearnerRef.current?.id === learnerId) {
-        setActiveLearner(target);
-      }
+  }, []);
+
+  const toggleSimulatedOffline = useCallback(() => {
+    setSimulatedOffline((prev) => !prev);
+  }, []);
+
+  const setFontSize = useCallback(async (size: 'normal' | 'large' | 'xlarge') => {
+    setFontSizeState(size);
+  }, []);
+
+  const incrementDataUsage = useCallback((bytes: number) => {
+    setDataUsedKb((prev) => prev + Math.ceil(bytes / 1024));
+  }, []);
+
+  const clearAiCache = useCallback(async () => {
+    if (typeof window !== 'undefined') {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('ai_cache_'))
+        .forEach((k) => localStorage.removeItem(k));
     }
+  }, []);
+
+  const value: AppContextValue = {
+    pack: null,
+    activeLearner: null,
+    learners: [],
+    skillStates: new Map(),
+    currentScreen,
+    selectedTopicId: null,
+    isOffline: isOffline || simulatedOffline,
+    simulatedOffline,
+    lowDataMode,
+    fontSize,
+    dataUsedKb,
+    syncTick: false,
+    syncPending: false,
+    queuedDoubtsCount: 0,
+    offlineChapters: new Set(),
+    currentLanguage,
+
+    setScreen: setCurrentScreen,
+    selectTopic: () => {},
+    selectLearner: () => {},
+    createLearner: async () => {},
+    switchLearner: () => {},
+    toggleLowDataMode,
+    toggleSimulatedOffline,
+    toggleChapterOffline: () => {},
+    setFontSize,
+    incrementDataUsage,
+    clearAiCache,
+    refreshLearnerData: async () => {},
+    triggerSync: async () => {},
+    switchPack: async () => {},
+    switchLanguage,
+    loginWithCode: async () => ({ success: false, message: 'App mode discontinued. Please use the Web Portal.' }),
+    updateLearnerProfile: async () => {},
+    updateLearnerPin: async () => {},
   };
 
-  return (
-    <AppContext.Provider
-      value={{
-        pack,
-        activeLearner,
-        learners,
-        skillStates,
-        currentScreen,
-        selectedTopicId,
-        isOffline: isOffline || simulatedOffline,
-        simulatedOffline,
-        lowDataMode,
-        fontSize,
-        dataUsedKb,
-        syncTick,
-        syncPending,
-        queuedDoubtsCount,
-        offlineChapters,
-        currentLanguage,
-        setScreen: setCurrentScreen,
-        selectTopic: setSelectedTopicId,
-        selectLearner,
-        createLearner,
-        switchLearner,
-        toggleLowDataMode,
-        toggleSimulatedOffline,
-        toggleChapterOffline,
-        setFontSize,
-        incrementDataUsage,
-        clearAiCache,
-        refreshLearnerData,
-        triggerSync,
-        switchPack,
-        switchLanguage,
-        loginWithCode,
-        updateLearnerProfile,
-        updateLearnerPin,
-      }}
-    >
-      <div className="w-full min-h-screen bg-[#F8FAFC] text-[#0F172A]">
-        {children}
-      </div>
-    </AppContext.Provider>
-  );
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
 export const useApp = () => {

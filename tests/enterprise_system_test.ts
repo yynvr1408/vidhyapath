@@ -1,10 +1,10 @@
 // Enterprise Vidyapath Automated End-to-End System Tests
 import http from 'http';
-import { app } from '../server/index.js';
-import { AuthService } from '../server/services/auth.js';
-import { AiGuardrailService } from '../server/services/aiGuardrails.js';
-import { SyllabusProcessorService } from '../server/services/syllabusProcessor.js';
-import { dataStore } from '../server/db/store.js';
+import { app } from '../backend/server/index.js';
+import { AuthService } from '../backend/server/services/auth.js';
+import { AiGuardrailService } from '../backend/server/services/aiGuardrails.js';
+import { SyllabusProcessorService } from '../backend/server/services/syllabusProcessor.js';
+import { dataStore } from '../backend/server/db/store.js';
 
 async function runEnterpriseTests() {
   console.log('===========================================================');
@@ -18,6 +18,16 @@ async function runEnterpriseTests() {
 
   // Seed test-scoped fixtures for automated test validation
   const testPwd = dataStore.hashPassword('password123');
+  dataStore.users.set('user_superadmin_ananya', {
+    id: 'user_superadmin_ananya',
+    fullName: 'Ananya Sharma',
+    email: 'admin@vidyapath.edu',
+    role: 'super_admin',
+    status: 'active',
+    passwordHash: testPwd.hash,
+    salt: testPwd.salt,
+    createdAt: Date.now(),
+  });
   dataStore.institutions.set('inst_ait_hyd', {
     id: 'inst_ait_hyd',
     name: 'Apex Institute of Engineering & Technology',
@@ -37,12 +47,53 @@ async function runEnterpriseTests() {
   dataStore.subjects.set('subj_cs501', {
     id: 'subj_cs501',
     institutionId: 'inst_ait_hyd',
+    programmeId: 'prog_btech_cse',
+    departmentId: 'dept_cse',
     name: 'Operating Systems',
     code: 'CS501',
     semester: 5,
     credits: 4,
     isElective: false,
-    units: [],
+    units: [
+      {
+        id: 'unit_1',
+        unitNumber: 1,
+        title: 'CPU Scheduling & Memory Management',
+        topics: [
+          { id: 'top_os_1_3', title: 'Round Robin Scheduling', description: 'Preemptive queue' }
+        ]
+      }
+    ],
+  });
+  dataStore.assignments.set('assign_os_1', {
+    id: 'assign_os_1',
+    subjectId: 'subj_cs501',
+    unitId: 'unit_1',
+    teacherId: 'teacher_1',
+    teacherName: 'Dr. Sharma',
+    title: 'Process Scheduling Assignment',
+    description: 'FCFS and SJF simulations',
+    instructions: 'Submit report in PDF format',
+    dueDate: Date.now() + 86400000,
+    maxMarks: 100,
+    submissionsCount: 0,
+    createdAt: Date.now(),
+  });
+  dataStore.quizzes.set('quiz_os_1', {
+    id: 'quiz_os_1',
+    subjectId: 'subj_cs501',
+    unitId: 'unit_1',
+    teacherId: 'teacher_1',
+    title: 'CPU Scheduling Quiz',
+    timeLimitMinutes: 15,
+    passPercentage: 50,
+    questions: [
+      { id: 'q1', text: 'Q1', options: ['A', 'B', 'C', 'D'], correctOptionIndex: 1, explanation: '' },
+      { id: 'q2', text: 'Q2', options: ['A', 'B', 'C', 'D'], correctOptionIndex: 1, explanation: '' },
+      { id: 'q3', text: 'Q3', options: ['A', 'B', 'C', 'D'], correctOptionIndex: 1, explanation: '' },
+      { id: 'q4', text: 'Q4', options: ['A', 'B', 'C', 'D'], correctOptionIndex: 3, explanation: '' },
+    ],
+    createdAt: Date.now(),
   });
   dataStore.users.set('user_student_aditya', {
     id: 'user_student_aditya',
@@ -147,6 +198,9 @@ async function runEnterpriseTests() {
     // TEST 4: Institution Registration & Super Admin Approval Flow
     // -------------------------------------------------------------
     console.log('\n--- 4. Testing Institution Multi-Tier Approval Workflow ---');
+    const instOtp = AuthService.generateOtp('director.kgp@iitkgp.ac.in', 'registration');
+    AuthService.verifyOtp('director.kgp@iitkgp.ac.in', 'registration', instOtp.otp);
+
     const regInstRes = await fetch(`${baseUrl}/api/auth/register/institution`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -415,7 +469,10 @@ UNIT 2: Distributed Consensus & Fault Tolerance
     console.log('\n--- 10. Testing Cloudflare R2 Uploads (Zero Ephemeral Disk Writes) ---');
     const uploadRes = await fetch(`${baseUrl}/api/upload`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${loginData.token}`,
+      },
       body: JSON.stringify({
         fileName: 'test_syllabus.pdf',
         fileData: Buffer.from('%PDF-1.4 test in memory').toString('base64'),

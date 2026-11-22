@@ -18,25 +18,20 @@ import {
 } from 'lucide-react';
 import { VidyapathLogo } from '../components/VidyapathLogo';
 import { LanguageSelector } from '../components/LanguageSelector';
-import { AppUpdateHeaderPill } from '../components/AppUpdateHeaderPill';
-import { AppUpdateBanner } from '../components/AppUpdateBanner';
 import { useApp } from '../context/AppContext';
-import { useAppUpdate } from '../hooks/useAppUpdate';
 import { getTranslations } from '../utils/translations';
 import type { AuthRole } from '../types/auth';
 
 interface WebsiteLandingScreenProps {
   onNavigateToAuth: (role?: AuthRole, mode?: 'login' | 'register') => void;
-  onOpenLearnerApp: () => void;
+  onOpenLearnerApp?: () => void;
 }
 
 export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
   onNavigateToAuth,
-  onOpenLearnerApp,
 }) => {
   const { currentLanguage } = useApp();
   const t = getTranslations(currentLanguage);
-  const { currentVersion, openModal } = useAppUpdate();
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col justify-between selection:bg-[#CCFBF1] selection:text-[#0F766E]">
@@ -69,9 +64,6 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
             {/* Native 22-Language Script Selector */}
             <LanguageSelector variant="compact" />
 
-            {/* App Update Pill */}
-            <AppUpdateHeaderPill />
-
             {/* Direct Web Portal Login Button */}
             <button
               type="button"
@@ -81,21 +73,18 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
               Sign In
             </button>
 
-            {/* Primary Action Button: Open Learner App */}
+            {/* Primary Action Button: Get Started */}
             <button
               type="button"
-              onClick={onOpenLearnerApp}
+              onClick={() => onNavigateToAuth('student', 'register')}
               className="py-2 px-4 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
               <Globe className="w-3.5 h-3.5" />
-              <span>{currentLanguage === 'te' ? 'వెబ్ లెర్నింగ్ ఓపెన్ చేయి' : currentLanguage === 'hi' ? 'वेब लर्निंग खोलें' : 'Open Web Learning'}</span>
+              <span>{currentLanguage === 'te' ? 'వెబ్ పోర్టల్ ప్రారంభించండి' : currentLanguage === 'hi' ? 'वेब पोर्टल खोलें' : 'Access Portal'}</span>
             </button>
           </div>
         </div>
       </header>
-
-      {/* Floating In-App Update Banner */}
-      <AppUpdateBanner />
 
       {/* 2. Hero Section */}
       <section className="py-12 sm:py-20 px-4 sm:px-6 bg-gradient-to-b from-white to-[#F8FAFC] border-b border-[#E2E8F0]">
@@ -133,21 +122,21 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
 
           <p className="text-base sm:text-lg text-[#475569] font-medium max-w-2xl mx-auto leading-relaxed">
             {currentLanguage === 'te'
-              ? 'ఆఫ్‌లైన్‌లో పనిచేసే సురక్షిత జీరో-డేటా లెర్నింగ్, తెలుగు, హిందీ మరియు ఇంగ్లీష్ వాయిస్ బోధన, మరియు పాఠశాలలు/కళాశాలల పూర్తి విద్యా నిర్వహణ పోర్టల్.'
+              ? 'పూర్తి వెబ్-ఆధారిత సురక్షిత జీరో-డేటా లెర్నింగ్, తెలుగు, హిందీ మరియు ఇంగ్లీష్ వాయిస్ బోధన, మరియు పాఠశాలలు/కళాశాలల పూర్తి విద్యా నిర్వహణ పోర్టల్.'
               : currentLanguage === 'hi'
-              ? 'ऑफ़लाइन समर्थित सुरक्षित जीरो-डेटा लर्निंग, हिंदी, तेलुगु और अंग्रेजी आवाज अध्यापन, तथा संस्थानों के लिए सम्पूर्ण शैक्षणिक प्रबंधन पोर्टल।'
-              : 'Zero-PII offline-ready student learning, trilingual AI voice tutoring (Telugu, Hindi, English), and full multi-tier LMS for schools and universities.'}
+              ? 'सम्पूर्ण वेब-आधारित सुरक्षित जीरो-डेटा लर्निंग, हिंदी, तेलुगु और अंग्रेजी आवाज अध्यापन, तथा संस्थानों के लिए सम्पूर्ण शैक्षणिक प्रबंधन पोर्टल।'
+              : 'Web-first student learning, trilingual AI voice tutoring (Telugu, Hindi, English), and full multi-tier LMS for schools and universities.'}
           </p>
 
           {/* Primary CTA Row */}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
             <button
               type="button"
-              onClick={onOpenLearnerApp}
+              onClick={() => onNavigateToAuth('student', 'register')}
               className="py-3 px-6 rounded-2xl bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-extrabold transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
             >
               <GraduationCap className="w-4 h-4" />
-              <span>{currentLanguage === 'te' ? 'విద్యార్థి అభ్యాసం ప్రారంభించండి' : currentLanguage === 'hi' ? 'छात्र अध्ययन शुरू करें' : 'Start Student Learning'}</span>
+              <span>{currentLanguage === 'te' ? 'విద్యార్థి పోర్టల్ ప్రారంభించండి' : currentLanguage === 'hi' ? 'छात्र पोर्टल शुरू करें' : 'Get Started with Portal'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -159,7 +148,6 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
               <Building2 className="w-4 h-4 text-[#0F766E]" />
               <span>{currentLanguage === 'te' ? 'సంస్థ & ఉపాధ్యాయుల పోర్టల్' : currentLanguage === 'hi' ? 'संस्थान एवं शिक्षक पोर्टल' : 'Institution & Teacher Portal'}</span>
             </button>
-
           </div>
         </div>
       </section>
@@ -193,23 +181,23 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
               </div>
               <h3 className="font-extrabold text-lg text-[#0F172A]">Student Learning Portal</h3>
               <p className="text-xs text-[#64748B] font-medium leading-relaxed">
-                Self-paced mastery, daily practice, vernacular AI doubt solver in Telugu, Hindi, and English. No personal data or phone number required.
+                Self-paced mastery, daily practice, vernacular AI doubt solver in Telugu, Hindi, and English. Accessible directly in your web browser.
               </p>
             </div>
             <div className="flex items-center gap-2 pt-4 mt-4 border-t border-[#F1F5F9]">
               <button
                 type="button"
-                onClick={onOpenLearnerApp}
+                onClick={() => onNavigateToAuth('student', 'login')}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-[#0F766E] text-white text-xs font-bold hover:bg-[#115E59] cursor-pointer text-center"
               >
-                Open Learner App →
+                Student Sign In →
               </button>
               <button
                 type="button"
                 onClick={() => onNavigateToAuth('student', 'register')}
                 className="py-2.5 px-3 rounded-xl bg-[#F0FDFA] text-[#0F766E] border border-[#CCFBF1] text-xs font-bold hover:bg-[#CCFBF1] cursor-pointer"
               >
-                Create Profile
+                Register
               </button>
             </div>
           </div>
@@ -358,9 +346,9 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
               <div className="w-10 h-10 rounded-xl bg-[#DCFCE7] text-[#15803D] flex items-center justify-center font-bold">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <h4 className="font-extrabold text-base text-[#0F172A]">Zero-PII Privacy Architecture</h4>
+              <h4 className="font-extrabold text-base text-[#0F172A]">Enterprise Privacy &amp; Security</h4>
               <p className="text-xs text-[#64748B] leading-relaxed">
-                Students can sign in locally on shared phones with animal avatars and confidential 4-digit PINs. Zero phone numbers, zero mandatory ad-trackers.
+                Role-gated educational dashboards with multi-tier privacy, zero data-leaks, and safe pedagogical AI guardrails.
               </p>
             </div>
 
@@ -368,9 +356,9 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
               <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center font-bold">
                 <Layers className="w-5 h-5" />
               </div>
-              <h4 className="font-extrabold text-base text-[#0F172A]">Offline-First Local Storage</h4>
+              <h4 className="font-extrabold text-base text-[#0F172A]">Instant Web Access</h4>
               <p className="text-xs text-[#64748B] leading-relaxed">
-                Full syllabus packs and pedagogical hints persist on the phone. Practice formulas and problem-solving without active cellular data.
+                Fully responsive web LMS and AI tutor accessible on modern desktop and mobile browsers with zero software installation required.
               </p>
             </div>
           </div>
@@ -395,9 +383,9 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
             <button type="button" onClick={() => onNavigateToAuth('admin', 'login')} className="hover:underline">
               Institution Portal
             </button>
-            <button type="button" onClick={openModal} className="hover:underline text-[#D97706]">
-              Web v{currentVersion}
-            </button>
+            <span className="text-[#64748B] font-normal">
+              Web Portal
+            </span>
           </div>
         </div>
       </footer>

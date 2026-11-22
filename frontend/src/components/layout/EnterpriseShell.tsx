@@ -30,13 +30,7 @@ import { useApp } from '../../context/AppContext';
 import { UserRole, NotificationItem } from '../../types/enterprise';
 import { VidyapathLogo } from '../VidyapathLogo';
 import { LanguageSelector } from '../LanguageSelector';
-import { AppUpdateButton } from '../AppUpdateButton';
-import { AppUpdateHeaderPill } from '../AppUpdateHeaderPill';
-import { AppUpdateBanner } from '../AppUpdateBanner';
-import { AppUpdateModal } from '../AppUpdateModal';
-import { SCHEDULED_LANGUAGES } from '../../config/languages';
 import { SupportedLang, getTranslations } from '../../utils/translations';
-import { navigationManager } from '../../services/navigationManager';
 
 export type EnterpriseScreenId =
   | 'DASHBOARD'
@@ -96,21 +90,7 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
   }, [user?.id]);
 
   
-  // Hardware back button integration to close mobile drawer or notifications popover
-  useEffect(() => {
-    if (!mobileDrawerOpen && !notificationsOpen) return;
-    return navigationManager.registerBackHandler(() => {
-      if (notificationsOpen) {
-        setNotificationsOpen(false);
-        return true;
-      }
-      if (mobileDrawerOpen) {
-        setMobileDrawerOpen(false);
-        return true;
-      }
-      return false;
-    }, 100);
-  }, [mobileDrawerOpen, notificationsOpen]);
+
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -294,10 +274,8 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         </nav>
       </div>
 
-      {/* Footer Area: App Update & Logout */}
+      {/* Footer Area: Logout */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2 mt-4">
-        <AppUpdateButton />
-
         <button
           type="button"
           onClick={() => {
@@ -340,11 +318,8 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
             </div>
           </div>
 
-          {/* Right Header Status Bar: Update Pill + Language Dropdown + Offline Toggle + Notifications */}
+          {/* Right Header Status Bar: Language Dropdown + Offline Toggle + Notifications */}
           <div className="flex items-center gap-2">
-            {/* In-App Release & Update Checker Pill */}
-            <AppUpdateHeaderPill />
-
             {/* Language Dropdown (Telugu, Hindi, English) */}
             <LanguageSelector variant="compact" />
 
@@ -419,9 +394,6 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
           </div>
         </header>
 
-        {/* Global Floating App Update Notification Banner */}
-        <AppUpdateBanner />
-
         {/* Mobile Slide-out Drawer */}
         {mobileDrawerOpen && (
           <div className="md:hidden fixed inset-0 z-50 animate-fadeIn">
@@ -448,9 +420,6 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         <main className="flex-1 min-w-0 w-full p-3 sm:p-5 md:p-6 lg:p-8 pb-[max(env(safe-area-inset-bottom),4rem)] overflow-y-auto">
           {children}
         </main>
-
-        {/* Global Interactive In-App Update Modal */}
-        <AppUpdateModal />
       </div>
     </div>
   );

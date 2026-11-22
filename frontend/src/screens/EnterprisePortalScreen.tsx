@@ -32,10 +32,8 @@ import {
   ChevronRight,
   Lock,
 } from 'lucide-react';
-import { navigationManager } from '../services/navigationManager';
 
 interface EnterprisePortalScreenProps {
-  onReturnToStudentApp?: () => void;
   onNavigateToLogin?: () => void;
   onSignOut?: () => void;
 }
@@ -88,7 +86,6 @@ const getScreenFromUrl = (): EnterpriseScreenId => {
 };
 
 export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
-  onReturnToStudentApp,
   onNavigateToLogin,
   onSignOut,
 }) => {
@@ -107,33 +104,6 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-
-  const handleReturn = () => {
-    if (onReturnToStudentApp) {
-      onReturnToStudentApp();
-    } else {
-      window.history.pushState({}, '', '/learn');
-      setAppScreen('MY_SYLLABUS');
-    }
-  };
-
-  // Register hierarchical back-button handler inside Enterprise Portal
-  useEffect(() => {
-    const unregister = navigationManager.registerBackHandler(() => {
-      // If in deep portal screen, navigate back to DASHBOARD
-      if (currentScreen !== 'DASHBOARD') {
-        setCurrentScreen('DASHBOARD');
-        window.history.pushState({ screen: 'DASHBOARD' }, '', '/portal');
-        return true;
-      }
-
-      // If at root DASHBOARD, return to student learning loop
-      handleReturn();
-      return true;
-    }, 45);
-
-    return () => unregister();
-  }, [currentScreen, onReturnToStudentApp]);
 
   // GATING 1: Loading state during session restoration
   if (loading) {
@@ -181,7 +151,9 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
 
             <button
               type="button"
-              onClick={handleReturn}
+              onClick={() => {
+                window.location.href = '/';
+              }}
               className="w-full py-2.5 px-4 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#64748B] text-xs font-bold transition-all cursor-pointer"
             >
               Return to Website
@@ -381,20 +353,12 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
 
   return (
     <div className="relative w-full min-h-screen bg-[#F8FAFC]">
-      {/* Top Banner to jump between Enterprise Portal and Student Learning Loop */}
+      {/* Top Banner */}
       <div className="sticky top-0 z-50 bg-[#0F766E] text-white px-4 py-2 flex items-center justify-between text-xs font-bold shadow-xs">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-[#CCFBF1]" />
           <span>Vidyapath Enterprise Administration &amp; LMS Portal</span>
         </div>
-        <button
-          type="button"
-          onClick={handleReturn}
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-[#0F766E] hover:bg-[#F0FDFA] font-bold transition-all shadow-2xs active:scale-95 cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Return to Student Learning App</span>
-        </button>
       </div>
 
       <EnterpriseShell currentScreen={currentScreen} setScreen={handlePortalNavigation} onSignOut={onSignOut}>

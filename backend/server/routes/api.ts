@@ -108,8 +108,8 @@ router.post('/auth/login', (req: Request, res: Response) => {
     institution_admin: '/dashboard/institution-admin',
     academic_admin: '/dashboard/academic-admin',
     teacher: '/dashboard/teacher',
-    student: '/learn',
-    guardian: '/guardian',
+    student: '/dashboard/student',
+    guardian: '/dashboard/guardian',
     coordinator: '/dashboard/academic-admin',
     exam_admin: '/dashboard/academic-admin',
   };
@@ -704,7 +704,7 @@ router.post(['/auth/register/student', '/api/auth/register/student'], async (req
       institutionName: newStudent.institutionName,
       studentProfile: newStudent.studentProfile,
     },
-    redirectTo: '/learn',
+    redirectTo: '/dashboard/student',
   });
 });
 
@@ -1639,7 +1639,10 @@ router.get('/announcements', requireAuth, (req: AuthenticatedRequest, res: Respo
     .filter((announcement) =>
       user.role === 'super_admin' ||
       (announcement.institutionId === user.institutionId &&
-        (!announcement.targetRole || announcement.targetRole === 'all' || announcement.targetRole === user.role))
+        (!announcement.targetRole ||
+          announcement.targetRole === 'all' ||
+          (announcement.targetRole === 'teachers' && user.role === 'teacher') ||
+          (announcement.targetRole === 'students' && user.role === 'student')))
     )
     .sort((a, b) => b.createdAt - a.createdAt);
   return res.json(annList);

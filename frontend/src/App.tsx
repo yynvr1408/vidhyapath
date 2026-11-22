@@ -2,7 +2,7 @@ import './config/api';
 import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { EnterpriseAuthProvider, useEnterpriseAuth } from './context/EnterpriseAuthContext';
 import { AcademicProvider } from './context/AcademicContext';
-import { AppProvider, useApp } from './context/AppContext';
+import { AppProvider } from './context/AppContext';
 import type { AuthRole } from './types/auth';
 
 const EnterprisePortalScreen = lazy(() => import('./screens/EnterprisePortalScreen').then((module) => ({ default: module.EnterprisePortalScreen })));
@@ -41,7 +41,6 @@ function authRequestFromLocation(): { isOpen: boolean; role: AuthRole; mode: Aut
 
 const AppContent: React.FC = () => {
   const { user, loading } = useEnterpriseAuth();
-  const { switchLearner } = useApp();
   const [routePath, setRoutePath] = useState(() => normalizePath(window.location.pathname));
   const [authRequest, setAuthRequest] = useState(authRequestFromLocation);
 
@@ -110,10 +109,8 @@ const AppContent: React.FC = () => {
     <>
       {routePath === '/portal' && user ? (
         <EnterprisePortalScreen
-          onReturnToStudentApp={() => navigate('/')}
           onNavigateToLogin={() => openAuth('student', 'login')}
           onSignOut={() => {
-            switchLearner();
             navigate('/');
           }}
         />
@@ -151,3 +148,5 @@ export const App: React.FC = () => (
     </AcademicProvider>
   </EnterpriseAuthProvider>
 );
+
+export default App;

@@ -3,16 +3,19 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build && npm --prefix backend run build",
+    "build": "npm --prefix frontend run build && npm --prefix backend run build && node scripts/copy-dist.js",
     "preview": "npm --prefix frontend run preview",
     "server": "npm --prefix backend run dev",
     "start": "npm --prefix backend start",
     "test": "tsx tests/system_test.ts && tsx tests/api_endpoints_test.ts && tsx tests/enterprise_system_test.ts",
     "release": "node scripts/release.js",
-    "test:unit": "vitest run tests/unit",
-    "test:ui": "vitest run tests/ui"
+    "test:unit": "vitest run tests/unit"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1175.0",
