@@ -10,6 +10,23 @@ The repository has separate deployable folders:
 
 There is no Android application, native mobile module, APK release process, or separate login page. The responsive website can be opened in desktop and mobile browsers.
 
+## 🔑 Admin Syllabus-to-RAG Ingestion Portal (`/admin`)
+
+Vidyapath provides a dedicated, separate **Admin Syllabus Panel** accessible exclusively at the `/admin` route (isolated from the student landing page and learning interface):
+
+- **URL:** `http://localhost:3000/admin`
+- **Default Credentials:**
+  - **Username:** `Admin`
+  - **Password:** `admin123`
+
+### How Uploading a Syllabus Updates the AI Tutor Live:
+1. **In-Memory Upload:** The admin selects the target language (`te` for Telugu, `hi` for Hindi, `en` for English), class level (e.g., `10`), and subject name (e.g., `Mathematics`). An official syllabus document (`.pdf`, `.txt`, `.md`) can be uploaded or pasted directly as raw text. Zero bytes are written to disk (`multer.memoryStorage()`).
+2. **Curriculum Structuring:** The backend processes the document through an LLM parser (with automatic rule-based fallback if offline) to extract structured chapters (`id`, `title`, `summary`) and detailed concepts (`id`, `title`, `explanation`, `keyPoints`).
+3. **Live RAG Ingestion:** The backend indexes all concepts and summaries into searchable RAG chunks within `syllabusStore` and updates the active syllabus pointer.
+4. **Instant Student Reflection:**
+   - **My Syllabus (Learn):** Immediately renders the new chapters, concepts, and worked examples.
+   - **AI Tutor (Ask Doubt):** Socratic chapter intent detection matches student queries against the new chapters, serves clickable concept chips, and retrieves matched syllabus chunks for ChatGPT-style explanations.
+
 ## Roles and access
 
 - Students see their own published syllabus, assignments, quizzes, tutor, and learning records.

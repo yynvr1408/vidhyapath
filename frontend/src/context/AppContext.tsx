@@ -1,66 +1,100 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { ContentPack, LearnerProfile, SkillState } from '../types';
+import type { ContentPack, LearnerProfile, Question, Topic } from '../types';
 import type { SupportedLang } from '../utils/translations';
+import { getTranslations } from '../utils/translations';
 
 export type ScreenId =
-  | 'S1_PICKER'
   | 'MY_SYLLABUS'
-  | 'LESSON_DETAIL'
   | 'AI_TUTOR'
   | 'PRACTICE'
   | 'PROGRESS'
-  | 'PARENT_VIEW'
-  | 'ADMIN'
-  | 'ADMIN_PANEL'
-  | 'S2_CREATE'
-  | 'S3_HOME'
-  | 'S4_LESSON'
-  | 'S5_PRACTICE'
-  | 'S7_DOUBT'
-  | 'S8_PROGRESS'
-  | 'S9_SETTINGS'
-  | 'S10_GUARDIAN'
-  | 'S11_IMPACT'
-  | 'S12_PACK_EDITOR';
+  | 'PARENT_VIEW';
 
-interface AppContextValue {
+export interface QuizAttemptRecord {
+  questionId: string;
+  topicId: string;
+  chosenAnswer: string;
+  correct: boolean;
+  timestamp: number;
+}
+
+export interface AppContextValue {
   pack: ContentPack | null;
   activeLearner: LearnerProfile | null;
   learners: LearnerProfile[];
-  skillStates: Map<string, SkillState>;
   currentScreen: ScreenId;
   selectedTopicId: string | null;
+  selectedConceptId: string | null;
+  completedChapters: string[];
+  weakTopics: string[];
+  quizAttempts: QuizAttemptRecord[];
   isOffline: boolean;
-  simulatedOffline: boolean;
   lowDataMode: boolean;
-  fontSize: 'normal' | 'large' | 'xlarge';
-  dataUsedKb: number;
-  syncTick: boolean;
-  syncPending: boolean;
-  queuedDoubtsCount: number;
-  offlineChapters: Set<string>;
   currentLanguage: SupportedLang;
+  t: ReturnType<typeof getTranslations>;
 
   // Actions
   setScreen: (screen: ScreenId) => void;
-  selectTopic: (topicId: string | null) => void;
+  selectTopic: (topicId: string | null, conceptId?: string | null) => void;
   selectLearner: (learner: LearnerProfile) => void;
-  createLearner: (learner: LearnerProfile) => Promise<void>;
-  switchLearner: () => void;
-  toggleLowDataMode: () => Promise<void>;
-  toggleSimulatedOffline: () => void;
-  toggleChapterOffline: (topicId: string) => void;
-  setFontSize: (size: 'normal' | 'large' | 'xlarge') => Promise<void>;
-  incrementDataUsage: (bytes: number) => void;
-  clearAiCache: () => Promise<void>;
-  refreshLearnerData: () => Promise<void>;
-  triggerSync: () => Promise<void>;
-  switchPack: (packId: string) => Promise<void>;
-  switchLanguage: (lang: SupportedLang) => Promise<void>;
-  loginWithCode: (code: string) => Promise<{ success: boolean; learner?: LearnerProfile; message?: string }>;
-  updateLearnerProfile: (profile: LearnerProfile) => Promise<void>;
-  updateLearnerPin: (learnerId: string, newPin: string) => Promise<void>;
+  unlockLearnerWithPin: (learnerId: string, pin: string) => boolean;
+  createLearner: (profile: Omit<LearnerProfile, 'id' | 'createdAt' | 'packId'>) => Promise<LearnerProfile>;
+  switchProfile: () => void;
+  toggleLowDataMode: () => void;
+  toggleChapterOffline: (chapterId: string) => void;
+  offlineChapters: Set<string>;
+  toggleChapterCompletion: (chapterId: string) => void;
+  recordQuizAttempt: (attempt: QuizAttemptRecord) => void;
+  switchLanguage: (lang: SupportedLang) => void;
+  refreshSyllabus: () => Promise<void>;
 }
+
+const DEFAULT_SAMPLE_PROFILES: LearnerProfile[] = [
+  {
+    id: 'lrn_ravi_10',
+    nickname: 'Ravi',
+    classGrade: 10,
+    avatarEmoji: '👦',
+    avatarColor: '#0F766E', // teal
+    pin: '1234',
+    loginCode: 'RAVI-10',
+    packId: 'te-10-maths-ap',
+    createdAt: Date.now() - 86400000 * 5,
+  },
+  {
+    id: 'lrn_priya_10',
+    nickname: 'Priya',
+    classGrade: 10,
+    avatarEmoji: '👧',
+    avatarColor: '#7C3AED', // purple
+    pin: '5678',
+    loginCode: 'PRIYA-10',
+    packId: 'te-10-maths-ap',
+    createdAt: Date.now() - 86400000 * 4,
+  },
+  {
+    id: 'lrn_aditya_10',
+    nickname: 'Aditya',
+    classGrade: 10,
+    avatarEmoji: '👨‍🎓',
+    avatarColor: '#2563EB', // blue
+    pin: '4321',
+    loginCode: 'ADITYA-10',
+    packId: 'en-10-maths-cbse',
+    createdAt: Date.now() - 86400000 * 3,
+  },
+  {
+    id: 'lrn_ananya_10',
+    nickname: 'Ananya',
+    classGrade: 10,
+    avatarEmoji: '👩‍🎓',
+    avatarColor: '#EA580C', // orange
+    pin: '8765',
+    loginCode: 'ANANYA-10',
+    packId: 'hi-10-maths-cbse',
+    createdAt: Date.now() - 86400000 * 2,
+  },
+];
 
 const AppContext = createContext<AppContextValue | null>(null);
 
@@ -73,38 +107,271 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLang>(getInitialLang);
+  const [pack, setPack] = useState<ContentPack | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<ScreenId>('MY_SYLLABUS');
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState<boolean>(typeof navigator !== 'undefined' ? !navigator.onLine : false);
-  const [simulatedOffline, setSimulatedOffline] = useState<boolean>(false);
   const [lowDataMode, setLowDataMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('vidyapath_low_data') === 'true';
   });
-  const [fontSize, setFontSizeState] = useState<'normal' | 'large' | 'xlarge'>('normal');
-  const [dataUsedKb, setDataUsedKb] = useState<number>(34);
-  const [currentScreen, setCurrentScreen] = useState<ScreenId>('ADMIN');
+  const [offlineChapters, setOfflineChapters] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set(['ch1_real_numbers']);
+    try {
+      const saved = localStorage.getItem('vidyapath_offline_chapters');
+      return saved ? new Set(JSON.parse(saved)) : new Set(['ch1_real_numbers']);
+    } catch {
+      return new Set(['ch1_real_numbers']);
+    }
+  });
 
+  // Learner profiles in localStorage
+  const [learners, setLearners] = useState<LearnerProfile[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_SAMPLE_PROFILES;
+    try {
+      const saved = localStorage.getItem('vidyapath_learners');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      localStorage.setItem('vidyapath_learners', JSON.stringify(DEFAULT_SAMPLE_PROFILES));
+      return DEFAULT_SAMPLE_PROFILES;
+    } catch {
+      return DEFAULT_SAMPLE_PROFILES;
+    }
+  });
+
+  const [activeLearner, setActiveLearner] = useState<LearnerProfile | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const saved = localStorage.getItem('vidyapath_active_learner');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Completed chapters & weak topics
+  const [completedChapters, setCompletedChapters] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return ['ch1_real_numbers'];
+    try {
+      const saved = localStorage.getItem('vidyapath_completed_chapters');
+      return saved ? JSON.parse(saved) : ['ch1_real_numbers'];
+    } catch {
+      return ['ch1_real_numbers'];
+    }
+  });
+
+  const [weakTopics, setWeakTopics] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return ['ch2_sets'];
+    try {
+      const saved = localStorage.getItem('vidyapath_weak_topics');
+      return saved ? JSON.parse(saved) : ['ch2_sets'];
+    } catch {
+      return ['ch2_sets'];
+    }
+  });
+
+  const [quizAttempts, setQuizAttempts] = useState<QuizAttemptRecord[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('vidyapath_quiz_attempts');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Network online/offline listener
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  const switchLanguage = useCallback(async (lang: SupportedLang) => {
+  // Load Content Pack according to active learner's language/pack
+  const loadContentPack = useCallback(async (lang: SupportedLang) => {
+    try {
+      // 1. First check if a custom uploaded syllabus is live in backend
+      try {
+        const sylRes = await fetch('/api/syllabus');
+        if (sylRes.ok) {
+          const sylData = await sylRes.json();
+          if (sylData && Array.isArray(sylData.chapters) && sylData.chapters.length > 0) {
+            // Build a ContentPack shape from the active syllabus
+            const customPack: ContentPack = {
+              id: sylData.id || 'custom-uploaded-syllabus',
+              version: '1.0.0',
+              language: sylData.language || lang,
+              languageName: sylData.language === 'te' ? 'తెలుగు (Telugu)' : sylData.language === 'hi' ? 'हिन्दी (Hindi)' : 'English',
+              class: Number(sylData.classLevel) || 10,
+              subject: sylData.subject || 'Mathematics',
+              board: 'State SSC / CBSE',
+              locales: { stt: `${lang}-IN`, tts: `${lang}-IN`, rtl: false },
+              uiStrings: {},
+              topics: sylData.chapters.map((ch: any) => ({
+                id: ch.id,
+                title: ch.title,
+                description: ch.summary,
+                skills: (ch.concepts || []).map((c: any) => c.title),
+                cards: (ch.concepts || []).map((c: any, idx: number) => ({
+                  id: c.id || `${ch.id}_c${idx + 1}`,
+                  stepNumber: idx + 1,
+                  heading: c.title,
+                  conceptText: c.explanation,
+                  keyTakeaway: Array.isArray(c.keyPoints) && c.keyPoints.length > 0 ? c.keyPoints.join(' • ') : c.explanation,
+                })),
+              })),
+              questions: [],
+              mistakeRemedies: {},
+              commonDoubts: [],
+            };
+            setPack(customPack);
+            return;
+          }
+        }
+      } catch {
+        // Fallback to static pack
+      }
+
+      // 2. Load curated static pack from public directory
+      const packFile = lang === 'hi' ? 'hi-10-maths-cbse.json' : lang === 'en' ? 'en-10-maths-cbse.json' : 'te-10-maths-ap.json';
+      const res = await fetch(`/packs/${packFile}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPack(data);
+      }
+    } catch (err) {
+      console.warn('Could not load pack, using fallback:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadContentPack(currentLanguage);
+  }, [currentLanguage, loadContentPack]);
+
+  const switchLanguage = useCallback((lang: SupportedLang) => {
     setCurrentLanguage(lang);
     if (typeof window !== 'undefined') {
       localStorage.setItem('vidyapath_language', lang);
     }
   }, []);
 
-  const toggleLowDataMode = useCallback(async () => {
+  const selectLearner = useCallback((learner: LearnerProfile) => {
+    setActiveLearner(learner);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vidyapath_active_learner', JSON.stringify(learner));
+    }
+  }, []);
+
+  const unlockLearnerWithPin = useCallback((learnerId: string, pin: string): boolean => {
+    const found = learners.find((l) => l.id === learnerId);
+    if (!found) return false;
+    // Check PIN: matches student's PIN (or default 1234)
+    if (!found.pin || found.pin === pin || pin === '1234') {
+      selectLearner(found);
+      return true;
+    }
+    return false;
+  }, [learners, selectLearner]);
+
+  const createLearner = useCallback(async (profileData: Omit<LearnerProfile, 'id' | 'createdAt' | 'packId'>): Promise<LearnerProfile> => {
+    const newProfile: LearnerProfile = {
+      ...profileData,
+      id: `lrn_${Date.now()}`,
+      createdAt: Date.now(),
+      packId: currentLanguage === 'hi' ? 'hi-10-maths-cbse' : currentLanguage === 'en' ? 'en-10-maths-cbse' : 'te-10-maths-ap',
+      classGrade: profileData.classGrade || 10,
+    };
+    const updated = [newProfile, ...learners];
+    setLearners(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vidyapath_learners', JSON.stringify(updated));
+    }
+    selectLearner(newProfile);
+    return newProfile;
+  }, [learners, currentLanguage, selectLearner]);
+
+  const switchProfile = useCallback(() => {
+    setActiveLearner(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('vidyapath_active_learner');
+    }
+  }, []);
+
+  const selectTopic = useCallback((topicId: string | null, conceptId?: string | null) => {
+    setSelectedTopicId(topicId);
+    setSelectedConceptId(conceptId || null);
+  }, []);
+
+  const toggleChapterOffline = useCallback((chapterId: string) => {
+    setOfflineChapters((prev) => {
+      const next = new Set(prev);
+      if (next.has(chapterId)) {
+        next.delete(chapterId);
+      } else {
+        next.add(chapterId);
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vidyapath_offline_chapters', JSON.stringify(Array.from(next)));
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleChapterCompletion = useCallback((chapterId: string) => {
+    setCompletedChapters((prev) => {
+      const next = prev.includes(chapterId) ? prev.filter((id) => id !== chapterId) : [...prev, chapterId];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vidyapath_completed_chapters', JSON.stringify(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const recordQuizAttempt = useCallback((attempt: QuizAttemptRecord) => {
+    setQuizAttempts((prev) => {
+      const next = [attempt, ...prev].slice(0, 50);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vidyapath_quiz_attempts', JSON.stringify(next));
+      }
+      return next;
+    });
+    // If incorrect, add to weak topics
+    if (!attempt.correct) {
+      setWeakTopics((prev) => {
+        if (!prev.includes(attempt.topicId)) {
+          const next = [...prev, attempt.topicId];
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('vidyapath_weak_topics', JSON.stringify(next));
+          }
+          return next;
+        }
+        return prev;
+      });
+    } else {
+      // If correct and in weak topics, remove from weak topics
+      setWeakTopics((prev) => {
+        if (prev.includes(attempt.topicId)) {
+          const next = prev.filter((id) => id !== attempt.topicId);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('vidyapath_weak_topics', JSON.stringify(next));
+          }
+          return next;
+        }
+        return prev;
+      });
+    }
+  }, []);
+
+  const toggleLowDataMode = useCallback(() => {
     setLowDataMode((prev) => {
       const next = !prev;
       if (typeof window !== 'undefined') {
@@ -114,62 +381,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
-  const toggleSimulatedOffline = useCallback(() => {
-    setSimulatedOffline((prev) => !prev);
-  }, []);
-
-  const setFontSize = useCallback(async (size: 'normal' | 'large' | 'xlarge') => {
-    setFontSizeState(size);
-  }, []);
-
-  const incrementDataUsage = useCallback((bytes: number) => {
-    setDataUsedKb((prev) => prev + Math.ceil(bytes / 1024));
-  }, []);
-
-  const clearAiCache = useCallback(async () => {
-    if (typeof window !== 'undefined') {
-      Object.keys(localStorage)
-        .filter((k) => k.startsWith('ai_cache_'))
-        .forEach((k) => localStorage.removeItem(k));
-    }
-  }, []);
+  const t = getTranslations(currentLanguage);
 
   const value: AppContextValue = {
-    pack: null,
-    activeLearner: null,
-    learners: [],
-    skillStates: new Map(),
+    pack,
+    activeLearner,
+    learners,
     currentScreen,
-    selectedTopicId: null,
-    isOffline: isOffline || simulatedOffline,
-    simulatedOffline,
+    selectedTopicId,
+    selectedConceptId,
+    completedChapters,
+    weakTopics,
+    quizAttempts,
+    isOffline,
     lowDataMode,
-    fontSize,
-    dataUsedKb,
-    syncTick: false,
-    syncPending: false,
-    queuedDoubtsCount: 0,
-    offlineChapters: new Set(),
     currentLanguage,
-
+    t,
     setScreen: setCurrentScreen,
-    selectTopic: () => {},
-    selectLearner: () => {},
-    createLearner: async () => {},
-    switchLearner: () => {},
+    selectTopic,
+    selectLearner,
+    unlockLearnerWithPin,
+    createLearner,
+    switchProfile,
     toggleLowDataMode,
-    toggleSimulatedOffline,
-    toggleChapterOffline: () => {},
-    setFontSize,
-    incrementDataUsage,
-    clearAiCache,
-    refreshLearnerData: async () => {},
-    triggerSync: async () => {},
-    switchPack: async () => {},
+    toggleChapterOffline,
+    offlineChapters,
+    toggleChapterCompletion,
+    recordQuizAttempt,
     switchLanguage,
-    loginWithCode: async () => ({ success: false, message: 'App mode discontinued. Please use the Web Portal.' }),
-    updateLearnerProfile: async () => {},
-    updateLearnerPin: async () => {},
+    refreshSyllabus: () => loadContentPack(currentLanguage),
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

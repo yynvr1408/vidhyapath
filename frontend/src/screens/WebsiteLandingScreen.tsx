@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   GraduationCap,
   Users,
@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { VidyapathLogo } from '../components/VidyapathLogo';
+import AdminPanelModal from '../components/admin/AdminPanelModal';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useApp } from '../context/AppContext';
 import { getTranslations } from '../utils/translations';
@@ -32,6 +33,7 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
 }) => {
   const { currentLanguage } = useApp();
   const t = getTranslations(currentLanguage);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col justify-between selection:bg-[#CCFBF1] selection:text-[#0F766E]">
@@ -348,12 +350,14 @@ export const WebsiteLandingScreen: React.FC<WebsiteLandingScreenProps> = ({
           </div>
 
           <div className="flex items-center gap-4 font-bold text-[#0F766E]">
-            <button type="button" onClick={() => onNavigateToAuth('student', 'login')} className="hover:underline">
-              Sign in or create an account
-            </button>
+            <a href="/admin" className="text-xs text-slate-400 hover:text-[#0F766E] underline-offset-4 hover:underline">
+              Admin Portal
+            </a>
           </div>
         </div>
       </footer>
+
+      <AdminPanelModal open={showAdminPanel} onClose={() => setShowAdminPanel(false)} />
     </div>
   );
 };

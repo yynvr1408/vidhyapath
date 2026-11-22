@@ -1,8 +1,9 @@
 import './env.js';
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import { insertSyncEvent, insertOrUpdateDoubt, isNeonConnected } from './db/neon.js';
@@ -52,6 +53,52 @@ const memoryStorage = multer.memoryStorage();
 const uploadMiddleware = multer({
   storage: memoryStorage,
   limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
+});
+
+// Admin access is username/password (Admin / admin123) or code-gated.
+const ADMIN_ACCESS_CODE = process.env.ADMIN_ACCESS_CODE || 'VIDYA-2026';
+
+function readAdminCode(req: Request): string {
+  const header = req.headers['x-admin-code'];
+  const fromHeader = Array.isArray(header) ? header[0] : header;
+  const fromBody = req.body && typeof req.body === 'object' ? req.body.adminCode : undefined;
+  return String(fromHeader || fromBody || '').trim();
+}
+
+function isValidAdminCode(candidate: string): boolean {
+  if (!candidate) return false;
+  const a = Buffer.from(candidate);
+  const b = Buffer.from(ADMIN_ACCESS_CODE);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+export function validateAdminCredentials(req: Request): boolean {
+  const headerUser = req.headers['x-admin-user'] || req.headers['x-admin-username'];
+  const headerPass = req.headers['x-admin-pass'] || req.headers['x-admin-password'];
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const user = String(headerUser || body.username || '').trim();
+  const pass = String(headerPass || body.password || '').trim();
+  if (user === 'Admin' && pass === 'admin123') return true;
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Basic ')) {
+    const creds = Buffer.from(authHeader.slice(6), 'base64').toString().split(':');
+    if (creds[0] === 'Admin' && creds[1] === 'admin123') return true;
+  }
+  return isValidAdminCode(readAdminCode(req));
+}
+
+function requireAdminCode(req: Request, res: Response, next: NextFunction) {
+  if (!validateAdminCredentials(req)) {
+    return res.status(401).json({ error: 'invalid_admin_credentials' });
+  }
+  return next();
+}
+
+// Syllabus upload: memory only (no disk writes), 10 MB limit
+const syllabusUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 // Optional legacy static uploads reader (no writes to disk)
@@ -344,7 +391,7 @@ function buildTutorSystemPrompt(
   return lines.join('\n');
 }
 
-async function askTutorModel(systemPrompt: string, question: string, photoBase64?: string): Promise<string> {
+async function askTutorModel(systemPrompt: string, question: string, photoBase64?: string, maxTokens = 300): Promise<string> {
   const config = getTutorConfig();
   if (!config) return '';
   const controller = new AbortController();
@@ -370,7 +417,7 @@ async function askTutorModel(systemPrompt: string, question: string, photoBase64
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessageContent },
         ],
-        max_tokens: 300,
+        max_tokens: maxTokens,
       }),
       signal: controller.signal,
     });
@@ -389,9 +436,413 @@ async function askTutorModel(systemPrompt: string, question: string, photoBase64
   }
 }
 
-// 2. AI Tutor Endpoint (/api/tutor/ask)
-app.post('/api/tutor/ask', requireAuth, requireRole(['student', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), async (req: AuthenticatedRequest, res: Response) => {
-  const { packId, learnerId, doubt, topicId, mistakeTag, language, photoBase64 } = req.body;
+// ---------------------------------------------------------------------------
+// Syllabus store (in-memory, Render-safe: no disk; resets on restart)
+// ---------------------------------------------------------------------------
+type TutorMode = 'explain' | 'simpler' | 'example' | 'chat';
+
+interface SyllabusConcept { id: string; title: string; explanation: string; keyPoints: string[] }
+interface SyllabusChapter { id: string; title: string; summary: string; concepts: SyllabusConcept[] }
+interface SyllabusChunk {
+  id: string;
+  chapterId: string;
+  conceptId: string | null;
+  chapterTitle: string;
+  conceptTitle: string | null;
+  text: string;
+}
+interface StoredSyllabus {
+  id: string;
+  language: string;
+  classLevel: string;
+  subject: string;
+  chapters: SyllabusChapter[];
+  chunks: SyllabusChunk[];
+  updatedAt: string;
+}
+
+const syllabusStore = new Map<string, StoredSyllabus>();
+let activeSyllabusKey: string | null = null;
+
+function syllabusKeyOf(subject: string): string {
+  return subject.trim().toLowerCase();
+}
+
+function findSyllabus(subject?: unknown): StoredSyllabus | undefined {
+  const s = typeof subject === 'string' ? syllabusKeyOf(subject) : '';
+  const key = s || activeSyllabusKey;
+  return key ? syllabusStore.get(key) : undefined;
+}
+
+// Keyword retrieval over syllabus chunks (no embeddings, no external calls)
+function retrieveChunks(
+  syllabus: StoredSyllabus,
+  query: string,
+  opts: { chapterId?: string; conceptId?: string | null },
+  k = 6
+): SyllabusChunk[] {
+  if (opts.chapterId || opts.conceptId) {
+    return syllabus.chunks
+      .filter((c) => (opts.chapterId ? c.chapterId === opts.chapterId : true))
+      .filter((c) => (opts.conceptId ? c.conceptId === opts.conceptId : true))
+      .slice(0, k);
+  }
+  const tokens = query
+    .toLowerCase()
+    .split(/[^\p{L}\p{M}\p{N}]+/u)
+    .filter((t) => t.length > 2);
+  const scored = syllabus.chunks
+    .map((c) => {
+      const text = c.text.toLowerCase();
+      const score = tokens.reduce((n, t) => (text.includes(t) ? n + 1 : n), 0);
+      return { c, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+  if (scored.length === 0) return syllabus.chunks.slice(0, k);
+  return scored.slice(0, k).map((x) => x.c);
+}
+
+const SYLLABUS_LANGUAGES = ['te', 'hi', 'en'];
+
+function parseSyllabusTextFallback(text: string, language: string, classLevel: string, subject: string): SyllabusChapter[] {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const chapters: SyllabusChapter[] = [];
+  let currentChapter: SyllabusChapter | null = null;
+  let currentConcepts: { id: string; title: string; explanation: string; keyPoints: string[] }[] = [];
+
+  const chapterRegex = /^(?:chapter|unit|అధ్యాయం|अध्याय|part)\s*(\d+|[ivxldcm]+)?[:.\s-]*(.*)$/i;
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+    const match = line.match(chapterRegex);
+    if (match || (!currentChapter && idx === 0)) {
+      if (currentChapter) {
+        currentChapter.concepts = currentConcepts.length > 0 ? currentConcepts : [
+          {
+            id: `${currentChapter.id}_c1`,
+            title: language === 'te' ? 'ప్రాథమిక భావనలు' : language === 'hi' ? 'मूल अवधारणाएँ' : 'Core Concepts',
+            explanation: currentChapter.summary || (language === 'te' ? 'ఈ అధ్యాయంలో ముఖ్యమైన భావనల వివరణ.' : language === 'hi' ? 'इस अध्याय में मुख्य अवधारणाओं का विवरण।' : 'Overview of fundamental concepts in this chapter.'),
+            keyPoints: [language === 'te' ? 'సూత్రాలు మరియు సిద్ధాంతాలు' : language === 'hi' ? 'सूत्र और सिद्धांत' : 'Key formulas and definitions'],
+          }
+        ];
+        chapters.push(currentChapter);
+      }
+      const chIndex = chapters.length + 1;
+      const rawTitle = match ? (match[2] || line) : line;
+      const title = rawTitle.replace(/^[:.\s-]+/, '') || `Chapter ${chIndex}`;
+      currentChapter = {
+        id: `ch${chIndex}`,
+        title: line.startsWith('Chapter') || line.startsWith('Unit') || line.startsWith('అధ్యాయం') || line.startsWith('अध्याय') ? line : `Chapter ${chIndex}: ${title}`,
+        summary: `${title} - Class ${classLevel || '10'} ${subject}`,
+        concepts: []
+      };
+      currentConcepts = [];
+    } else if (currentChapter) {
+      if (line.startsWith('-') || line.startsWith('*') || /^\d+[.)]/.test(line)) {
+        const conceptTitle = line.replace(/^[-*\d.)\s]+/, '').trim();
+        if (conceptTitle.length > 2) {
+          const cId = `c${currentConcepts.length + 1}`;
+          currentConcepts.push({
+            id: cId,
+            title: conceptTitle,
+            explanation: language === 'te'
+              ? `${conceptTitle} గురించిన సమగ్ర వివరణ మరియు సూత్రాలు.`
+              : language === 'hi'
+              ? `${conceptTitle} का विस्तृत विवरण एवं सूत्र।`
+              : `Comprehensive explanation and worked steps for ${conceptTitle}.`,
+            keyPoints: [
+              language === 'te' ? 'ముఖ్యమైన నిర్వచనం మరియు సూత్రం' : language === 'hi' ? 'महत्वपूर्ण परिभाषा एवं सूत्र' : 'Key formula & definition',
+              language === 'te' ? 'దశలవారీగా సాధన' : language === 'hi' ? 'चरणबद्ध समाधान' : 'Step-by-step problem solving'
+            ]
+          });
+        }
+      } else if (!currentChapter.summary || currentChapter.summary.length < 50) {
+        currentChapter.summary = `${currentChapter.summary}: ${line}`.slice(0, 200);
+      }
+    }
+  }
+
+  if (currentChapter) {
+    currentChapter.concepts = currentConcepts.length > 0 ? currentConcepts : [
+      {
+        id: `${currentChapter.id}_c1`,
+        title: language === 'te' ? 'ప్రాథమిక భావనలు' : language === 'hi' ? 'मूल अवधारणाएँ' : 'Core Concepts',
+        explanation: currentChapter.summary || (language === 'te' ? 'ఈ అధ్యాయంలో ముఖ్యమైన భావనల వివరణ.' : language === 'hi' ? 'इस अध्याय में मुख्य अवधारणाओं का विवरण।' : 'Overview of fundamental concepts in this chapter.'),
+        keyPoints: [language === 'te' ? 'సూత్రాలు మరియు సిద్ధాంతాలు' : language === 'hi' ? 'सूत्र और सिद्धांत' : 'Key formulas and definitions'],
+      }
+    ];
+    chapters.push(currentChapter);
+  }
+
+  if (chapters.length === 0) {
+    chapters.push({
+      id: 'ch1',
+      title: subject ? `Chapter 1: ${subject}` : 'Chapter 1: Curriculum Overview',
+      summary: text.slice(0, 150),
+      concepts: [
+        {
+          id: 'c1',
+          title: language === 'te' ? 'ప్రధాన భావనలు' : language === 'hi' ? 'प्रमुख अवधारणाएँ' : 'Essential Concepts',
+          explanation: text.slice(0, 300) || 'Comprehensive introduction to syllabus units and practice goals.',
+          keyPoints: ['Core definitions', 'Worked examples']
+        }
+      ]
+    });
+  }
+
+  return chapters;
+}
+
+// Admin: verify access (Username: Admin / Password: admin123 or access code)
+app.post('/api/admin/verify', (req: Request, res: Response) => {
+  if (validateAdminCredentials(req)) {
+    return res.json({ ok: true, success: true });
+  }
+  return res.status(401).json({ error: 'invalid_credentials' });
+});
+
+// Admin: verify access code (legacy compatibility)
+app.post('/api/admin/verify-code', requireAdminCode, (_req: Request, res: Response) => {
+  return res.json({ ok: true, success: true });
+});
+
+// Admin: upload syllabus (.txt / .md / .pdf) -> chapters + RAG chunks
+app.post('/api/admin/syllabus', syllabusUpload.single('file'), requireAdminCode, async (req: Request, res: Response) => {
+  try {
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const subject = String(body.subject || '').trim();
+    if (!subject) return res.status(400).json({ error: 'subject_required' });
+
+    const language = String(body.language || 'en').trim().toLowerCase();
+    if (!SYLLABUS_LANGUAGES.includes(language)) return res.status(400).json({ error: 'unsupported_language' });
+    const classLevel = String(body.classLevel || '10').trim();
+
+    let text = '';
+    if (req.file) {
+      const ext = path.extname(req.file.originalname || '').toLowerCase();
+      if (ext === '.txt' || ext === '.md') {
+        text = req.file.buffer.toString('utf8');
+      } else if (ext === '.pdf') {
+        const { default: pdfParse } = await import('pdf-parse');
+        const parsed = await pdfParse(req.file.buffer);
+        text = parsed.text;
+      } else {
+        return res.status(400).json({ error: 'unsupported_file_type' });
+      }
+    } else {
+      text = typeof body.text === 'string' ? body.text : '';
+    }
+    text = text.trim();
+    if (!text) return res.status(400).json({ error: 'empty_syllabus' });
+
+    let chapters: SyllabusChapter[] = [];
+
+    if (getTutorConfig()) {
+      try {
+        const systemPrompt = [
+          'You are a curriculum analyzer. Split the syllabus or textbook text into chapters and concepts.',
+          'Return STRICT JSON only: no markdown, no commentary. Use exactly this shape:',
+          '{"chapters":[{"id":"ch1","title":"","summary":"","concepts":[{"id":"c1","title":"","explanation":"","keyPoints":[""]}]}]}',
+          `Write summary and explanation text ENTIRELY in ${REPLY_LANGUAGE_NAMES[language]} (language code ${language}).`,
+          'Keep chapter and concept titles exactly as in the source text.',
+          `explanation: 2 to 4 simple sentences a Class ${classLevel || '8-10'} student can understand.`,
+          'keyPoints: 2 to 5 short strings. Use only the source text. Do not invent chapters.',
+        ].join('\n');
+        const raw = await askTutorModel(systemPrompt, `Subject: ${subject}\nClass: ${classLevel}\n\nSYLLABUS TEXT:\n${text.slice(0, 30000)}`, undefined, 4000);
+        if (raw) {
+          const unfenced = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+          const parsed = JSON.parse(unfenced);
+          const rawChapters: any[] = Array.isArray(parsed?.chapters) ? parsed.chapters : [];
+          if (rawChapters.length > 0) {
+            chapters = rawChapters.map((ch: any, i: number) => ({
+              id: String(ch?.id || `ch${i + 1}`),
+              title: String(ch?.title || `Chapter ${i + 1}`),
+              summary: String(ch?.summary || ''),
+              concepts: (Array.isArray(ch?.concepts) ? ch.concepts : []).map((c: any, j: number) => ({
+                id: String(c?.id || `c${j + 1}`),
+                title: String(c?.title || `Concept ${j + 1}`),
+                explanation: String(c?.explanation || ''),
+                keyPoints: Array.isArray(c?.keyPoints) ? c.keyPoints.map((k: any) => String(k)).filter(Boolean) : [],
+              })),
+            }));
+          }
+        }
+      } catch (llmErr) {
+        console.warn('[Admin Syllabus] LLM parsing failed, using rule-based parser:', llmErr);
+      }
+    }
+
+    if (chapters.length === 0) {
+      chapters = parseSyllabusTextFallback(text, language, classLevel, subject);
+    }
+
+    const chunks: SyllabusChunk[] = [];
+    for (const ch of chapters) {
+      chunks.push({ id: ch.id, chapterId: ch.id, conceptId: null, chapterTitle: ch.title, conceptTitle: null, text: ch.summary });
+      for (const c of ch.concepts) {
+        chunks.push({
+          id: `${ch.id}-${c.id}`,
+          chapterId: ch.id,
+          conceptId: c.id,
+          chapterTitle: ch.title,
+          conceptTitle: c.title,
+          text: `${c.explanation} ${c.keyPoints.join('; ')}`.trim(),
+        });
+      }
+    }
+
+    const key = syllabusKeyOf(subject);
+    const stored: StoredSyllabus = {
+      id: randomUUID(),
+      language,
+      classLevel,
+      subject,
+      chapters,
+      chunks,
+      updatedAt: new Date().toISOString(),
+    };
+    syllabusStore.set(key, stored);
+    activeSyllabusKey = key;
+
+    return res.json({
+      success: true,
+      id: stored.id,
+      language,
+      classLevel,
+      subject,
+      chapters,
+      chunkCount: chunks.length,
+    });
+  } catch (err: any) {
+    console.error('[Admin Syllabus] Ingestion error:', err);
+    return res.status(500).json({ error: 'syllabus_ingest_failed', message: err?.message || 'Ingestion failed' });
+  }
+});
+
+// Public: read the active (or subject-specific) syllabus without chunks
+app.get('/api/syllabus', (req: Request, res: Response) => {
+  const syllabus = findSyllabus(req.query.subject);
+  if (!syllabus) return res.status(404).json({ error: 'no_syllabus' });
+  return res.json({
+    id: syllabus.id,
+    language: syllabus.language,
+    classLevel: syllabus.classLevel,
+    subject: syllabus.subject,
+    chapters: syllabus.chapters,
+  });
+});
+
+// Chapter intent helpers (no LLM call)
+const NUMBER_WORDS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10,
+};
+
+function findChapterRequest(text: string, chapters: SyllabusChapter[]): { chapter: SyllabusChapter; number: number } | null {
+  const digitMatch = text.match(
+    /chapter\s*(\d+)|(\d+)\s*(?:st|nd|rd|th)?\s*chapter|అధ్యాయం\s*(\d+)|(\d+)\s*అధ్యాయం|अध्याय\s*(\d+)|(\d+)\s*अध्याय/i
+  );
+  let n: number | null = null;
+  if (digitMatch) {
+    const digits = digitMatch.slice(1).find(Boolean);
+    n = digits ? Number(digits) : null;
+  }
+  if (n === null && /chapter/i.test(text)) {
+    const word = text.toLowerCase().split(/[^a-z]+/).find((w) => w in NUMBER_WORDS);
+    if (word) n = NUMBER_WORDS[word];
+  }
+  if (n !== null && n >= 1 && n <= chapters.length) {
+    return { chapter: chapters[n - 1], number: n };
+  }
+  // Title keyword fallback, only when the message names a chapter
+  if (/chapter|అధ్యాయం|अध्याय/i.test(text)) {
+    const lowerText = text.toLowerCase();
+    for (let i = 0; i < chapters.length; i++) {
+      const words = chapters[i].title
+        .toLowerCase()
+        .split(/[^\p{L}\p{M}\p{N}]+/u)
+        .filter((w) => w.length > 3);
+      if (words.some((w) => lowerText.includes(w))) return { chapter: chapters[i], number: i + 1 };
+    }
+  }
+  return null;
+}
+
+function buildChapterResponse(chapter: SyllabusChapter, n: number, lang: string) {
+  const reply = lang === 'hi'
+    ? `अध्याय ${n}: ${chapter.title} में ये अवधारणाएँ हैं। नीचे किसी अवधारणा पर टैप करें:`
+    : lang === 'te'
+    ? `అధ్యాయం ${n}: ${chapter.title} లో ఈ భావనలు ఉన్నాయి. ప్రారంభించడానికి కింద ఏదైనా భావనపై నొక్కండి:`
+    : `Here are the concepts in Chapter ${n}: ${chapter.title}. Tap any concept below to start learning:`;
+  return {
+    intent: 'chapter',
+    chapterId: chapter.id,
+    reply,
+    concepts: chapter.concepts.map((c) => ({ id: c.id, title: c.title })),
+  };
+}
+
+const SYLLABUS_HEADINGS: Record<string, [string, string, string, string]> = {
+  en: ['What it is (simple meaning)', 'Daily-life example', 'Step-by-step', 'Quick check'],
+  hi: ['यह क्या है (सरल अर्थ)', 'दैनिक जीवन का उदाहरण', 'चरण-दर-चरण', 'त्वरित जाँच'],
+  te: ['ఇది ఏమిటి (సరళ అర్థం)', 'రోజువారీ జీవిత ఉదాహరణ', 'దశలవారీగా', 'త్వరిత తనిఖీ'],
+};
+
+function buildSyllabusTutorPrompt(opts: {
+  language: string;
+  subject: string;
+  classLevel: string;
+  chapterTitle?: string;
+  conceptTitle?: string;
+  mode: TutorMode;
+  excerpts: string[];
+}): string {
+  const lang = opts.language === 'hi' || opts.language === 'en' ? opts.language : 'te';
+  const langName = REPLY_LANGUAGE_NAMES[lang];
+  const [h1, h2, h3, h4] = SYLLABUS_HEADINGS[lang];
+  const headingBullets = [
+    `- **${h1}**: 2 to 3 easy sentences in everyday language, no heavy jargon.`,
+    `- **${h2}**: one relatable example for a Class 8-10 student.`,
+    `- **${h3}**: numbered steps 1. 2. 3. for any formula, rule or worked example.`,
+    `- **${h4}**: one friendly line asking if the student understood, or offering a quick question or the next concept.`,
+  ];
+  const lines = [
+    `You are a friendly, patient teacher for ${opts.classLevel ? `class ${opts.classLevel}` : 'school students'}${opts.subject ? `, subject ${opts.subject}` : ''}.`,
+    `Answer ENTIRELY in ${langName} (language code ${lang}). Never reply in any other language.`,
+  ];
+  if (opts.chapterTitle) lines.push(`Current chapter: ${opts.chapterTitle}.`);
+  if (opts.conceptTitle) lines.push(`Current concept: ${opts.conceptTitle}.`);
+  if (opts.excerpts.length) {
+    lines.push('Use this syllabus excerpt as the source of truth:', opts.excerpts.join('\n---\n'));
+  } else {
+    lines.push('No syllabus excerpt was found. Teach the topic carefully and do not invent specific facts.');
+  }
+  if (opts.mode === 'simpler') {
+    lines.push(
+      'The student did not understand the previous explanation. Re-explain even more simply, with shorter sentences and everyday words. Use these four bold headings, in this order:',
+      ...headingBullets
+    );
+  } else if (opts.mode === 'example') {
+    lines.push(
+      'Give a different, relatable daily-life example first, then the step-by-step working. Use these four bold headings, in this order:',
+      ...headingBullets
+    );
+  } else if (opts.mode === 'chat') {
+    lines.push(`Answer conversationally in ${langName}, like a friendly tutor chatting with the student. Keep it to a few short sentences grounded in the excerpt, and end with a short friendly question.`);
+  } else {
+    lines.push(
+      'Structure the answer with these four bold headings, in this order, written exactly as shown:',
+      ...headingBullets
+    );
+  }
+  lines.push('Do not invent facts beyond the excerpt. Keep the language simple.');
+  return lines.join('\n');
+}
+
+// 2. AI Tutor Endpoint (/api/tutor/ask) - Completely unauthenticated for frictionless student access
+app.post('/api/tutor/ask', async (req: Request, res: Response) => {
+  const { packId, learnerId, doubt, topicId, mistakeTag, language, photoBase64, message, chapterId, conceptId, conceptTitle, subject, mode, intent } = req.body || {};
   if (packId && !isSafePackId(packId)) {
     return res.status(400).json({ answer: 'Invalid pack id' });
   }
@@ -409,7 +860,7 @@ app.post('/api/tutor/ask', requireAuth, requireRole(['student', 'teacher', 'inst
     ? language
     : (pack && ALLOWED_LANGUAGES.includes(pack.language as any) ? pack.language : 'te');
 
-  const doubtText = (doubt || '').trim();
+  const doubtText = (doubt || message || '').trim();
   const lower = doubtText.toLowerCase();
 
   // Guardrail 1: Personal info / unsafe
@@ -442,6 +893,91 @@ app.post('/api/tutor/ask', requireAuth, requireRole(['student', 'teacher', 'inst
       source: 'fallback',
       answer: offTopic
     });
+  }
+
+  // Syllabus-aware tutor. Requests without syllabus fields keep the legacy path below.
+  const replyLang = ALLOWED_LANGUAGES.includes(language as any) ? String(language) : 'en';
+  const syllabus = findSyllabus(subject);
+  const syllabusRequested = Boolean(subject || chapterId || conceptId || conceptTitle || mode || intent);
+  const tutorMode = (['simpler', 'example', 'chat'].includes(mode) ? mode : 'explain') as TutorMode;
+
+  // Chapter Intent Handling: when student requests a chapter or asks to list concepts
+  if (intent === 'list_concepts' || (!conceptId && (intent === 'chapter' || /chapter|అధ్యాయం|अध्याय/i.test(doubtText)))) {
+    if (syllabus && syllabus.chapters.length > 0) {
+      const idx = chapterId ? syllabus.chapters.findIndex((ch) => ch.id === chapterId) : -1;
+      if (idx !== -1) {
+        return res.json(buildChapterResponse(syllabus.chapters[idx], idx + 1, replyLang));
+      }
+      const match = findChapterRequest(doubtText, syllabus.chapters);
+      if (match) {
+        return res.json(buildChapterResponse(match.chapter, match.number, replyLang));
+      }
+    } else if (pack && Array.isArray(pack.topics) && pack.topics.length > 0) {
+      const packChapters: SyllabusChapter[] = pack.topics.map((t: any, i: number) => ({
+        id: t.id,
+        title: t.title,
+        summary: t.description || t.title,
+        concepts: Array.isArray(t.cards) && t.cards.length > 0
+          ? t.cards.map((c: any) => ({
+              id: c.id,
+              title: c.heading || `Concept ${c.stepNumber}`,
+              explanation: c.conceptText || '',
+              keyPoints: [c.keyTakeaway || '']
+            }))
+          : (t.skills || []).map((s: string, j: number) => ({
+              id: `${t.id}_s${j + 1}`,
+              title: s.replace(/_/g, ' '),
+              explanation: `${s.replace(/_/g, ' ')} key concept`,
+              keyPoints: []
+            }))
+      }));
+      const idx = chapterId ? packChapters.findIndex((ch) => ch.id === chapterId) : -1;
+      if (idx !== -1) {
+        return res.json(buildChapterResponse(packChapters[idx], idx + 1, replyLang));
+      }
+      const match = findChapterRequest(doubtText, packChapters);
+      if (match) {
+        return res.json(buildChapterResponse(match.chapter, match.number, replyLang));
+      }
+    }
+  }
+
+  if ((syllabus || syllabusRequested) && (doubtText || conceptTitle || conceptId || chapterId) && getTutorConfig()) {
+    const chapter = syllabus?.chapters.find((ch) => ch.id === chapterId);
+    const concept = chapter?.concepts.find((c) => c.id === conceptId);
+    const chunks = syllabus
+      ? retrieveChunks(
+          syllabus,
+          `${doubtText} ${conceptTitle || concept?.title || ''}`,
+          { chapterId: chapterId || undefined, conceptId: conceptId || undefined }
+        )
+      : [];
+    const systemPrompt = buildSyllabusTutorPrompt({
+      language: replyLang,
+      subject: syllabus?.subject || String(subject || ''),
+      classLevel: syllabus?.classLevel || '',
+      chapterTitle: chapter?.title,
+      conceptTitle: conceptTitle || concept?.title,
+      mode: tutorMode,
+      excerpts: chunks.map((c) => c.text),
+    });
+    const question = doubtText || `Teach me: ${conceptTitle || concept?.title || chapter?.title || 'this topic'}`;
+    const syllabusCacheKey = `syllabus|${syllabus?.id || 'none'}|${replyLang}|${tutorMode}|${chapterId || ''}|${conceptId || ''}|${question.toLowerCase()}`;
+    let reply = tutorCache.get(syllabusCacheKey) || '';
+    if (!reply) {
+      const raw = await askTutorModel(systemPrompt, question, photoBase64, 2500);
+      reply = raw.trim();
+      if (reply) tutorCache.set(syllabusCacheKey, reply);
+    }
+    if (reply) {
+      return res.json({
+        source: 'model',
+        answer: reply,
+        reply,
+        chapterId: chapterId ?? null,
+        conceptId: conceptId ?? null,
+      });
+    }
   }
 
   // Model answer: only when TUTOR_API_BASE_URL, TUTOR_MODEL and TUTOR_API_KEY are all set.
@@ -518,10 +1054,56 @@ app.post('/api/tutor/ask', requireAuth, requireRole(['student', 'teacher', 'inst
     }
   }
 
-  return res.json({ source: 'fallback', answer: tutorAnswer });
+  const isSimpler = tutorMode === 'simpler';
+  const isExample = tutorMode === 'example';
+  const [h1, h2, h3, h4] = SYLLABUS_HEADINGS[targetLanguage] || SYLLABUS_HEADINGS['en'];
+
+  const structuredAnswer = [
+    `### **${h1}**`,
+    tutorAnswer,
+    '',
+    `### **${h2}**`,
+    targetLanguage === 'hi'
+      ? (isExample ? 'मान लीजिए आपके पास 20 वस्तुएँ हैं और 6 लोगों में बाँटनी हैं। प्रत्येक को 3 मिलेंगी और 2 शेष बचेंगी (20 = 6×3 + 2)।' : 'दैनिक जीवन में मापन और समान विभाजन के लिए हम इस सिद्धांत का स्वाभाविक उपयोग करते हैं।')
+      : targetLanguage === 'en'
+      ? (isExample ? 'If you distribute 20 items among 6 students, each gets 3 with 2 remaining: 20 = 6(3) + 2.' : 'In everyday activities like counting change or distributing items evenly, we apply this logic directly.')
+      : (isExample ? 'మీ దగ్గర 20 లడ్డూలు ఉండి, 6 మంది స్నేహితులకు సమానంగా పంచితే, ప్రతి ఒక్కరికీ 3 వస్తాయి, 2 మిగులుతాయి: 20 = (6 × 3) + 2.' : 'మనం రోజువారీ జీవితంలో కొలతలు మరియు పంపకాల్లో ఈ గణిత సూత్రాలనే సహజంగా ఉపయోగిస్తాము.'),
+    '',
+    `### **${h3}**`,
+    targetLanguage === 'hi'
+      ? '1. **मूल नियम पहचानें:** प्रश्न के मुख्य मानों को सूत्र में रखें.\n2. **गणना करें:** चरण-दर-चरण हल करें.\n3. **जाँचें:** अपने अंतिम उत्तर की पुष्टि करें.'
+      : targetLanguage === 'en'
+      ? '1. **Identify terms:** Identify the given values in the problem.\n2. **Apply principle:** Substitute the values into the formula.\n3. **Verify:** Check your calculation and remainder constraints.'
+      : '1. **లెక్కలోని ముఖ్యాంశాలు గుర్తించండి:** ఇచ్చిన సంఖ్యలను సూత్రంలో రాయండి.\n2. **దశలవారీగా సాధించండి:** క్రమంగా లెక్కిస్తూ శేషాన్ని కనుగొనండి.\n3. **సరిచూసుకోండి:** తుది సమాధానాన్ని ధృవీకరించండి.',
+    '',
+    `### **${h4}**`,
+    targetLanguage === 'hi'
+      ? 'क्या यह व्याख्या आपको समझ आई या आप इसका एक और उदाहरण देखना चाहेंगे?'
+      : targetLanguage === 'en'
+      ? 'Did this explanation make sense, or would you like to see another example?'
+      : 'ఈ వివరణ మీకు స్పష్టంగా అర్థమైందా? మరో ఉదాహరణ కావాలా లేదా తర్వాతి భావన చూద్దామా?'
+  ].join('\n');
+
+  return res.json({ source: 'fallback', answer: structuredAnswer, reply: structuredAnswer, chapterId: chapterId ?? null, conceptId: conceptId ?? null });
 });
 
 // 5. Pack Management Endpoints (/api/packs & /api/admin/packs)
+app.post('/api/tts', async (req: Request, res: Response) => {
+  try {
+    const { text, language } = req.body || {};
+    if (!text) return res.status(400).json({ error: 'text_required' });
+    if (isElevenLabsConfigured()) {
+      const audioBuffer = await synthesizeElevenLabsVoice(text, language || 'en');
+      if (audioBuffer) {
+        res.setHeader('Content-Type', 'audio/mpeg');
+        return res.send(audioBuffer);
+      }
+    }
+    return res.json({ fallback: true, text, language: language || 'te-IN' });
+  } catch (err: any) {
+    return res.json({ fallback: true, text: req.body?.text, language: req.body?.language || 'te-IN' });
+  }
+});
 app.get('/api/packs', (req: Request, res: Response) => {
   try {
     const files = fs.readdirSync(packsDir).filter((f) => f.endsWith('.json'));
@@ -665,7 +1247,7 @@ app.post('/api/upload', requireAuth, requireRole(['student', 'guardian', 'teache
 });
 
 // POST /api/tutor/voice: In-memory voice upload to R2 + Groq Whisper transcription (0 disk writes)
-app.post('/api/tutor/voice', requireAuth, requireRole(['student', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), uploadMiddleware.single('audio'), async (req: Request, res: Response) => {
+app.post('/api/tutor/voice', uploadMiddleware.single('audio'), async (req: Request, res: Response) => {
   try {
     let audioBuffer: Buffer | null = null;
     let mimeType = 'audio/webm';
@@ -698,7 +1280,7 @@ app.post('/api/tutor/voice', requireAuth, requireRole(['student', 'teacher', 'in
 });
 
 // POST /api/tutor/photo-doubt: In-memory photo doubt upload to R2 (0 disk writes)
-app.post('/api/tutor/photo-doubt', requireAuth, requireRole(['student', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), uploadMiddleware.single('photo'), async (req: Request, res: Response) => {
+app.post('/api/tutor/photo-doubt', uploadMiddleware.single('photo'), async (req: Request, res: Response) => {
   try {
     let photoBuffer: Buffer | null = null;
     let mimeType = 'image/jpeg';
