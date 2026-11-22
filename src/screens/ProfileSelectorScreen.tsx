@@ -8,6 +8,9 @@ import { PinPadModal } from '../components/PinPadModal';
 import { AddProfileModal } from '../components/AddProfileModal';
 import { getTranslations, SupportedLang } from '../utils/translations';
 import { SCHEDULED_LANGUAGES } from '../config/languages';
+import { AppUpdateHeaderPill } from '../components/AppUpdateHeaderPill';
+import { AppUpdateBanner } from '../components/AppUpdateBanner';
+import { AppUpdateModal } from '../components/AppUpdateModal';
 
 // Formats display names cleanly based on current language
 const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
@@ -72,8 +75,11 @@ export const ProfileSelectorScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between p-4 sm:p-6 max-w-lg mx-auto text-[#0F172A] safe-top-inset">
-      {/* 1. Sleek Top Bar with Status & Language Switcher */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+      {/* Global Floating App Update Notification Banner */}
+      <AppUpdateBanner />
+
+      {/* 1. Sleek Top Bar with Status, Update Pill & Language Switcher */}
+      <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] gap-2">
         {/* Offline Status / Demo Toggle */}
         <button
           type="button"
@@ -93,21 +99,26 @@ export const ProfileSelectorScreen: React.FC = () => {
           <span>{isOffline ? t.offlineSaved : t.online}</span>
         </button>
 
-        {/* Language Selector Dropdown (Telugu, Hindi, English) */}
-        <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 rounded-[12px] border border-[#E2E8F0] shadow-2xs">
-          <Globe className="w-3.5 h-3.5 text-[#0F766E]" />
-          <select
-            value={currentLanguage}
-            onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
-            className="text-xs font-bold text-[#0F172A] bg-transparent focus:outline-hidden cursor-pointer max-w-[130px] truncate"
-            title="Select Language (Telugu, Hindi, English)"
-          >
-            {SCHEDULED_LANGUAGES.map((lang) => (
-              <option key={lang.code} value={lang.code}>
-                {lang.nativeName} ({lang.name})
-              </option>
-            ))}
-          </select>
+        <div className="flex items-center gap-2">
+          {/* In-App Release & Update Checker Pill */}
+          <AppUpdateHeaderPill />
+
+          {/* Language Selector Dropdown (Telugu, Hindi, English) */}
+          <div className="flex items-center gap-1.5 bg-[#FFFFFF] px-2.5 py-1 rounded-[12px] border border-[#E2E8F0] shadow-2xs">
+            <Globe className="w-3.5 h-3.5 text-[#0F766E]" />
+            <select
+              value={currentLanguage}
+              onChange={(e) => switchLanguage(e.target.value as SupportedLang)}
+              className="text-xs font-bold text-[#0F172A] bg-transparent focus:outline-hidden cursor-pointer max-w-[130px] truncate"
+              title="Select Language (Telugu, Hindi, English)"
+            >
+              {SCHEDULED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.nativeName} ({lang.name})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -275,6 +286,9 @@ export const ProfileSelectorScreen: React.FC = () => {
           onClose={() => setShowAddModal(false)}
         />
       )}
+
+      {/* Global Interactive In-App Update Modal */}
+      <AppUpdateModal />
     </div>
   );
 };
