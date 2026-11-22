@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Database, Type, Trash2, Users, HardDrive, Check, Edit3 } from 'lucide-react';
+import { ArrowLeft, Database, Type, Trash2, Users, HardDrive, Check, Edit3, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { StudentAvatar } from '../components/StudentAvatar';
 import { EditProfileModal } from '../components/EditProfileModal';
+import { AppUpdateButton } from '../components/AppUpdateButton';
 
 export const S9_SettingsScreen: React.FC = () => {
   const {
@@ -167,7 +168,21 @@ export const S9_SettingsScreen: React.FC = () => {
           </button>
         </div>
 
-        {/* 4. Shared Phone Learner Switcher */}
+        {/* 4. App Version & Updates */}
+        <div className="bg-[#FFFFFF] rounded-3xl p-5 border border-[#D1E7DD] shadow-xs space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC] flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-[#15803D]" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-[#0F172A]">యాప్ అప్‌డేట్‌లు & వెర్షన్ (App Updates)</h3>
+              <p className="text-xs text-[#475569] font-medium">కొత్త వెర్షన్లు, భద్రతా అప్‌డేట్‌లు మరియు ఫీచర్లు తనిఖీ చేయండి.</p>
+            </div>
+          </div>
+          <AppUpdateButton />
+        </div>
+
+        {/* 5. Shared Phone Learner Switcher */}
         <div className="pt-2">
           <button
             type="button"

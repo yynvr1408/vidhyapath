@@ -30,6 +30,9 @@ import { useApp } from '../../context/AppContext';
 import { UserRole, NotificationItem } from '../../types/enterprise';
 import { VidyapathLogo } from '../VidyapathLogo';
 import { AppUpdateButton } from '../AppUpdateButton';
+import { AppUpdateHeaderPill } from '../AppUpdateHeaderPill';
+import { AppUpdateBanner } from '../AppUpdateBanner';
+import { AppUpdateModal } from '../AppUpdateModal';
 import { SCHEDULED_LANGUAGES } from '../../config/languages';
 import { SupportedLang, getTranslations } from '../../utils/translations';
 
@@ -351,8 +354,11 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
             </div>
           </div>
 
-          {/* Right Header Status Bar: Language Dropdown + Offline Toggle + Notifications */}
+          {/* Right Header Status Bar: Update Pill + Language Dropdown + Offline Toggle + Notifications */}
           <div className="flex items-center gap-2">
+            {/* In-App Release & Update Checker Pill */}
+            <AppUpdateHeaderPill />
+
             {/* Language Dropdown (Telugu, Hindi, English) */}
             <LanguageDropdown className="max-w-[130px] sm:max-w-[180px]" />
 
@@ -430,6 +436,9 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
           </div>
         </header>
 
+        {/* Global Floating App Update Notification Banner */}
+        <AppUpdateBanner />
+
         {/* Mobile Slide-out Drawer */}
         {mobileDrawerOpen && (
           <div className="md:hidden fixed inset-0 z-50 animate-fadeIn">
@@ -456,6 +465,9 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
         <main className="flex-1 min-w-0 w-full p-3 sm:p-5 md:p-6 lg:p-8 pb-[max(env(safe-area-inset-bottom),4rem)] overflow-y-auto">
           {children}
         </main>
+
+        {/* Global Interactive In-App Update Modal */}
+        <AppUpdateModal />
       </div>
     </div>
   );

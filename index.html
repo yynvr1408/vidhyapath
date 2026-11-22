@@ -18,13 +18,37 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Register Service Worker for offline PWA capabilities
+      // Register Service Worker for offline PWA capabilities & auto-update detection
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(
-            (reg) => console.log('Vidyapath PWA ServiceWorker registered with scope:', reg.scope),
-            (err) => console.log('ServiceWorker registration failed:', err)
-          );
+          navigator.serviceWorker.register('/sw.js').then((reg) => {
+            console.log('Vidyapath PWA ServiceWorker registered with scope:', reg.scope);
+
+            // Check if there is already a waiting service worker
+            if (reg.waiting) {
+              window.dispatchEvent(new CustomEvent('vidyapath-pwa-update-available'));
+            }
+
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    window.dispatchEvent(new CustomEvent('vidyapath-pwa-update-available'));
+                  }
+                });
+              }
+            });
+          }).catch((err) => console.log('ServiceWorker registration failed:', err));
+
+          // Periodically check for updates every 15 minutes when online
+          setInterval(() => {
+            if (navigator.onLine) {
+              navigator.serviceWorker.getRegistration().then((reg) => {
+                if (reg) reg.update().catch(() => {});
+              });
+            }
+          }, 15 * 60 * 1000);
         });
       }
     </script>

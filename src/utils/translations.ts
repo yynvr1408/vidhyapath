@@ -151,6 +151,16 @@ export interface TranslationDictionary {
   unlockBtn: string;
   strongTopicsLabel: string;
   needsHelpTopicsLabel: string;
+  checkUpdates: string;
+  updateAvailable: string;
+  updateNow: string;
+  appUpToDate: string;
+  checkingUpdates: string;
+  currentVersionLabel: string;
+  latestVersionLabel: string;
+  changelog: string;
+  reloadApp: string;
+  updateCheckFailed: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
@@ -295,6 +305,16 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     unlockBtn: 'అన్‌లాక్ చేయండి',
     strongTopicsLabel: 'బాగా వచ్చిన అంశాలు',
     needsHelpTopicsLabel: 'శ్రద్ధ అవసరమైన అంశాలు',
+    checkUpdates: 'అప్‌డేట్‌లు తనిఖీ చేయి',
+    updateAvailable: 'కొత్త అప్‌డేట్ సిద్ధంగా ఉంది!',
+    updateNow: 'ఇప్పుడే అప్‌డేట్ చేసుకోండి',
+    appUpToDate: 'తాజా వెర్షన్ ఇన్‌స్టాల్ అయింది',
+    checkingUpdates: 'తనిఖీ చేస్తున్నాము...',
+    currentVersionLabel: 'ప్రస్తుత వెర్షన్',
+    latestVersionLabel: 'తాజా వెర్షన్',
+    changelog: 'కొత్త మార్పులు',
+    reloadApp: 'తాజా వెర్షన్‌ను లోడ్ చేయి',
+    updateCheckFailed: 'అప్‌డేట్ తనిఖీ విఫలమైంది. ఇంటర్నెట్ సరిచూసుకోండి.',
   },
 
   en: {
@@ -438,6 +458,16 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     unlockBtn: 'Unlock',
     strongTopicsLabel: 'Strong Topics',
     needsHelpTopicsLabel: 'Needs Help',
+    checkUpdates: 'Check for Updates',
+    updateAvailable: 'New Update Available!',
+    updateNow: 'Update Now',
+    appUpToDate: 'App is up to date',
+    checkingUpdates: 'Checking for updates...',
+    currentVersionLabel: 'Current Version',
+    latestVersionLabel: 'Latest Version',
+    changelog: "What's New",
+    reloadApp: 'Reload to Update',
+    updateCheckFailed: 'Update check failed. Check your internet connection.',
   },
 
   hi: {
@@ -581,6 +611,16 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     unlockBtn: 'अनलॉक करें',
     strongTopicsLabel: 'मजबूत विषय',
     needsHelpTopicsLabel: 'अभ्यास की आवश्यकता',
+    checkUpdates: 'अपडेट की जाँच करें',
+    updateAvailable: 'नया अपडेट उपलब्ध है!',
+    updateNow: 'अभी अपडेट करें',
+    appUpToDate: 'नवीनतम वर्शन स्थापित है',
+    checkingUpdates: 'जाँच हो रही है...',
+    currentVersionLabel: 'वर्तमान वर्शन',
+    latestVersionLabel: 'नवीनतम वर्शन',
+    changelog: 'क्या नया है',
+    reloadApp: 'रीलोड करके अपडेट करें',
+    updateCheckFailed: 'अपडेट जाँच विफल रही। कृपया इंटरनेट कनेक्शन जांचें।',
   },
 };
 

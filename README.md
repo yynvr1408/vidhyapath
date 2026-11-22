@@ -249,7 +249,31 @@ Vidyapath completely eliminates ephemeral file loss by streaming uploads directl
 
 ---
 
-## 8. Free Tier to Enterprise Scale Matrix
+## 8. In-App Auto-Update & Release Delivery Engine
+
+Vidyapath features an integrated, proactive in-app release and update delivery mechanism for both web PWAs and native Android APK installations:
+
+1. **Multi-Source Version Detection (`src/services/updateManager.ts`)**:
+   - **Backend / GitHub Releases API**: Checks `/api/app/check-update` against published GitHub Releases with automated fallback to the GitHub API.
+   - **Service Worker PWA Detection**: Intercepts `updatefound` and `waiting` lifecycle events to detect newly deployed web assets on Netlify/Render.
+   - **Periodic Background Polling**: Checks for new updates automatically every 15 minutes when online.
+2. **Sticky Top Header Update Pill (`AppUpdateHeaderPill.tsx`)**:
+   - Always visible in the top header bar across all roles and screens (desktop and mobile).
+   - In baseline state: displays `v1.0.0` with instant "Check for Updates" trigger.
+   - When a new version is released: transforms into an eye-catching pulsing badge `🚀 Update (vX.X.X Available!)`.
+3. **Global In-App Floating Banner (`AppUpdateBanner.tsx`)**:
+   - Renders a dismissible alert bar at the top of the interface whenever an update is ready.
+   - Provides 1-click update actions: `[Reload Web]` for PWA or `[Update Now]` for Android APK.
+4. **Interactive In-App Update Modal (`AppUpdateModal.tsx`)**:
+   - Displays current version vs. latest version.
+   - Highlights changelog and release notes.
+   - One-tap APK download button or Service Worker `skipWaiting` reload trigger.
+5. **Settings Screen Integration (`S9_SettingsScreen.tsx`)**:
+   - Dedicated "App Version & Updates" card allowing learners and teachers to manually check for updates and review build information.
+
+---
+
+## 9. Free Tier to Enterprise Scale Matrix
 
 Vidyapath operates on a **$0/month free-tier baseline** while providing a seamless upgrade path to enterprise infrastructure:
 
@@ -266,7 +290,7 @@ Vidyapath operates on a **$0/month free-tier baseline** while providing a seamle
 
 ---
 
-## 9. Complete API Reference
+## 10. Complete API Reference
 
 ### Health & Monitoring Probes
 | Method | Endpoint | Description |
@@ -324,15 +348,15 @@ Vidyapath operates on a **$0/month free-tier baseline** while providing a seamle
 
 ---
 
-## 10. Automated Testing & Verification Suite
+## 11. Automated Testing & Verification Suite
 
 Vidyapath maintains a rigorous 4-stage automated testing pipeline with **100% pass coverage** across all critical security, scaling, and operational workflows:
 
 ```bash
-# 1. Type-check & Production Build Verification (<152 KB gzip main bundle)
+# 1. Type-check & Production Build Verification (<155 KB gzip main bundle)
 npm run build
 
-# 2. Unit & Backend Language Enforcement Test Suite (36 tests)
+# 2. Unit & Backend Language Enforcement Test Suite (41 tests)
 npx vitest run tests/unit
 
 # 3. UI Component & Language Switching Test Suite (28 tests)
@@ -343,24 +367,26 @@ npm test
 ```
 
 ### Verified Test Workflows:
-1. **Strict Trilingual Language Enforcement (`strict_language_e2e.test.ts` & `strict_language_ui.test.tsx`)**:
+1. **In-App Auto-Update & Version Delivery (`app_update.test.ts`)**:
+   - Verification of current app version reporting, GitHub releases update parsing, modal toggle state, banner dismiss, and Service Worker PWA update event detection.
+2. **Strict Trilingual Language Enforcement (`strict_language_e2e.test.ts` & `strict_language_ui.test.tsx`)**:
    - Verification of exact translation key parity across Telugu, Hindi, and English with zero empty strings.
    - BCP-47 speech locale binding (`te-IN`, `hi-IN`, `en-IN`) for TTS and STT.
    - Server-side rejection of non-whitelisted language codes with HTTP 400 Bad Request.
    - End-to-end trilingual UI rendering across Sidebar, My Syllabus, AI Tutor, Practice, and Parent View.
-2. **Cryptographic Security**: PBKDF2 password hashing, JWT signing, signature verification, and tamper rejection.
-3. **OTP Security**: Expiration, single-use invalidation, attempt limits, and 60-second resend cooldown.
-4. **Multi-Tier Institution Approval**: Registration $\to$ Super Admin review $\to$ Approval $\to$ Account activation.
-5. **Dynamic Syllabus Matcher**: Automatic resolution of semester courses based on enrollment.
-6. **Syllabus Parsing & Publication**: Structured unit extraction and database ingestion.
-7. **LMS Assignment & Quiz Engine**: Online submission and automatic scoring with explanations.
-8. **AI Pedagogical Guardrails**: Verified refusal of exam cheating, prompt injection, and PII extraction.
-9. **High-Concurrency Scaling**: Idempotency key deduplication (`X-Cache: IDEMPOTENT-HIT`) and sliding-window rate limiting (`X-RateLimit-*`).
-10. **In-Memory Cloudflare R2 Uploads**: Memory buffer streaming without writing to ephemeral disk.
+3. **Cryptographic Security**: PBKDF2 password hashing, JWT signing, signature verification, and tamper rejection.
+4. **OTP Security**: Expiration, single-use invalidation, attempt limits, and 60-second resend cooldown.
+5. **Multi-Tier Institution Approval**: Registration $\to$ Super Admin review $\to$ Approval $\to$ Account activation.
+6. **Dynamic Syllabus Matcher**: Automatic resolution of semester courses based on enrollment.
+7. **Syllabus Parsing & Publication**: Structured unit extraction and database ingestion.
+8. **LMS Assignment & Quiz Engine**: Online submission and automatic scoring with explanations.
+9. **AI Pedagogical Guardrails**: Verified refusal of exam cheating, prompt injection, and PII extraction.
+10. **High-Concurrency Scaling**: Idempotency key deduplication (`X-Cache: IDEMPOTENT-HIT`) and sliding-window rate limiting (`X-RateLimit-*`).
+11. **In-Memory Cloudflare R2 Uploads**: Memory buffer streaming without writing to ephemeral disk.
 
 ---
 
-## 11. Step-by-Step Deployment Guide
+## 12. Step-by-Step Deployment Guide
 
 ### A. Local Development
 ```bash
@@ -418,7 +444,7 @@ The repository includes automated GitHub Actions CI/CD ([`.github/workflows/buil
 
 ---
 
-## 12. Technology Stack Summary
+## 13. Technology Stack Summary
 
 - **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide Icons, Vite, HTML5 Canvas
 - **Backend API**: Node.js, Express, TypeScript, tsx, Multer (Memory Storage)
