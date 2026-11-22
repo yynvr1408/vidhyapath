@@ -36,9 +36,11 @@ async function testApi() {
     const tutorRes = await fetch(`${baseUrl}/api/tutor/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doubt: 'Explain fractions.' }),
+      body: JSON.stringify({ doubt: 'Explain fractions.', message: 'Explain fractions.', language: 'en' }),
     });
     assert.equal(tutorRes.status, 200, '/api/tutor/ask should allow zero-auth student access');
+    const tutorData = await tutorRes.json();
+    assert.ok(tutorData.answer || tutorData.reply, 'Tutor response should contain an answer');
 
     for (const [path, body] of [
       ['/api/sync', { learnerId: 'somebody-else', events: [] }],

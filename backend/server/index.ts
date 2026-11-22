@@ -951,8 +951,8 @@ function buildSyllabusTutorPrompt(opts: {
   return lines.join('\n');
 }
 
-// 2. AI Tutor Endpoint (/api/tutor/ask)
-app.post('/api/tutor/ask', requireAuth, requireRole(['student', 'teacher', 'institution_admin', 'academic_admin', 'super_admin']), async (req: AuthenticatedRequest, res: Response) => {
+// 2. AI Tutor Endpoint (/api/tutor/ask) - Zero-Auth Student Access
+app.post('/api/tutor/ask', async (req: Request, res: Response) => {
   const { packId, learnerId, doubt, topicId, mistakeTag, language, photoBase64, message, chapterId, conceptId, conceptTitle, subject, mode, intent } = req.body || {};
   if (packId && !isSafePackId(packId)) {
     return res.status(400).json({ answer: 'Invalid pack id' });

@@ -408,7 +408,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         )}
 
         {/* Content Pane */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-20 md:pb-6 focus:outline-none w-full">
+        <main ref={mainRef} className="flex-1 overflow-y-auto pb-28 sm:pb-24 md:pb-8 focus:outline-none w-full">
           <div className="max-w-6xl mx-auto p-2.5 sm:p-4 md:p-6">
             {children}
           </div>
