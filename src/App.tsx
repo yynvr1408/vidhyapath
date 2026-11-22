@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { EnterpriseAuthProvider } from './context/EnterpriseAuthContext';
+import { AcademicProvider } from './context/AcademicContext';
 import { AppShell } from './components/AppShell';
 import { ProfileSelectorScreen } from './screens/ProfileSelectorScreen';
 import { MySyllabusScreen } from './screens/MySyllabusScreen';
@@ -7,6 +9,7 @@ import { AiTutorScreen } from './screens/AiTutorScreen';
 import { PracticeWeakTopicsScreen } from './screens/PracticeWeakTopicsScreen';
 import { MyProgressScreen } from './screens/MyProgressScreen';
 import { ParentTeacherViewScreen } from './screens/ParentTeacherViewScreen';
+import { EnterprisePortalScreen } from './screens/EnterprisePortalScreen';
 import { useNativeBackButton } from './hooks/useNativeBackButton';
 import { PhoneExitToast } from './components/PhoneExitToast';
 
@@ -14,15 +17,32 @@ const AppContent: React.FC = () => {
   const { currentScreen, setScreen, activeLearner } = useApp();
   const { exitToast } = useNativeBackButton();
 
-  // Support direct route hashes: #guardian, etc.
+  // Support direct route hashes: #admin, #portal, #dashboard, #guardian, etc.
   useEffect(() => {
     const hash = window.location.hash.toLowerCase();
     const path = window.location.pathname.toLowerCase();
 
-    if (hash.includes('guardian') || path.includes('guardian') || hash.includes('parent')) {
+    if (
+      hash.includes('admin') ||
+      hash.includes('portal') ||
+      hash.includes('dashboard') ||
+      path.includes('dashboard')
+    ) {
+      setScreen('ADMIN');
+    } else if (hash.includes('guardian') || path.includes('guardian') || hash.includes('parent')) {
       setScreen('PARENT_VIEW');
     }
   }, [setScreen]);
+
+  // If on Enterprise Admin / Teacher / Multi-Tier LMS portal
+  if (currentScreen === 'ADMIN' || currentScreen === 'ADMIN_PANEL') {
+    return (
+      <>
+        <EnterprisePortalScreen onReturnToStudentApp={() => setScreen('MY_SYLLABUS')} />
+        <PhoneExitToast message={exitToast} />
+      </>
+    );
+  }
 
   // 1. If no learner profile is unlocked and not on Parent/Teacher view, show Screen 1 (Profile Selector)
   if (!activeLearner && currentScreen !== 'PARENT_VIEW') {
@@ -79,9 +99,13 @@ const AppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <EnterpriseAuthProvider>
+      <AcademicProvider>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </AcademicProvider>
+    </EnterpriseAuthProvider>
   );
 };
 

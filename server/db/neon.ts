@@ -18,6 +18,13 @@ import {
   AiSafetyPolicy,
   AuditLog,
   OtpRecord,
+  Family,
+  FamilyMember,
+  Guardianship,
+  Course,
+  CourseEnrollment,
+  AiConversation,
+  AiMessage,
 } from '../../src/types/enterprise.js';
 import { dataStore } from './store.js';
 
@@ -428,21 +435,29 @@ export async function initNeonDb(): Promise<boolean> {
     try {
       await client.query(ENTERPRISE_SCHEMA_DDL);
       isConnected = true;
-      console.log('[Neon DB] All 20 Enterprise Relational Tables & Indexes verified.');
+      console.log('[Neon DB] All 27 Enterprise Relational Tables & Indexes verified.');
 
       // Register live synchronization listeners with in-memory store
       dataStore.registerSyncListeners({
-        onSaveInstitution: (inst) => { saveInstitutionToNeon(inst).catch(() => {}); },
-        onSaveUser: (user) => { saveUserToNeon(user).catch(() => {}); },
-        onSaveSubject: (subj) => { saveSubjectToNeon(subj).catch(() => {}); },
-        onSaveAssignment: (a) => { saveAssignmentToNeon(a).catch(() => {}); },
-        onSaveSubmission: (sub) => { saveSubmissionToNeon(sub).catch(() => {}); },
-        onSaveQuiz: (q) => { saveQuizToNeon(q).catch(() => {}); },
-        onSaveQuizAttempt: (att) => { saveQuizAttemptToNeon(att).catch(() => {}); },
-        onSaveAnnouncement: (ann) => { saveAnnouncementToNeon(ann).catch(() => {}); },
-        onSaveNotification: (notif) => { saveNotificationToNeon(notif).catch(() => {}); },
-        onSaveOtp: (otp) => { saveOtpToNeon(otp).catch(() => {}); },
-        onLogAudit: (entry) => { logAuditToNeon(entry).catch(() => {}); },
+        onSaveInstitution: (inst) => { saveInstitutionToNeon(inst).catch((e) => console.error('[Neon] sync inst error:', e.message)); },
+        onSaveUser: (user) => { saveUserToNeon(user).catch((e) => console.error('[Neon] sync user error:', e.message)); },
+        onSaveSubject: (subj) => { saveSubjectToNeon(subj).catch((e) => console.error('[Neon] sync subject error:', e.message)); },
+        onSaveAssignment: (a) => { saveAssignmentToNeon(a).catch((e) => console.error('[Neon] sync assignment error:', e.message)); },
+        onSaveSubmission: (sub) => { saveSubmissionToNeon(sub).catch((e) => console.error('[Neon] sync submission error:', e.message)); },
+        onSaveQuiz: (q) => { saveQuizToNeon(q).catch((e) => console.error('[Neon] sync quiz error:', e.message)); },
+        onSaveQuizAttempt: (att) => { saveQuizAttemptToNeon(att).catch((e) => console.error('[Neon] sync quiz attempt error:', e.message)); },
+        onSaveAnnouncement: (ann) => { saveAnnouncementToNeon(ann).catch((e) => console.error('[Neon] sync announcement error:', e.message)); },
+        onSaveNotification: (notif) => { saveNotificationToNeon(notif).catch((e) => console.error('[Neon] sync notification error:', e.message)); },
+        onSaveOtp: (otp) => { saveOtpToNeon(otp).catch((e) => console.error('[Neon] sync otp error:', e.message)); },
+        onSaveLearningResource: (lr) => { saveLearningResourceToNeon(lr).catch((e) => console.error('[Neon] sync resource error:', e.message)); },
+        onSaveFamily: (fam) => { saveFamilyToNeon(fam).catch((e) => console.error('[Neon] sync family error:', e.message)); },
+        onSaveFamilyMember: (mem) => { saveFamilyMemberToNeon(mem).catch((e) => console.error('[Neon] sync member error:', e.message)); },
+        onSaveGuardianship: (g) => { saveGuardianshipToNeon(g).catch((e) => console.error('[Neon] sync guardianship error:', e.message)); },
+        onSaveCourse: (c) => { saveCourseToNeon(c).catch((e) => console.error('[Neon] sync course error:', e.message)); },
+        onSaveCourseEnrollment: (ce) => { saveCourseEnrollmentToNeon(ce).catch((e) => console.error('[Neon] sync enrollment error:', e.message)); },
+        onSaveAiConversation: (ac) => { saveAiConversationToNeon(ac).catch((e) => console.error('[Neon] sync conversation error:', e.message)); },
+        onSaveAiMessage: (am) => { saveAiMessageToNeon(am).catch((e) => console.error('[Neon] sync message error:', e.message)); },
+        onLogAudit: (entry) => { logAuditToNeon(entry).catch((e) => console.error('[Neon] sync audit error:', e.message)); },
       });
 
       // Check if DB is already seeded
@@ -831,6 +846,119 @@ async function hydrateStoreFromNeon(client: any) {
         body: row.body,
         priority: row.priority,
         targetRole: row.target_role,
+        createdAt: Number(row.created_at),
+      });
+    }
+
+    // 7. Learning Resources
+    const lrRes = await client.query('SELECT * FROM learning_resources');
+    for (const row of lrRes.rows) {
+      dataStore.learningResources.set(row.id, {
+        id: row.id,
+        subjectId: row.subject_id,
+        unitId: row.unit_id,
+        topicId: row.topic_id,
+        teacherId: row.teacher_id,
+        teacherName: row.teacher_name,
+        resourceType: row.resource_type,
+        title: row.title,
+        description: row.description,
+        fileUrl: row.file_url,
+        contentText: row.content_text,
+        videoUrl: row.video_url,
+        meetingUrl: row.meeting_url,
+        scheduledAt: row.scheduled_at ? Number(row.scheduled_at) : undefined,
+        durationMins: row.duration_mins,
+        createdAt: Number(row.created_at),
+      });
+    }
+
+    // 8. Families
+    const famRes = await client.query('SELECT * FROM families');
+    for (const row of famRes.rows) {
+      dataStore.families.set(row.id, {
+        id: row.id,
+        name: row.name,
+        primaryGuardianId: row.primary_guardian_id,
+        createdAt: Number(row.created_at),
+        updatedAt: Number(row.updated_at),
+      });
+    }
+
+    // 9. Family Members
+    const fmemRes = await client.query('SELECT * FROM family_members');
+    for (const row of fmemRes.rows) {
+      dataStore.familyMembers.set(row.id, {
+        id: row.id,
+        familyId: row.family_id,
+        userId: row.user_id,
+        role: row.role,
+        createdAt: Number(row.created_at),
+      });
+    }
+
+    // 10. Guardianships
+    const guardRes = await client.query('SELECT * FROM guardianships');
+    for (const row of guardRes.rows) {
+      dataStore.guardianships.set(row.id, {
+        id: row.id,
+        guardianId: row.guardian_id,
+        studentId: row.student_id,
+        relationship: row.relationship,
+        createdAt: Number(row.created_at),
+      });
+    }
+
+    // 11. Courses
+    const courseRes = await client.query('SELECT * FROM courses');
+    for (const row of courseRes.rows) {
+      dataStore.courses.set(row.id, {
+        id: row.id,
+        code: row.code,
+        title: row.title,
+        institutionId: row.institution_id,
+        description: row.description,
+        syllabus: typeof row.syllabus === 'string' ? JSON.parse(row.syllabus) : row.syllabus || [],
+        createdAt: Number(row.created_at),
+        updatedAt: Number(row.updated_at),
+      });
+    }
+
+    // 12. Course Enrollments
+    const ceRes = await client.query('SELECT * FROM course_enrollments');
+    for (const row of ceRes.rows) {
+      dataStore.courseEnrollments.set(row.id, {
+        id: row.id,
+        courseId: row.course_id,
+        studentId: row.student_id,
+        status: row.status,
+        enrolledAt: Number(row.enrolled_at),
+      });
+    }
+
+    // 13. AI Conversations
+    const convRes = await client.query('SELECT * FROM ai_conversations');
+    for (const row of convRes.rows) {
+      dataStore.aiConversations.set(row.id, {
+        id: row.id,
+        studentId: row.student_id,
+        topicId: row.topic_id,
+        language: row.language,
+        createdAt: Number(row.created_at),
+        updatedAt: Number(row.updated_at),
+      });
+    }
+
+    // 14. AI Messages
+    const msgRes = await client.query('SELECT * FROM ai_messages');
+    for (const row of msgRes.rows) {
+      dataStore.aiMessages.set(row.id, {
+        id: row.id,
+        conversationId: row.conversation_id,
+        sender: row.sender,
+        text: row.text,
+        audioUrl: row.audio_url,
+        photoUrl: row.photo_url,
         createdAt: Number(row.created_at),
       });
     }
@@ -1291,6 +1419,178 @@ export async function insertOrUpdateDoubt(doubt: {
     return true;
   } catch (err) {
     console.error('[Neon DB] Error inserting doubt:', err);
+    return false;
+  }
+}
+
+export async function saveLearningResourceToNeon(lr: LearningResource): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO learning_resources (id, subject_id, unit_id, topic_id, teacher_id, teacher_name, resource_type, title, description, file_url, content_text, video_url, meeting_url, scheduled_at, duration_mins, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+       ON CONFLICT (id) DO UPDATE SET
+         title = EXCLUDED.title,
+         description = EXCLUDED.description,
+         file_url = EXCLUDED.file_url,
+         content_text = EXCLUDED.content_text`,
+      [
+        lr.id,
+        lr.subjectId,
+        lr.unitId || null,
+        lr.topicId || null,
+        lr.teacherId || null,
+        lr.teacherName || null,
+        lr.resourceType,
+        lr.title,
+        lr.description || null,
+        lr.fileUrl || null,
+        lr.contentText || null,
+        lr.videoUrl || null,
+        lr.meetingUrl || null,
+        lr.scheduledAt || null,
+        lr.durationMins || null,
+        lr.createdAt,
+      ]
+    );
+    return true;
+  } catch (err: any) {
+    console.error('[Neon DB] Error saving resource:', err.message);
+    return false;
+  }
+}
+
+export async function saveFamilyToNeon(fam: Family): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO families (id, name, primary_guardian_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         updated_at = EXCLUDED.updated_at`,
+      [fam.id, fam.name, fam.primaryGuardianId, fam.createdAt, fam.updatedAt]
+    );
+    return true;
+  } catch (err: any) {
+    console.error('[Neon DB] Error saving family:', err.message);
+    return false;
+  }
+}
+
+export async function saveFamilyMemberToNeon(mem: FamilyMember): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO family_members (id, family_id, user_id, role, created_at)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO NOTHING`,
+      [mem.id, mem.familyId, mem.userId, mem.role, mem.createdAt]
+    );
+    return true;
+  } catch (err: any) {
+    console.error('[Neon DB] Error saving family member:', err.message);
+    return false;
+  }
+}
+
+export async function saveGuardianshipToNeon(g: Guardianship): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO guardianships (id, guardian_id, student_id, relationship, created_at)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO NOTHING`,
+      [g.id, g.guardianId, g.studentId, g.relationship, g.createdAt]
+    );
+    return true;
+  } catch (err: any) {
+    console.error('[Neon DB] Error saving guardianship:', err.message);
+    return false;
+  }
+}
+
+export async function saveCourseToNeon(c: Course): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO courses (id, code, title, institution_id, description, syllabus, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (id) DO UPDATE SET
+         title = EXCLUDED.title,
+         description = EXCLUDED.description,
+         syllabus = EXCLUDED.syllabus,
+         updated_at = EXCLUDED.updated_at`,
+      [
+        c.id,
+        c.code,
+        c.title,
+        c.institutionId,
+        c.description || null,
+        JSON.stringify(c.syllabus || []),
+        c.createdAt,
+        c.updatedAt,
+      ]
+    );
+    return true;
+  } catch (err: any) {
+    console.error('[Neon DB] Error saving course:', err.message);
+    return false;
+  }
+}
+
+export async function saveCourseEnrollmentToNeon(ce: CourseEnrollment): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO course_enrollments (id, course_id, student_id, status, enrolled_at)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status`,
+      [ce.id, ce.courseId, ce.studentId, ce.status, ce.enrolledAt]
+    );
+    return true;
+  } catch (err: any) {
+    console.error('[Neon DB] Error saving course enrollment:', err.message);
+    return false;
+  }
+}
+
+export async function saveAiConversationToNeon(ac: AiConversation): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO ai_conversations (id, student_id, topic_id, language, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (id) DO UPDATE SET updated_at = EXCLUDED.updated_at`,
+      [ac.id, ac.studentId, ac.topicId || null, ac.language, ac.createdAt, ac.updatedAt]
+    );
+    return true;
+  } catch (err: any) {
+    console.error('[Neon DB] Error saving conversation:', err.message);
+    return false;
+  }
+}
+
+export async function saveAiMessageToNeon(am: AiMessage): Promise<boolean> {
+  const pool = getPool();
+  if (!pool || !isConnected) return false;
+  try {
+    await pool.query(
+      `INSERT INTO ai_messages (id, conversation_id, sender, text, audio_url, photo_url, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (id) DO NOTHING`,
+      [am.id, am.conversationId, am.sender, am.text, am.audioUrl || null, am.photoUrl || null, am.createdAt]
+    );
+    return true;
+  } catch (err: any) {
+    console.error('[Neon DB] Error saving message:', err.message);
     return false;
   }
 }

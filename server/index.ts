@@ -26,6 +26,7 @@ if (fs.existsSync(envPath)) {
 
 import multer from 'multer';
 import { initNeonDb, insertSyncEvent, insertOrUpdateDoubt, isNeonConnected } from './db/neon.js';
+import { dataStore } from './db/store.js';
 import { isGroqConfigured, askGroqTutor, transcribeGroqWhisper, generateGroqStudySummary } from './services/groq.js';
 import { synthesizeElevenLabsVoice, isElevenLabsConfigured } from './services/elevenlabs.js';
 import { uploadToR2, uploadToStorage, isR2Configured } from './services/r2Storage.js';
@@ -53,9 +54,12 @@ app.use(
         origin.endsWith('.netlify.app') ||
         origin.includes('onrender.com') ||
         origin.includes('vidyapath') ||
-        process.env.ALLOWED_ORIGINS?.split(',').includes(origin)
+        process.env.ALLOWED_ORIGINS?.split(',').map((s) => s.trim()).includes(origin)
       ) {
         return callback(null, true);
+      }
+      if (process.env.NODE_ENV === 'production') {
+        return callback(new Error(`Origin ${origin} not permitted by CORS policy`));
       }
       return callback(null, true);
     },
@@ -183,27 +187,92 @@ function getPack(packId: string) {
 
 // 1. Batch Sync Endpoint (/api/sync)
 app.post('/api/sync', (req: Request, res: Response) => {
-  const { learnerId, events = [], doubts = [], clientPackVersion } = req.body;
+  const { learnerId, events = [], doubts = [], clientPackVersion, language } = req.body;
 
-  // Append new events idempotently (client UUID check)
+  // Append new events idempotently (client UUID check) & persist to PostgreSQL
   let newEventsCount = 0;
   for (const ev of events) {
     if (!attemptsLog.some((a) => a.eventId === ev.eventId)) {
       attemptsLog.push(ev);
       newEventsCount++;
+
+      // Asynchronously persist to Neon PostgreSQL sync_events table
+      insertSyncEvent({
+        eventId: ev.eventId,
+        learnerId: ev.learnerId || learnerId,
+        questionId: ev.questionId,
+        skillId: ev.skillId,
+        chosenAnswer: ev.chosenAnswer,
+        correct: Boolean(ev.correct),
+        hintsUsed: ev.hintsUsed || 0,
+        timeMs: ev.timeMs || 0,
+        inputMode: ev.inputMode || 'tap',
+        receiptHash: ev.receiptHash || null,
+        ts: ev.timestamp || Date.now(),
+      }).catch((err) => console.warn('[Sync] Sync event persistence warning:', err.message));
     }
   }
 
-  // Answer any queued doubts
+  // Bridge student learning progress to Enterprise Student Profile
+  if (learnerId) {
+    let matchedUser = dataStore.users.get(learnerId);
+    if (!matchedUser) {
+      for (const u of dataStore.users.values()) {
+        if (
+          u.role === 'student' &&
+          (u.studentProfile?.rollNumber?.toUpperCase() === String(learnerId).toUpperCase() ||
+            u.id === learnerId)
+        ) {
+          matchedUser = u;
+          break;
+        }
+      }
+    }
+
+    if (matchedUser && matchedUser.studentProfile) {
+      const topicIdsFromEvents = events
+        .map((e: any) => e.topicId || (e.skillId ? e.skillId.split('_').slice(0, 2).join('_') : null))
+        .filter(Boolean);
+      const currentCompleted = new Set(matchedUser.studentProfile.completedTopicIds || []);
+      for (const tid of topicIdsFromEvents) {
+        currentCompleted.add(tid);
+      }
+      matchedUser.studentProfile.completedTopicIds = Array.from(currentCompleted);
+      matchedUser.studentProfile.attendancePercent = Math.min(
+        100,
+        Math.max(85, (matchedUser.studentProfile.attendancePercent || 90) + 1)
+      );
+      dataStore.users.set(matchedUser.id, matchedUser);
+    }
+  }
+
+  // Answer any queued doubts with trilingual language pack support (Telugu, Hindi, English)
   const answeredDoubts: any[] = [];
-  const pack = getPack('te-10-maths-ap');
+  const clientLang = String(language || '').trim().toLowerCase();
+  const packId = clientLang.startsWith('hi')
+    ? 'hi-10-maths-cbse'
+    : clientLang.startsWith('en')
+    ? 'en-10-maths-cbse'
+    : 'te-10-maths-ap';
+
+  const pack = getPack(packId) || getPack('te-10-maths-ap');
+
+  const defaultReplies: Record<string, string> = {
+    te: 'గణిత సూత్రాన్ని ఉపయోగించి దశలవారీగా సాధించండి. మీ సందేహం పరిష్కరించబడింది!',
+    hi: 'गणित के सूत्र का उपयोग करके चरणबद्ध तरीके से हल करें। आपका संदेह हल हो गया है!',
+    en: 'Solve step-by-step using mathematical formulas. Your doubt has been addressed!',
+  };
+
+  const defaultReply = defaultReplies[clientLang] || defaultReplies['te'];
 
   for (const d of doubts) {
-    let answerText = 'గణిత సూత్రాన్ని ఉపయోగించి దశలవారీగా సాధించండి. మీ సందేహం పరిష్కరించబడింది!';
-    if (pack) {
+    let answerText = defaultReply;
+    if (pack && pack.commonDoubts) {
       const qLower = (d.question || '').toLowerCase();
-      const matched = pack.commonDoubts.find((cd: any) =>
-        qLower.includes(cd.q.toLowerCase()) || (cd.keywords && cd.keywords.some((k: string) => qLower.includes(k.toLowerCase())))
+      const matched = pack.commonDoubts.find(
+        (cd: any) =>
+          qLower.includes(cd.q.toLowerCase()) ||
+          (cd.keywords && cd.keywords.some((k: string) => qLower.includes(k.toLowerCase())))
       );
       if (matched) {
         answerText = matched.a;
@@ -217,6 +286,20 @@ app.post('/api/sync', (req: Request, res: Response) => {
     };
     serverDoubts.push(answered);
     answeredDoubts.push(answered);
+
+    // Asynchronously persist to Neon PostgreSQL doubts_queue table
+    insertOrUpdateDoubt({
+      id: d.id || 'doubt_' + Date.now().toString(36),
+      learnerId: d.learnerId || learnerId,
+      topicId: d.topicId,
+      question: d.question,
+      answer: answerText,
+      audioUrl: d.audioUrl,
+      photoUrl: d.photoUrl,
+      inputMode: d.inputMode || 'text',
+      status: 'answered',
+      ts: d.timestamp || Date.now(),
+    }).catch((err) => console.warn('[Sync] Doubt queue persistence warning:', err.message));
   }
 
   const latestPackVersion = pack ? pack.version : '1.0.0';

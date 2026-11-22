@@ -40,6 +40,14 @@ export type StoreSyncListeners = {
   onSaveAnnouncement?: (ann: Announcement) => void;
   onSaveNotification?: (notif: NotificationItem) => void;
   onSaveOtp?: (otp: OtpRecord) => void;
+  onSaveLearningResource?: (lr: LearningResource) => void;
+  onSaveFamily?: (fam: Family) => void;
+  onSaveFamilyMember?: (mem: FamilyMember) => void;
+  onSaveGuardianship?: (g: Guardianship) => void;
+  onSaveCourse?: (c: Course) => void;
+  onSaveCourseEnrollment?: (ce: CourseEnrollment) => void;
+  onSaveAiConversation?: (ac: AiConversation) => void;
+  onSaveAiMessage?: (am: AiMessage) => void;
   onLogAudit?: (entry: AuditLog) => void;
 };
 
@@ -69,7 +77,7 @@ class InMemoryDataStore {
   programmes: Map<string, Programme> = new Map();
   academicYears: Map<string, AcademicYear> = new Map();
   subjects: Map<string, Subject> = new ObservableMap<string, Subject>((v) => this.syncListeners.onSaveSubject?.(v));
-  learningResources: Map<string, LearningResource> = new Map();
+  learningResources: Map<string, LearningResource> = new ObservableMap<string, LearningResource>((v) => this.syncListeners.onSaveLearningResource?.(v));
   assignments: Map<string, Assignment> = new ObservableMap<string, Assignment>((v) => this.syncListeners.onSaveAssignment?.(v));
   submissions: Map<string, AssignmentSubmission> = new ObservableMap<string, AssignmentSubmission>((v) => this.syncListeners.onSaveSubmission?.(v));
   quizzes: Map<string, Quiz> = new ObservableMap<string, Quiz>((v) => this.syncListeners.onSaveQuiz?.(v));
@@ -77,13 +85,13 @@ class InMemoryDataStore {
   announcements: Map<string, Announcement> = new ObservableMap<string, Announcement>((v) => this.syncListeners.onSaveAnnouncement?.(v));
   notifications: Map<string, NotificationItem> = new ObservableMap<string, NotificationItem>((v) => this.syncListeners.onSaveNotification?.(v));
   otps: Map<string, OtpRecord> = new ObservableMap<string, OtpRecord>((v) => this.syncListeners.onSaveOtp?.(v));
-  families: Map<string, Family> = new Map();
-  familyMembers: Map<string, FamilyMember> = new Map();
-  guardianships: Map<string, Guardianship> = new Map();
-  courses: Map<string, Course> = new Map();
-  courseEnrollments: Map<string, CourseEnrollment> = new Map();
-  aiConversations: Map<string, AiConversation> = new Map();
-  aiMessages: Map<string, AiMessage> = new Map();
+  families: Map<string, Family> = new ObservableMap<string, Family>((v) => this.syncListeners.onSaveFamily?.(v));
+  familyMembers: Map<string, FamilyMember> = new ObservableMap<string, FamilyMember>((v) => this.syncListeners.onSaveFamilyMember?.(v));
+  guardianships: Map<string, Guardianship> = new ObservableMap<string, Guardianship>((v) => this.syncListeners.onSaveGuardianship?.(v));
+  courses: Map<string, Course> = new ObservableMap<string, Course>((v) => this.syncListeners.onSaveCourse?.(v));
+  courseEnrollments: Map<string, CourseEnrollment> = new ObservableMap<string, CourseEnrollment>((v) => this.syncListeners.onSaveCourseEnrollment?.(v));
+  aiConversations: Map<string, AiConversation> = new ObservableMap<string, AiConversation>((v) => this.syncListeners.onSaveAiConversation?.(v));
+  aiMessages: Map<string, AiMessage> = new ObservableMap<string, AiMessage>((v) => this.syncListeners.onSaveAiMessage?.(v));
   auditLogs: AuditLog[] = [];
   aiPolicies: Map<string, AiSafetyPolicy> = new Map();
 
@@ -95,16 +103,18 @@ class InMemoryDataStore {
     this.syncListeners = { ...this.syncListeners, ...listeners };
   }
 
-  // Password hashing helper
+  // Password hashing helper (10,000 PBKDF2 iterations)
   hashPassword(password: string, salt?: string): { hash: string; salt: string } {
     const s = salt || crypto.randomBytes(16).toString('hex');
-    const hash = crypto.pbkdf2Sync(password, s, 1000, 64, 'sha512').toString('hex');
+    const hash = crypto.pbkdf2Sync(password, s, 10000, 64, 'sha512').toString('hex');
     return { hash, salt: s };
   }
 
   verifyPassword(password: string, hash: string, salt: string): boolean {
-    const computed = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
-    return computed === hash;
+    const computed10k = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+    if (computed10k === hash) return true;
+    const computed1k = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+    return computed1k === hash;
   }
 
   private seedDefaultData() {

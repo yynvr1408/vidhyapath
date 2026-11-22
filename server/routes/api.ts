@@ -1,7 +1,7 @@
 // Comprehensive Enterprise Educational Platform API Router
 import { Router, Request, Response } from 'express';
 import { dataStore } from '../db/store.js';
-import { AuthService, requireAuth, requireRole, AuthenticatedRequest } from '../services/auth.js';
+import { AuthService, requireAuth, requireRole, AuthenticatedRequest, TokenPayload } from '../services/auth.js';
 import { EmailService } from '../services/email.js';
 import { AiGuardrailService } from '../services/aiGuardrails.js';
 import { SyllabusProcessorService } from '../services/syllabusProcessor.js';
@@ -366,8 +366,8 @@ router.post('/auth/register/institution', async (req: Request, res: Response) =>
   });
 });
 
-// POST /api/auth/register/student
-router.post('/api/auth/register/student', async (req: Request, res: Response) => {
+// POST /api/auth/register/student (supports both /auth/register/student and /api/auth/register/student)
+router.post(['/auth/register/student', '/api/auth/register/student'], async (req: Request, res: Response) => {
   const {
     fullName,
     email,
@@ -744,13 +744,23 @@ router.post('/lms/subjects/:subjectId/resources', requireAuth, requireRole(['tea
 
 // POST /api/lms/assignments/:id/submit
 router.post('/lms/assignments/:id/submit', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const { contentText, fileUrl } = req.body;
-  const user = dataStore.users.get(req.user!.userId);
+  const assignmentId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const assignment = dataStore.assignments.get(assignmentId);
+  if (!assignment) {
+    return res.status(404).json({ error: 'Assignment not found.' });
+  }
 
-  const subId = 'sub_' + req.params.id + '_' + req.user!.userId;
+  const user = dataStore.users.get(req.user!.userId);
+  const subject = dataStore.subjects.get(assignment.subjectId);
+  if (user?.institutionId && subject?.institutionId && user.institutionId !== subject.institutionId) {
+    return res.status(403).json({ error: 'You are not enrolled in the institution offering this assignment.' });
+  }
+
+  const { contentText, fileUrl } = req.body;
+  const subId = 'sub_' + assignmentId + '_' + req.user!.userId;
   const submission = {
     id: subId,
-    assignmentId: req.params.id,
+    assignmentId,
     studentId: req.user!.userId,
     studentName: user?.fullName || 'Student',
     contentText: contentText || '',
@@ -931,19 +941,38 @@ router.get('/announcements', (req: Request, res: Response) => {
   return res.json(annList);
 });
 
+// Helper for optional or required caller authentication and ownership verification
+function optionalOrRequiredAuth(req: Request): TokenPayload | null {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authHeader.slice(7).trim();
+  const payload = AuthService.verifyToken(token);
+  if (payload) {
+    (req as AuthenticatedRequest).user = payload;
+  }
+  return payload;
+}
+
 // ============================================================================
 // 8. FAMILY MANAGEMENT & MULTI-STUDENT SIBLING PROFILES
 // ============================================================================
 
 // POST /api/family/create
 router.post('/family/create', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (user && user.role === 'student') {
+    return res.status(403).json({ error: 'Students cannot create family accounts.' });
+  }
+
   const { name, guardianId } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ error: 'Family name is required.' });
   }
 
   const famId = 'fam_' + Date.now().toString(36);
-  const primaryGuardianId = guardianId || 'guardian_' + Date.now().toString(36);
+  const primaryGuardianId = user?.userId || guardianId || 'guardian_' + Date.now().toString(36);
 
   const family: Family = {
     id: famId,
@@ -981,6 +1010,7 @@ router.post('/family/create', (req: Request, res: Response) => {
 // POST /api/family/add-student
 // Zero-PII student profile creation within family
 router.post('/family/add-student', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
   const {
     familyId,
     fullName,
@@ -1000,6 +1030,23 @@ router.post('/family/add-student', (req: Request, res: Response) => {
   const family = dataStore.families.get(familyId);
   if (!family) {
     return res.status(404).json({ error: 'Family not found.' });
+  }
+
+  // Authorization check
+  if (user) {
+    if (user.role === 'student') {
+      return res.status(403).json({ error: 'Students cannot add student profiles to a family.' });
+    }
+    if (user.role === 'guardian') {
+      const isFamilyGuardian =
+        family.primaryGuardianId === user.userId ||
+        Array.from(dataStore.familyMembers.values()).some(
+          (m) => m.familyId === familyId && m.userId === user.userId && m.role === 'guardian'
+        );
+      if (!isFamilyGuardian) {
+        return res.status(403).json({ error: 'Access denied. You are not a guardian of this family.' });
+      }
+    }
   }
 
   const cleanName = String(fullName).trim();
@@ -1082,6 +1129,7 @@ router.post('/family/add-student', (req: Request, res: Response) => {
 
 // POST /api/family/link-student
 router.post('/family/link-student', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
   const { familyId, studentCode } = req.body;
   if (!familyId || !studentCode) {
     return res.status(400).json({ error: 'Family ID and Student Code are required.' });
@@ -1090,6 +1138,23 @@ router.post('/family/link-student', (req: Request, res: Response) => {
   const family = dataStore.families.get(familyId);
   if (!family) {
     return res.status(404).json({ error: 'Family not found.' });
+  }
+
+  // Authorization check
+  if (user) {
+    if (user.role === 'student') {
+      return res.status(403).json({ error: 'Students cannot link sibling accounts.' });
+    }
+    if (user.role === 'guardian') {
+      const isFamilyGuardian =
+        family.primaryGuardianId === user.userId ||
+        Array.from(dataStore.familyMembers.values()).some(
+          (m) => m.familyId === familyId && m.userId === user.userId && m.role === 'guardian'
+        );
+      if (!isFamilyGuardian) {
+        return res.status(403).json({ error: 'Access denied. You are not a guardian of this family.' });
+      }
+    }
   }
 
   // Find student by loginCode / rollNumber
@@ -1147,10 +1212,32 @@ router.post('/family/link-student', (req: Request, res: Response) => {
 
 // GET /api/family/:familyId/children
 router.get('/family/:familyId/children', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
   const familyId = Array.isArray(req.params.familyId) ? req.params.familyId[0] : req.params.familyId;
   const family = dataStore.families.get(familyId);
   if (!family) {
     return res.status(404).json({ error: 'Family not found.' });
+  }
+
+  // Enforce that guardians can only view their own family's children
+  if (user) {
+    if (user.role === 'guardian') {
+      const isFamilyGuardian =
+        family.primaryGuardianId === user.userId ||
+        Array.from(dataStore.familyMembers.values()).some(
+          (m) => m.familyId === familyId && m.userId === user.userId && m.role === 'guardian'
+        );
+      if (!isFamilyGuardian) {
+        return res.status(403).json({ error: 'Access denied. Guardians can only view their own family children.' });
+      }
+    } else if (user.role === 'student') {
+      const isMember = Array.from(dataStore.familyMembers.values()).some(
+        (m) => m.familyId === familyId && m.userId === user.userId
+      );
+      if (!isMember) {
+        return res.status(403).json({ error: 'Access denied. You can only view your own family profile.' });
+      }
+    }
   }
 
   // Get student members
@@ -1179,21 +1266,45 @@ router.get('/family/:familyId/children', (req: Request, res: Response) => {
 
 // GET /api/family/children/:id
 router.get('/family/children/:id', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
   const studentId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const user = dataStore.users.get(studentId);
-  if (!user || user.role !== 'student') {
+  const targetUser = dataStore.users.get(studentId);
+  if (!targetUser || targetUser.role !== 'student') {
     return res.status(404).json({ error: 'Student profile not found.' });
+  }
+
+  if (user) {
+    if (user.role === 'student' && user.userId !== studentId) {
+      return res.status(403).json({ error: 'Access denied. Students can only view their own progress.' });
+    }
+    if (user.role === 'guardian') {
+      const hasGuardianship =
+        Array.from(dataStore.guardianships.values()).some(
+          (g) => g.guardianId === user.userId && g.studentId === studentId
+        ) ||
+        Array.from(dataStore.familyMembers.values()).some(
+          (m) =>
+            m.userId === user.userId &&
+            m.role === 'guardian' &&
+            Array.from(dataStore.familyMembers.values()).some(
+              (sm) => sm.familyId === m.familyId && sm.userId === studentId && sm.role === 'student'
+            )
+        );
+      if (!hasGuardianship) {
+        return res.status(403).json({ error: 'Access denied. You are not a guardian of this student.' });
+      }
+    }
   }
 
   return res.json({
     success: true,
     child: {
-      id: user.id,
-      fullName: user.fullName,
-      loginCode: user.studentProfile?.rollNumber || user.id,
-      completedTopicIds: user.studentProfile?.completedTopicIds || [],
-      attendancePercent: user.studentProfile?.attendancePercent || 100,
-      createdAt: user.createdAt,
+      id: targetUser.id,
+      fullName: targetUser.fullName,
+      loginCode: targetUser.studentProfile?.rollNumber || targetUser.id,
+      completedTopicIds: targetUser.studentProfile?.completedTopicIds || [],
+      attendancePercent: targetUser.studentProfile?.attendancePercent || 100,
+      createdAt: targetUser.createdAt,
     },
   });
 });
@@ -1204,6 +1315,17 @@ router.get('/family/children/:id', (req: Request, res: Response) => {
 
 // POST /api/courses
 router.post('/courses', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
+  if (user) {
+    if (!['super_admin', 'institution_admin', 'teacher'].includes(user.role)) {
+      return res.status(403).json({
+        error: `Access denied. Role "${user.role}" does not have permission to create courses.`,
+      });
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ error: 'Authentication required to create courses.' });
+  }
+
   const { code, title, institutionId, description, syllabus } = req.body;
   if (!code || !title) {
     return res.status(400).json({ error: 'Course code and title are required.' });
@@ -1254,10 +1376,17 @@ router.get('/courses/:id', (req: Request, res: Response) => {
 
 // POST /api/courses/:id/enroll
 router.post('/courses/:id/enroll', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
   const courseId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const { studentId } = req.body;
   if (!studentId) {
     return res.status(400).json({ error: 'Student ID is required.' });
+  }
+
+  if (user) {
+    if (user.role === 'student' && user.userId !== studentId) {
+      return res.status(403).json({ error: 'Students can only enroll themselves.' });
+    }
   }
 
   const course = dataStore.courses.get(courseId);
@@ -1289,9 +1418,14 @@ router.post('/courses/:id/enroll', (req: Request, res: Response) => {
 
 // POST /api/tutor/conversations
 router.post('/tutor/conversations', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
   const { studentId, topicId, language, message } = req.body;
   if (!studentId || !message || !message.text) {
     return res.status(400).json({ error: 'Student ID and message text are required.' });
+  }
+
+  if (user && user.role === 'student' && user.userId !== studentId) {
+    return res.status(403).json({ error: 'Access denied. Students can only update their own tutor conversations.' });
   }
 
   // Find or create conversation
@@ -1341,7 +1475,31 @@ router.post('/tutor/conversations', (req: Request, res: Response) => {
 
 // GET /api/tutor/conversations/:studentId
 router.get('/tutor/conversations/:studentId', (req: Request, res: Response) => {
+  const user = optionalOrRequiredAuth(req);
   const studentId = Array.isArray(req.params.studentId) ? req.params.studentId[0] : req.params.studentId;
+
+  if (user) {
+    if (user.role === 'student' && user.userId !== studentId) {
+      return res.status(403).json({ error: 'Access denied. Students can only view their own tutor conversations.' });
+    }
+    if (user.role === 'guardian') {
+      const hasGuardianship =
+        Array.from(dataStore.guardianships.values()).some(
+          (g) => g.guardianId === user.userId && g.studentId === studentId
+        ) ||
+        Array.from(dataStore.familyMembers.values()).some(
+          (m) =>
+            m.userId === user.userId &&
+            m.role === 'guardian' &&
+            Array.from(dataStore.familyMembers.values()).some(
+              (sm) => sm.familyId === m.familyId && sm.userId === studentId
+            )
+        );
+      if (!hasGuardianship) {
+        return res.status(403).json({ error: 'Access denied. You are not a guardian of this student.' });
+      }
+    }
+  }
 
   const convList = Array.from(dataStore.aiConversations.values())
     .filter((c) => c.studentId === studentId)

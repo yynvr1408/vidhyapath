@@ -53,47 +53,50 @@ The database is structured into 12 distinct functional domains:
 
 ---
 
-## 2. Table Specifications
+## 2. Table Specifications (27 Production Relational Tables)
 
-### 2.1 AUTHENTICATION
-- `users`: Primary identity table (id, full_name, email, phone, role, status, password_hash, salt, created_at, last_login_at).
-- `sessions`: Active JWT sessions with token hashes, expiration, and user agent.
-- `otp_verifications`: Cryptographically generated 6-digit OTPs hashed with expiration (5 mins) and attempt counters.
-- `password_reset_requests`: Password reset tokens with single-use flags.
+The authoritative Neon PostgreSQL schema defines **27 production relational tables** fully integrated with memory-to-disk listeners and startup hydration (`hydrateStoreFromNeon`):
 
-### 2.2 FAMILY & GUARDIAN
-- `families`: Represents family unit (id, name, owner_guardian_id, created_at).
-- `family_members`: Links user to family (family_id, user_id, relationship_type, is_primary).
-- `guardianships`: Verified parent-to-student relationship with permissions (view_progress, receive_alerts, consent_given).
-- `guardian_consents`: Timestamped COPPA/FERPA consent logs.
+### 2.1 AUTHENTICATION & ACCESS CONTROL
+1. `users`: Multi-tier enterprise accounts, password hashes (PBKDF2 10,000 iterations), salt, profile metadata, roles, and status.
+2. `otp_verifications`: Cryptographically secure 6-digit verification codes with rate limits and SHA-256 hashes.
+3. `audit_logs`: Immutable security, academic, and administrative event log with actor ID, action, category, and JSON payload.
 
-### 2.3 INSTITUTIONS & ACADEMICS
-- `institutions`: Multi-tenant organization profile (id, name, code, type, contact_email, status, ai_policy).
-- `academic_years`: Institutional calendar periods (year_label, start_date, end_date, is_current).
-- `departments`: Academic faculties (name, code, institution_id).
-- `programmes`: Degree and grade tracks (e.g. Class 10 AP Board, B.Tech CSE).
-- `semesters`: Specific term divisions.
-- `classes` & `sections`: Classroom cohorts.
+### 2.2 FAMILY & GUARDIANSHIP (Zero-PII Student Architecture)
+4. `families`: Primary family accounts linked to primary guardians.
+5. `family_members`: Links users (guardians and siblings) to families with role segregation.
+6. `guardianships`: Verified parent-to-student relationship ensuring sibling data isolation.
 
-### 2.4 COURSES & CURRICULUM
-- `courses`: Global or institutional courses (id, title, code, category, is_published, version).
-- `course_enrollments`: Student subscription to courses.
-- `subjects`: Course subjects (credits, syllabus_version, assigned_teachers).
-- `curriculum_units`: Structured units within a subject.
-- `curriculum_topics`: Specific conceptual topics linked to mastery tracking.
-- `lessons`: Multilingual worked examples, concept explanations, and takeaway summaries.
+### 2.3 INSTITUTION & ACADEMIC HIERARCHY
+7. `institutions`: Multi-tenant organization profile (code, name, verification status, contact email, custom domains).
+8. `academic_years`: Institutional calendar periods and term flags.
+9. `departments`: Academic faculties under direct institutional oversight.
+10. `programmes`: Degree and grade tracks (e.g. Class 10 AP Board, B.Tech CSE).
 
-### 2.5 LMS & STUDENT TELEMETRY
-- `learning_resources`: Handouts, PDFs, and links stored via Cloudflare R2.
-- `assignments`: Graded student homework and project specifications.
-- `assignment_submissions`: Student submission records with feedback.
-- `quizzes`: Formative and summative assessments.
-- `quiz_attempts`: Auto-graded student submissions with distractor diagnostic analysis.
+### 2.4 COURSES & CURRICULUM MANAGEMENT
+11. `courses`: Centralized curriculum catalog with direct L2 Institution Administrator control.
+12. `course_enrollments`: Student course subscriptions and progress tracking.
+13. `subjects`: Curricular subjects with credit allocations and syllabi versions.
+14. `curriculum_units`: Modular learning units within academic subjects.
 
-### 2.6 SOCRATIC AI TUTOR
-- `ai_conversations`: Student-specific dialogue threads.
-- `ai_messages`: User questions, Socratic hints, RAG context snippets, and voice transcripts.
-- `ai_usage_records`: Token consumption tracking for Groq Cloud.
+### 2.5 LMS LEARNING RESOURCES & ASSESSMENTS
+15. `learning_resources`: Handouts, guides, PDFs, and multimedia backed by Cloudflare R2 object storage.
+16. `assignments`: Graded coursework with institution validation and due dates.
+17. `assignment_submissions`: Student submission records with R2 asset attachments and grading feedback.
+18. `quizzes`: Formative and summative diagnostic assessments.
+19. `quiz_attempts`: Auto-graded attempts with distractor analysis and mastery updates.
+
+### 2.6 COMMUNICATION & INSTITUTIONAL POLICY
+20. `announcements`: Broadcast announcements across departments, grades, or campus-wide.
+21. `notifications`: Multi-channel in-app alerts and notifications.
+22. `ai_policies`: Institutional AI guardrails, strict language policies, and subject restrictions.
+
+### 2.7 AI TUTOR & TELEMETRY
+23. `ai_conversations`: Multi-turn Socratic dialogue threads per student and topic.
+24. `ai_messages`: Dialogue turns, hints, RAG context snippets, and voice transcripts.
+25. `sync_events`: Offline learning events synced from IndexedDB outbox.
+26. `doubts_queue`: Offline doubt queue with trilingual resolution.
+27. `cohort_aggregates`: Anonymized analytics and performance benchmarks.
 
 ---
 
@@ -101,3 +104,4 @@ The database is structured into 12 distinct functional domains:
 - **Cascading Constraints**: Deleting a test student profile safely cascades to attempts while archiving academic audit logs.
 - **Audit Trails**: Critical security actions (logins, password resets, role grants) write immutably to `audit_logs`.
 - **Zero Ephemeral Writes**: All document uploads route through `multer.memoryStorage()` directly to Cloudflare R2.
+- **Bidirectional Hydration**: 27 ObservableMaps automatically mirror memory mutations into PostgreSQL and hydrate on cold boot.
