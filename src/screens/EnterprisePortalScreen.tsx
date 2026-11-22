@@ -18,7 +18,9 @@ import { OfflineLearningCenter } from './offline/OfflineLearningCenter';
 import { AiTutorPortal } from './ai/AiTutorPortal';
 import { AdminPanelScreen } from './AdminPanelScreen';
 import { Subject } from '../types/enterprise';
-import { ArrowLeft, BookOpen, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, Sparkles, Lock, Shield } from 'lucide-react';
+import { UnifiedAuthModal } from '../components/auth/UnifiedAuthModal';
+import { VidyapathLogo } from '../components/VidyapathLogo';
 
 interface EnterprisePortalScreenProps {
   onReturnToStudentApp?: () => void;
@@ -27,7 +29,8 @@ interface EnterprisePortalScreenProps {
 export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
   onReturnToStudentApp,
 }) => {
-  const { activeRole } = useEnterpriseAuth();
+  const { user, activeRole, loading } = useEnterpriseAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const { setScreen: setAppScreen } = useApp();
   const [currentScreen, setCurrentScreen] = useState<EnterpriseScreenId>('DASHBOARD');
   const [activeSubject, setActiveSubject] = useState<Subject | null>(null);

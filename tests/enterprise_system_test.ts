@@ -4,6 +4,7 @@ import { app } from '../server/index.js';
 import { AuthService } from '../server/services/auth.js';
 import { AiGuardrailService } from '../server/services/aiGuardrails.js';
 import { SyllabusProcessorService } from '../server/services/syllabusProcessor.js';
+import { dataStore } from '../server/db/store.js';
 
 async function runEnterpriseTests() {
   console.log('===========================================================');
@@ -14,6 +15,58 @@ async function runEnterpriseTests() {
   await new Promise<void>((resolve) => server.listen(3003, () => resolve()));
   console.log('[PASS] Enterprise Test Server listening on http://localhost:3003');
   const baseUrl = 'http://localhost:3003';
+
+  // Seed test-scoped fixtures for automated test validation
+  const testPwd = dataStore.hashPassword('password123');
+  dataStore.institutions.set('inst_ait_hyd', {
+    id: 'inst_ait_hyd',
+    name: 'Apex Institute of Engineering & Technology',
+    code: 'AIT-HYD',
+    type: 'college',
+    status: 'approved',
+    academicYears: [],
+    aiPolicy: {
+      institutionId: 'inst_ait_hyd',
+      maxDailyQueriesStudent: 30,
+      blockExamKeywords: true,
+      requireSyllabusGrounding: true,
+      auditLoggingEnabled: true,
+    },
+    createdAt: Date.now(),
+  });
+  dataStore.subjects.set('subj_cs501', {
+    id: 'subj_cs501',
+    institutionId: 'inst_ait_hyd',
+    name: 'Operating Systems',
+    code: 'CS501',
+    semester: 5,
+    credits: 4,
+    isElective: false,
+    units: [],
+  });
+  dataStore.users.set('user_student_aditya', {
+    id: 'user_student_aditya',
+    institutionId: 'inst_ait_hyd',
+    institutionName: 'Apex Institute of Engineering & Technology',
+    fullName: 'Aditya Verma',
+    email: 'aditya.23cs042@apextech.edu',
+    role: 'student',
+    status: 'active',
+    passwordHash: testPwd.hash,
+    salt: testPwd.salt,
+    createdAt: Date.now(),
+    studentProfile: {
+      userId: 'user_student_aditya',
+      institutionId: 'inst_ait_hyd',
+      departmentId: 'dept_cse',
+      programmeId: 'prog_btech_cse',
+      admissionYear: '2023',
+      semester: 5,
+      rollNumber: '23CS042',
+      attendancePercent: 91,
+      completedTopicIds: [],
+    },
+  });
 
   try {
     // -------------------------------------------------------------

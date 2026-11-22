@@ -3,6 +3,7 @@ import { Users, Settings, Flame, ShieldCheck, HeartHandshake, BookOpen } from 'l
 import { useApp } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { VidyapathLogo } from './VidyapathLogo';
+import { LanguageSelector } from './LanguageSelector';
 
 export const Header: React.FC = () => {
   const {
@@ -48,20 +49,8 @@ export const Header: React.FC = () => {
 
       {/* Right Action Buttons */}
       <div className="flex items-center gap-2">
-        {/* Language Pack Selector: Telugu, English, Hindi */}
-        <div className="relative flex items-center">
-          <BookOpen className="w-3.5 h-3.5 text-[#15803D] absolute left-2.5 pointer-events-none" />
-          <select
-            value={pack?.id || 'te-10-maths-ap'}
-            onChange={(e) => switchPack(e.target.value)}
-            title="Switch Language Pack / భాష మార్చు"
-            className="text-xs bg-[#F4F9F6] hover:bg-[#DCFCE7] text-[#0F172A] font-bold pl-7 pr-2.5 py-1.5 rounded-xl border border-[#D1E7DD] focus:border-[#15803D] focus:outline-hidden min-h-[40px] transition-all cursor-pointer shadow-2xs"
-          >
-            <option value="te-10-maths-ap">తెలుగు</option>
-            <option value="en-10-maths-cbse">English</option>
-            <option value="hi-10-maths-cbse">हिन्दी</option>
-          </select>
-        </div>
+        {/* Language Selector (All 22 Scheduled Languages) */}
+        <LanguageSelector variant="compact" />
 
         {/* Switch Learner (1-tap for shared phone) */}
         {activeLearner && (

@@ -82,28 +82,10 @@ export const EnterpriseAuthProvider: React.FC<{ children: React.ReactNode }> = (
       console.warn('Could not fetch user profile from server:', err);
     }
 
-    // Fallback: decode or restore default student
-    setUser({
-      id: 'user_student_aditya',
-      institutionId: 'inst_ait_hyd',
-      institutionName: 'Apex Institute of Engineering & Technology',
-      fullName: 'Aditya Verma',
-      email: 'aditya.23cs042@apextech.edu',
-      role: 'student',
-      status: 'active',
-      createdAt: Date.now(),
-      studentProfile: {
-        userId: 'user_student_aditya',
-        institutionId: 'inst_ait_hyd',
-        departmentId: 'dept_cse',
-        programmeId: 'prog_btech_cse',
-        admissionYear: '2023',
-        semester: 5,
-        rollNumber: '23CS042',
-        attendancePercent: 91,
-        completedTopicIds: ['top_os_1_1', 'top_os_1_2'],
-      },
-    });
+    // Token invalid or expired - reset to clean unauthenticated state
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('vidyapath_token');
   };
 
   useEffect(() => {
@@ -112,13 +94,12 @@ export const EnterpriseAuthProvider: React.FC<{ children: React.ReactNode }> = (
       if (token) {
         await fetchCurrentUser(token);
       } else {
-        // Log in default student for immediate demo readiness
-        await switchRoleDemo('student');
+        setUser(null);
       }
       setLoading(false);
     };
     init();
-  }, []);
+  }, [token]);
 
   const login = async (email: string, password: string) => {
     try {

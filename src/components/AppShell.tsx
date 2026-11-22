@@ -18,6 +18,7 @@ import {
 import { useApp, ScreenId } from '../context/AppContext';
 import { StudentAvatar } from './StudentAvatar';
 import { VidyapathLogo } from './VidyapathLogo';
+import { LanguageSelector } from './LanguageSelector';
 import { AppUpdateButton } from './AppUpdateButton';
 import { AppUpdateHeaderPill } from './AppUpdateHeaderPill';
 import { AppUpdateBanner } from './AppUpdateBanner';

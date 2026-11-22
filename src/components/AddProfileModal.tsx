@@ -69,7 +69,7 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
         <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] mb-4">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-[#0F766E]" />
-            <h3 className="font-bold text-base text-[#0F172A]">{t.addSampleProfile}</h3>
+            <h3 className="font-bold text-base text-[#0F172A]">{currentLanguage === 'te' ? '+ విద్యార్థి ప్రొఫైల్ నమోదు' : currentLanguage === 'hi' ? '+ छात्र प्रोफ़ाइल पंजीकरण' : '+ Register Student Profile'}</h3>
           </div>
           <button
             type="button"
@@ -154,7 +154,7 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({ isOpen, onClos
               required
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-              placeholder="1234"
+              placeholder="••••"
               className="w-full text-center text-lg font-mono font-bold tracking-widest p-2.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden text-[#0F172A]"
             />
           </div>

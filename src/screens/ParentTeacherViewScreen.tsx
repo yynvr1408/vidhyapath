@@ -197,11 +197,7 @@ export const ParentTeacherViewScreen: React.FC = () => {
           </p>
         </div>
 
-        {/* Demo Hint Banner for Judges */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FEF3C7] text-[#D97706] text-xs font-bold rounded-full border border-[#FDE68A]">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>{t.parentPinHint}</span>
-        </div>
+        
 
         <form onSubmit={handleUnlock} className="space-y-3">
           <input
@@ -212,7 +208,7 @@ export const ParentTeacherViewScreen: React.FC = () => {
               setParentPin(e.target.value.replace(/\D/g, ''));
               setPinError(false);
             }}
-            placeholder="1234"
+            placeholder="••••"
             className="w-full text-center text-xl font-mono tracking-widest p-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-hidden font-bold"
           />
 

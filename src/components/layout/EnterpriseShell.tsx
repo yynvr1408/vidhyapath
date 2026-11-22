@@ -29,6 +29,7 @@ import { useEnterpriseAuth, DEMO_USERS } from '../../context/EnterpriseAuthConte
 import { useApp } from '../../context/AppContext';
 import { UserRole, NotificationItem } from '../../types/enterprise';
 import { VidyapathLogo } from '../VidyapathLogo';
+import { LanguageSelector } from '../LanguageSelector';
 import { AppUpdateButton } from '../AppUpdateButton';
 import { AppUpdateHeaderPill } from '../AppUpdateHeaderPill';
 import { AppUpdateBanner } from '../AppUpdateBanner';
@@ -292,27 +293,10 @@ export const EnterpriseShell: React.FC<EnterpriseShellProps> = ({ currentScreen,
 
       {/* Footer Area: Demo Switcher, App Update & Logout */}
       <div className="pt-3 border-t border-[#E2E8F0] space-y-2 mt-4">
-        {/* Rapid Role Testing Switcher */}
-        <div className="bg-[#F8FAFC] p-2.5 rounded-[10px] border border-[#E2E8F0]">
-          <div className="text-[10px] font-extrabold uppercase text-[#64748B] tracking-wider mb-1.5 flex items-center justify-between">
-            <span>{t.demoRoleSwitcher}</span>
-            <span className="text-[9px] text-[#0F766E] font-bold">5 Tiers</span>
-          </div>
-          <select
-            value={activeRole}
-            onChange={(e) => switchRoleDemo(e.target.value as UserRole)}
-            className="w-full text-xs font-bold bg-white text-[#0F172A] border border-[#CBD5E1] rounded-[6px] p-1.5 cursor-pointer focus:outline-hidden min-h-[36px]"
-          >
-            <option value="super_admin">{currentLanguage === 'hi' ? 'स्तर 1: प्लेटफ़ॉर्म सुपर व्यवस्थापक' : currentLanguage === 'en' ? 'Level 1: Platform Super Admin' : 'లెవల్ 1: ప్లాట్‌ఫామ్ సూపర్ అడ్మిన్'}</option>
-            <option value="institution_admin">{currentLanguage === 'hi' ? 'स्तर 2: संस्थान व्यवस्थापक' : currentLanguage === 'en' ? 'Level 2: Institution Admin' : 'లెవల్ 2: సంస్థ అడ్మిన్'}</option>
-            <option value="academic_admin">{currentLanguage === 'hi' ? 'स्तर 3: विभागाध्यक्ष / HOD' : currentLanguage === 'en' ? 'Level 3: Department Head (HOD)' : 'లెవల్ 3: విభాగాధిపతి (HOD)'}</option>
-            <option value="teacher">{currentLanguage === 'hi' ? 'स्तर 4: शिक्षक / प्राध्यापक' : currentLanguage === 'en' ? 'Level 4: Faculty / Teacher' : 'లెవల్ 4: అధ్యాపకులు / ఉపాధ్యాయులు'}</option>
-            <option value="student">{currentLanguage === 'hi' ? 'स्तर 5: विद्यार्थी (आदित्य वर्मा)' : currentLanguage === 'en' ? 'Level 5: Student (Aditya Verma)' : 'లెవల్ 5: విద్యార్థి (ఆదిత్య వర్మ)'}</option>
-            <option value="guardian">{currentLanguage === 'hi' ? 'अभिभावक' : currentLanguage === 'en' ? 'Guardian / Parent' : 'తల్లిదండ్రులు / సంరక్షకులు'}</option>
-          </select>
+        {/* Universal 22 Scheduled Language Selector (Pure Native Names) */}
+        <div className="w-full">
+          <LanguageSelector className="w-full" showLabel={true} />
         </div>
-
-        {/* Release & Update Checker */}
         <AppUpdateButton />
 
         <button

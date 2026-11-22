@@ -127,115 +127,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Seed default learners (Cheetah, Elephant, Lion, Ravi) for instant zero-friction demo & multi-sibling sharing
-  const seedDefaultLearners = async () => {
+  // Load real registered learners from local database & purge any legacy mock/demo accounts
+  const loadExistingLearners = async () => {
     try {
       const existing = await localDb.getLearners();
+      const legacyMockIds = ['learner_cheetah', 'learner_elephant', 'learner_lion', 'learner_ravi'];
 
-      // The core multi-sibling profiles (Class 10 students sharing phone)
-      const defaultLearnersList: LearnerProfile[] = [
-        {
-          id: 'learner_cheetah',
-          nickname: 'Ravi / రవి',
-          classGrade: 10,
-          avatarType: 'icon',
-          avatarColor: '#0F766E', // Primary Educational Teal
-          avatarEmoji: '👦', // School Boy
-          packId: 'te-10-maths-ap',
-          loginCode: 'RAVI-10',
-          pin: '1234',
-          pinHash: '1234',
-          securityQuestionId: 'subject',
-          securityQuestion: 'What is your favorite school subject?',
-          securityAnswer: 'Maths',
-          createdAt: Date.now() - 3600 * 1000 * 24 * 5,
-        },
-        {
-          id: 'learner_elephant',
-          nickname: 'Priya / ప్రియ',
-          classGrade: 10,
-          avatarType: 'icon',
-          avatarColor: '#D97706', // Warm Amber
-          avatarEmoji: '👧', // School Girl
-          packId: 'te-10-maths-ap',
-          loginCode: 'PRIY-10',
-          pin: '1234',
-          pinHash: '1234',
-          securityQuestionId: 'animal',
-          securityQuestion: 'What is your favorite animal?',
-          securityAnswer: 'Lion',
-          createdAt: Date.now() - 3600 * 1000 * 24 * 4,
-        },
-        {
-          id: 'learner_lion',
-          nickname: 'Kiran / కిరణ్',
-          classGrade: 10,
-          avatarType: 'icon',
-          avatarColor: '#16A34A', // Leaf Green
-          avatarEmoji: '🧑‍🎓', // Student
-          packId: 'te-10-maths-ap',
-          loginCode: 'KIRN-10',
-          pin: '1234',
-          pinHash: '1234',
-          securityQuestionId: 'fruit',
-          securityQuestion: 'What is your favorite fruit?',
-          securityAnswer: 'Mango',
-          createdAt: Date.now() - 3600 * 1000 * 24 * 3,
-        },
-        {
-          id: 'learner_ravi',
-          nickname: 'Ananya / అనన్య',
-          classGrade: 10,
-          avatarType: 'icon',
-          avatarColor: '#2563EB', // Blue
-          avatarEmoji: '👩‍🎓', // Student
-          packId: 'te-10-maths-ap',
-          loginCode: 'ANAN-10',
-          pin: '1234',
-          pinHash: '1234',
-          securityQuestionId: 'sport',
-          securityQuestion: 'What is your favorite game or sport?',
-          securityAnswer: 'Cricket',
-          createdAt: Date.now() - 3600 * 1000 * 24 * 2,
-        },
-      ];
-
-      const currentList = [...existing];
-      // Automatically migrate any legacy animal mascots to human student profiles
-      for (let i = 0; i < currentList.length; i++) {
-        const item = currentList[i];
-        if (item.avatarEmoji === '🐆' || item.avatarEmoji === '🐘' || item.avatarEmoji === '🦁' || item.animal) {
-          const replacement = defaultLearnersList[i % defaultLearnersList.length];
-          const updated: LearnerProfile = {
-            ...item,
-            nickname: replacement.nickname,
-            avatarEmoji: replacement.avatarEmoji,
-            avatarColor: replacement.avatarColor,
-            packId: 'te-10-maths-ap',
-            animal: undefined,
-          };
-          currentList[i] = updated;
-          await localDb.saveLearner(updated);
+      // Purge any legacy mock records from persistent IndexedDB
+      for (const l of existing) {
+        if (legacyMockIds.includes(l.id)) {
+          await localDb.deleteLearner(l.id);
         }
       }
 
-      for (const def of defaultLearnersList) {
-        const found = currentList.find((c) => c.loginCode === def.loginCode || c.id === def.id);
-        if (!found) {
-          await localDb.saveLearner(def);
-          currentList.push(def);
-        } else {
-          if (!found.pin) {
-            found.pin = '1234';
-            found.pinHash = '1234';
-            await localDb.saveLearner(found);
-          }
-        }
-      }
-
-      setLearners(currentList);
+      const realLearners = existing.filter((l) => !legacyMockIds.includes(l.id));
+      setLearners(realLearners);
     } catch (err) {
-      console.warn('Failed to seed default learners:', err);
+      console.warn('Failed to load real learners:', err);
+      setLearners([]);
     }
   };
 
@@ -256,7 +165,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const savedPack = localStorage.getItem('vidyapath_language_pack') || 'te-10-maths-ap';
     loadPack(savedPack);
-    seedDefaultLearners();
+    loadExistingLearners();
 
     // Load persisted settings
     localDb.getSetting<boolean>('lowDataMode', false).then(setLowDataMode);

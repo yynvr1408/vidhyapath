@@ -15,6 +15,7 @@ import {
 import { useEnterpriseAuth } from '../../context/EnterpriseAuthContext';
 import { useApp } from '../../context/AppContext';
 import { SAFETY_QUESTIONS } from '../../config/safetyQuestions';
+import { LanguageSelector } from '../LanguageSelector';
 
 export type AuthRoleTab = 'student' | 'guardian' | 'teacher' | 'admin';
 
@@ -178,6 +179,31 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
           setScreen('MY_SYLLABUS');
           onClose();
         }, 1500);
+      } else if (activeTab === 'admin') {
+        const res = await fetch('/api/auth/register/institution', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: fullName,
+            code: fullName.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase() || 'INST',
+            type: 'school',
+            contactEmail: identifier.trim().toLowerCase(),
+            contactPhone: phone,
+            adminFullName: 'Institution Head',
+            adminPassword: credential,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to submit institution registration.');
+        }
+
+        setSuccessMessage('Institution registration submitted! Sent to Platform Super Administrator for review.');
+        setTimeout(() => {
+          setAuthMode('login');
+          setSuccessMessage(null);
+        }, 2200);
       }
     } catch (err: any) {
       setError(err.message || 'Registration failed.');
@@ -261,13 +287,16 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
               <p className="text-xs text-[#CCFBF1]">Unified Multi-Role Authentication</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageSelector variant="pill" />
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* 4 Role Navigation Tabs */}
@@ -506,22 +535,24 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                 <ArrowRight className="w-4 h-4" />
               </button>
 
-              {/* Registration Toggle for Students and Guardians */}
-              {(activeTab === 'student' || activeTab === 'guardian') && (
-                <div className="pt-2 text-center text-xs text-[#64748B]">
-                  <span>New to Vidyapath? </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode('register');
-                      resetForm();
-                    }}
-                    className="font-bold text-[#0F766E] hover:underline"
-                  >
-                    {activeTab === 'student' ? 'Enroll as Student' : 'Create Parent Account'}
-                  </button>
-                </div>
-              )}
+              {/* Registration Toggle for All Roles */}
+              <div className="pt-2 text-center text-xs text-[#64748B]">
+                <span>New to Vidyapath? </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('register');
+                    resetForm();
+                  }}
+                  className="font-bold text-[#0F766E] hover:underline"
+                >
+                  {activeTab === 'student'
+                    ? 'Enroll as Student (Free)'
+                    : activeTab === 'guardian'
+                    ? 'Create Parent Account'
+                    : 'Register Institution'}
+                </button>
+              </div>
             </form>
           ) : (
             /* MODE: REGISTRATION */

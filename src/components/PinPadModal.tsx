@@ -199,11 +199,7 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
         {/* MODE 1: Standard PIN Entry */}
         {mode === 'enter_pin' && (
           <>
-            {/* Demo Hint Banner for easy testing */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FEF3C7] text-[#D97706] text-xs font-bold rounded-full mb-4 border border-[#FDE68A]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{t.demoPinHint}</span>
-            </div>
+            
 
             {/* 4-PIN Indicator Dots */}
             <div className="flex items-center gap-4 mb-5">

@@ -12,6 +12,7 @@ import { AppUpdateHeaderPill } from '../components/AppUpdateHeaderPill';
 import { AppUpdateBanner } from '../components/AppUpdateBanner';
 import { AppUpdateModal } from '../components/AppUpdateModal';
 import { UnifiedAuthModal } from '../components/auth/UnifiedAuthModal';
+import { LanguageSelector } from '../components/LanguageSelector';
 
 // Formats display names cleanly based on current language
 const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
