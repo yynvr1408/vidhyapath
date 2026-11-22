@@ -728,13 +728,16 @@ app.post('/api/admin/syllabus', syllabusUpload.single('file'), requireAdminCode,
       if (ext === '.txt' || ext === '.md') {
         text = req.file.buffer.toString('utf8');
       } else if (ext === '.pdf') {
+        const pdfParseModule: any = await (import('pdf-parse' as any) as Promise<any>).catch(() => null);
+        const pdfParse = pdfParseModule?.default || pdfParseModule;
+        if (typeof pdfParse !== 'function') {
+          return res.status(400).json({ error: 'pdf_parser_unavailable' });
+        }
         try {
-          const pdfParseModule = (await import('pdf-parse' as any)) as any;
-          const pdfParse = pdfParseModule?.default || pdfParseModule;
           const parsed = await pdfParse(req.file.buffer);
           text = parsed.text || '';
         } catch {
-          text = req.file.buffer.toString('utf8');
+          return res.status(400).json({ error: 'pdf_parser_unavailable' });
         }
       } else {
         return res.status(400).json({ error: 'unsupported_file_type' });
