@@ -146,14 +146,14 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
       {isOpen && (
         <div
           role="listbox"
-          aria-label="Languages of India (22 Scheduled Languages)"
+          aria-label="Supported Languages (Telugu, Hindi, English)"
           className={`absolute right-0 ${positionClass} w-72 max-h-96 overflow-y-auto bg-white rounded-2xl shadow-2xl border border-[#CBD5E1] z-50 py-2 divide-y divide-[#F1F5F9] focus:outline-hidden animate-in fade-in zoom-in-95 duration-150`}
         >
           {/* Header & Search */}
           <div className="px-3.5 pt-2 pb-2.5 bg-[#F8FAFC]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-black uppercase tracking-wider text-[#64748B]">
-                22 Scheduled Languages
+                {SCHEDULED_LANGUAGES.length} Languages
               </span>
               <span className="text-[10px] text-[#0F766E] font-extrabold">
                 భారతీయ భాషలు
@@ -227,7 +227,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
             </div>
           )}
 
-          {/* All 22 Scheduled Indian Languages for Navigation Awareness */}
+          {/* Other supported languages for navigation awareness */}
           {otherScheduledLangs.length > 0 && (
             <div className="py-1">
               <div className="px-3.5 py-1.5 text-[10px] font-black text-[#64748B] uppercase tracking-wider bg-[#F8FAFC] flex items-center justify-between">

@@ -224,6 +224,9 @@ export interface TranslationDictionary {
   pinResetSuccess: string;
   backToPin: string;
   noEmailOrOtpNeeded: string;
+  addNewLearner: string;
+  saveProfile: string;
+  checkAnswer: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
@@ -413,6 +416,9 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     pinResetSuccess: 'పిన్ విజయవంతంగా మార్చబడింది! తెరుస్తున్నాము...',
     backToPin: 'తిరిగి పిన్ నమోదుకు',
     noEmailOrOtpNeeded: 'ఈమెయిల్ లేదా OTP అవసరం లేదు (విద్యార్థి సురక్షిత మోడ్)',
+    addNewLearner: 'కొత్త విద్యార్థి',
+    saveProfile: 'ప్రొఫైల్ సేవ్ చేయండి',
+    checkAnswer: 'సమాధానం తనిఖీ చేయండి',
   },
 
   en: {
@@ -601,6 +607,9 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     pinResetSuccess: 'PIN reset successfully! Unlocking...',
     backToPin: 'Back to PIN',
     noEmailOrOtpNeeded: 'No email or OTP required (Student Safe Mode)',
+    addNewLearner: 'New Student',
+    saveProfile: 'Save Profile',
+    checkAnswer: 'Check Answer',
   },
 
   hi: {
@@ -789,6 +798,9 @@ export const TRANSLATIONS: Record<SupportedLang, TranslationDictionary> = {
     pinResetSuccess: 'पिन सफलतापूर्वक रीसेट हो गया! खोला जा रहा है...',
     backToPin: 'वापस पिन पर',
     noEmailOrOtpNeeded: 'ईमेल या ओटीपी की आवश्यकता नहीं (छात्र सुरक्षित मोड)',
+    addNewLearner: 'नया छात्र',
+    saveProfile: 'प्रोफ़ाइल सेव करें',
+    checkAnswer: 'उत्तर जांचें',
   },
 };
 

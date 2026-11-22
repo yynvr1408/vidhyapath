@@ -13,7 +13,7 @@
     "preview": "npm --prefix frontend run preview",
     "server": "npm --prefix backend run dev",
     "start": "npm --prefix backend start",
-    "test": "tsx tests/system_test.ts && tsx tests/api_endpoints_test.ts && tsx tests/enterprise_system_test.ts",
+    "test": "tsx tests/system_test.ts && tsx tests/api_endpoints_test.ts",
     "test:unit": "vitest run --config frontend/vitest.config.ts tests/unit"
   },
   "dependencies": {

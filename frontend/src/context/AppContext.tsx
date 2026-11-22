@@ -40,6 +40,7 @@ export interface AppContextValue {
   unlockLearnerWithPin: (learnerId: string, pin: string) => boolean;
   createLearner: (profile: Omit<LearnerProfile, 'id' | 'createdAt' | 'packId'>) => Promise<LearnerProfile>;
   switchProfile: () => void;
+  switchLearner: (learner: LearnerProfile) => void;
   toggleLowDataMode: () => void;
   toggleChapterOffline: (chapterId: string) => void;
   offlineChapters: Set<string>;
@@ -103,7 +104,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof window === 'undefined') return 'te';
     const saved = localStorage.getItem('vidyapath_language') as SupportedLang;
     if (saved && ['te', 'hi', 'en'].includes(saved)) return saved;
-    return 'te';
+    return 'en';
   };
 
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLang>(getInitialLang);
@@ -306,6 +307,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  const switchLearner = useCallback((learner: LearnerProfile) => {
+    setActiveLearner(learner);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vidyapath_active_learner', JSON.stringify(learner));
+      const savedCompleted = localStorage.getItem(`vidyapath_completed_${learner.id}`);
+      setCompletedChapters(savedCompleted ? JSON.parse(savedCompleted) : []);
+      const savedWeak = localStorage.getItem(`vidyapath_weak_${learner.id}`);
+      setWeakTopics(savedWeak ? JSON.parse(savedWeak) : []);
+      const savedAttempts = localStorage.getItem(`vidyapath_attempts_${learner.id}`);
+      setQuizAttempts(savedAttempts ? JSON.parse(savedAttempts) : []);
+    }
+  }, []);
+
   const selectTopic = useCallback((topicId: string | null, conceptId?: string | null) => {
     setSelectedTopicId(topicId);
     setSelectedConceptId(conceptId || null);
@@ -403,6 +417,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     unlockLearnerWithPin,
     createLearner,
     switchProfile,
+    switchLearner,
     toggleLowDataMode,
     toggleChapterOffline,
     offlineChapters,

@@ -26,8 +26,21 @@ async function testApi() {
       assert.equal(response.status, 401, `${path} should require authentication`);
     }
 
+    // Zero-auth public syllabus check
+    const syllabusRes = await fetch(`${baseUrl}/api/syllabus`);
+    assert.equal(syllabusRes.status, 200, 'GET /api/syllabus should return 200');
+    const syllabusData = await syllabusRes.json();
+    assert.ok(syllabusData.chapters && syllabusData.chapters.length > 0, 'Syllabus chapters should be returned');
+
+    // Zero-auth student AI tutor access check
+    const tutorRes = await fetch(`${baseUrl}/api/tutor/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doubt: 'Explain fractions.' }),
+    });
+    assert.equal(tutorRes.status, 200, '/api/tutor/ask should allow zero-auth student access');
+
     for (const [path, body] of [
-      ['/api/tutor/ask', { doubt: 'Explain fractions.' }],
       ['/api/sync', { learnerId: 'somebody-else', events: [] }],
       ['/api/upload', {}],
       ['/api/institution/inst_test/departments', { name: 'Computer Science', code: 'CSE' }],

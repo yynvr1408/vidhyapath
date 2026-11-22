@@ -461,17 +461,121 @@ interface StoredSyllabus {
   updatedAt: string;
 }
 
+function initDefaultSyllabus(): StoredSyllabus {
+  try {
+    const packCandidatePaths = [
+      path.resolve(__dirname, '../public/packs/te-10-maths-ap.json'),
+      path.resolve(process.cwd(), 'backend/public/packs/te-10-maths-ap.json'),
+      path.resolve(process.cwd(), 'public/packs/te-10-maths-ap.json'),
+    ];
+    for (const p of packCandidatePaths) {
+      if (fs.existsSync(p)) {
+        const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+        const chapters: SyllabusChapter[] = (raw.topics || []).map((t: any, i: number) => ({
+          id: t.id || `ch${i + 1}`,
+          title: t.title || t.titleEn || `Chapter ${i + 1}`,
+          summary: t.description || `${t.titleEn || t.title} - Class 10 Maths`,
+          concepts: (t.cards || []).map((c: any, ci: number) => ({
+            id: c.id || `c${ci + 1}`,
+            title: c.heading || `Concept ${ci + 1}`,
+            explanation: c.conceptText || '',
+            keyPoints: [
+              c.keyTakeaway || '',
+              c.workedExample ? `Problem: ${c.workedExample.problem} -> Answer: ${c.workedExample.finalAnswer}` : ''
+            ].filter(Boolean)
+          }))
+        }));
+        const chunks: SyllabusChunk[] = [];
+        for (const ch of chapters) {
+          chunks.push({
+            id: `${ch.id}_summary`,
+            chapterId: ch.id,
+            conceptId: null,
+            chapterTitle: ch.title,
+            conceptTitle: null,
+            text: `${ch.title}: ${ch.summary}`,
+          });
+          for (const c of ch.concepts) {
+            chunks.push({
+              id: `${ch.id}_${c.id}`,
+              chapterId: ch.id,
+              conceptId: c.id,
+              chapterTitle: ch.title,
+              conceptTitle: c.title,
+              text: `${ch.title} - ${c.title}. ${c.explanation} ${c.keyPoints.join(' ')}`,
+            });
+          }
+        }
+        return {
+          id: raw.id || 'default_class10_maths',
+          language: raw.language || 'te',
+          classLevel: String(raw.class || '10'),
+          subject: raw.subject || 'mathematics',
+          chapters,
+          chunks,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[Syllabus] Could not load default syllabus from disk, using fallback:', err);
+  }
+
+  const fallbackChapters: SyllabusChapter[] = [
+    {
+      id: 'ch1_real_numbers',
+      title: 'అధ్యాయం 1: వాస్తవ సంఖ్యలు (Real Numbers)',
+      summary: 'యూక్లిడ్ భాగహార న్యాయం, అంకగణిత ప్రాథమిక సిద్ధాంతం, అంతమయ్యే మరియు అంతముకాని ఆవర్తన దశాంశాలు.',
+      concepts: [
+        { id: 'c1', title: "Euclid's Division Lemma", explanation: 'a = bq + r, where 0 <= r < b.', keyPoints: ['Used to find HCF', 'Dividend = Divisor x Quotient + Remainder'] },
+        { id: 'c2', title: 'Fundamental Theorem of Arithmetic', explanation: 'Every composite number can be expressed as a unique product of prime numbers.', keyPoints: ['HCF x LCM = Product of two numbers', 'Unique prime factorization'] },
+        { id: 'c3', title: 'Terminating Decimals', explanation: 'Denominator q must have prime factors in form 2^n * 5^m.', keyPoints: ['2 and 5 prime factors terminate', 'Other primes result in non-terminating repeating decimals'] }
+      ]
+    },
+    {
+      id: 'ch2_sets',
+      title: 'అధ్యాయం 2: సమితులు (Sets)',
+      summary: 'సమితి రూపాలు, ఉపసమితులు, సమ్మేళనం, ఛేదనం మరియు వెన్ చిత్రాలు.',
+      concepts: [
+        { id: 'c1', title: 'Roster and Set-Builder Forms', explanation: 'Listing elements inside curly braces { } or defining common property {x : x is ...}.', keyPoints: ['Order does not matter', 'No duplicate elements'] },
+        { id: 'c2', title: 'Union and Intersection (A U B, A ∩ B)', explanation: 'Union combines elements from both sets; intersection keeps elements in both sets.', keyPoints: ['Disjoint sets: A ∩ B = ∅', 'Venn diagram representation'] }
+      ]
+    }
+  ];
+
+  return {
+    id: 'default_class10_maths',
+    language: 'te',
+    classLevel: '10',
+    subject: 'mathematics',
+    chapters: fallbackChapters,
+    chunks: fallbackChapters.map((ch) => ({
+      id: `${ch.id}_chunk`,
+      chapterId: ch.id,
+      conceptId: null,
+      chapterTitle: ch.title,
+      conceptTitle: null,
+      text: `${ch.title}: ${ch.summary}`,
+    })),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+const defaultSyllabus = initDefaultSyllabus();
 const syllabusStore = new Map<string, StoredSyllabus>();
-let activeSyllabusKey: string | null = null;
+syllabusStore.set('mathematics', defaultSyllabus);
+syllabusStore.set('maths', defaultSyllabus);
+syllabusStore.set('default', defaultSyllabus);
+let activeSyllabusKey: string | null = 'mathematics';
 
 function syllabusKeyOf(subject: string): string {
   return subject.trim().toLowerCase();
 }
 
-function findSyllabus(subject?: unknown): StoredSyllabus | undefined {
+function findSyllabus(subject?: unknown): StoredSyllabus {
   const s = typeof subject === 'string' ? syllabusKeyOf(subject) : '';
-  const key = s || activeSyllabusKey;
-  return key ? syllabusStore.get(key) : undefined;
+  const key = s || activeSyllabusKey || 'mathematics';
+  return syllabusStore.get(key) || defaultSyllabus;
 }
 
 // Keyword retrieval over syllabus chunks (no embeddings, no external calls)
@@ -624,9 +728,14 @@ app.post('/api/admin/syllabus', syllabusUpload.single('file'), requireAdminCode,
       if (ext === '.txt' || ext === '.md') {
         text = req.file.buffer.toString('utf8');
       } else if (ext === '.pdf') {
-        const { default: pdfParse } = await import('pdf-parse');
-        const parsed = await pdfParse(req.file.buffer);
-        text = parsed.text;
+        const pdfParseModule: any = await (import('pdf-parse' as any) as Promise<any>).catch(() => null);
+        const pdfParse = pdfParseModule?.default || pdfParseModule;
+        if (typeof pdfParse === 'function') {
+          const parsed = await pdfParse(req.file.buffer);
+          text = parsed.text || '';
+        } else {
+          return res.status(400).json({ error: 'pdf_parser_unavailable' });
+        }
       } else {
         return res.status(400).json({ error: 'unsupported_file_type' });
       }
@@ -723,7 +832,6 @@ app.post('/api/admin/syllabus', syllabusUpload.single('file'), requireAdminCode,
 // Public: read the active (or subject-specific) syllabus without chunks
 app.get('/api/syllabus', (req: Request, res: Response) => {
   const syllabus = findSyllabus(req.query.subject);
-  if (!syllabus) return res.status(404).json({ error: 'no_syllabus' });
   return res.json({
     id: syllabus.id,
     language: syllabus.language,
@@ -1093,7 +1201,7 @@ app.post('/api/tts', async (req: Request, res: Response) => {
     const { text, language } = req.body || {};
     if (!text) return res.status(400).json({ error: 'text_required' });
     if (isElevenLabsConfigured()) {
-      const audioBuffer = await synthesizeElevenLabsVoice(text, language || 'en');
+      const audioBuffer = await synthesizeElevenLabsVoice(text);
       if (audioBuffer) {
         res.setHeader('Content-Type', 'audio/mpeg');
         return res.send(audioBuffer);
