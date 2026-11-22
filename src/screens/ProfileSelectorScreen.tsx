@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   Lock,
   ArrowRight,
+  ArrowLeft,
   Sparkles,
   RefreshCw,
   GraduationCap,
@@ -48,7 +49,15 @@ const getCleanDisplayName = (nickname: string, lang: SupportedLang) => {
   return { primary: nickname, secondary: '' };
 };
 
-export const ProfileSelectorScreen: React.FC = () => {
+export interface ProfileSelectorScreenProps {
+  onNavigateHome?: () => void;
+  onNavigateToAuth?: (role?: AuthRoleTab, mode?: 'login' | 'register') => void;
+}
+
+export const ProfileSelectorScreen: React.FC<ProfileSelectorScreenProps> = ({
+  onNavigateHome,
+  onNavigateToAuth,
+}) => {
   const {
     learners,
     selectLearner,
@@ -68,11 +77,15 @@ export const ProfileSelectorScreen: React.FC = () => {
   // Unified Auth Modal State
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalRole, setAuthModalRole] = useState<AuthRoleTab>('student');
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   const openAuth = (role: AuthRoleTab, mode: 'login' | 'register' = 'login') => {
+    if (onNavigateToAuth) {
+      onNavigateToAuth(role, mode);
+      return;
+    }
     setAuthModalRole(role);
-    setAuthModalMode(mode);
+    setAuthMode(mode);
     setAuthModalOpen(true);
   };
 
@@ -100,6 +113,27 @@ export const ProfileSelectorScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between p-4 sm:p-6 max-w-lg mx-auto text-[#0F172A] safe-top-inset">
+      {/* Return to Website Header Pill (When on Browser Web) */}
+      {onNavigateHome && (
+        <div className="flex items-center justify-between pb-2 mb-1 border-b border-[#E2E8F0] text-xs">
+          <button
+            type="button"
+            onClick={onNavigateHome}
+            className="inline-flex items-center gap-1.5 font-bold text-[#0F766E] hover:underline cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>{currentLanguage === 'te' ? '← వెబ్‌సైట్ హోమ్‌కి వెళ్ళు' : currentLanguage === 'hi' ? '← वेबसाइट होम पर जाएं' : '← Return to Website Home'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => openAuth('student', 'login')}
+            className="font-bold text-[#64748B] hover:text-[#0F766E] cursor-pointer"
+          >
+            {currentLanguage === 'te' ? 'వెబ్ లాగిన్ పేజీ →' : currentLanguage === 'hi' ? 'वेब लॉगिन पेज →' : 'Web Login Page →'}
+          </button>
+        </div>
+      )}
+
       {/* 1. Sleek Top Bar with Vidyapath Brand, Update Pill & 22-Language Native Selector */}
       <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
         {/* Top Left: Vidyapath Brand Logo & Name */}
@@ -439,7 +473,7 @@ export const ProfileSelectorScreen: React.FC = () => {
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         initialRole={authModalRole}
-        initialMode={authModalMode}
+        initialMode={authMode}
       />
 
       {/* 4-Digit PIN Pad Modal */}

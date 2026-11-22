@@ -137,6 +137,12 @@ class InMemoryDataStore {
     };
     this.users.set(userSuperAdmin.id, userSuperAdmin);
 
+    // Operational aliases for Super Administrator
+    const superAdminAlias1 = { ...userSuperAdmin, id: 'user_super_admin_alias1', email: 'adminvidyapath@edu.in' };
+    const superAdminAlias2 = { ...userSuperAdmin, id: 'user_super_admin_alias2', email: 'admin@vidyapath.edu.in' };
+    this.users.set(superAdminAlias1.id, superAdminAlias1);
+    this.users.set(superAdminAlias2.id, superAdminAlias2);
+
     // 2. System tenant used by independent learner enrollment
     const instGlobal: Institution = {
       id: 'inst_global',

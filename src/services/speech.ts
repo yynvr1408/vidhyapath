@@ -152,8 +152,24 @@ export class SpeechService {
         if (onEnd) onEnd();
       };
 
-      utterance.onerror = (e) => {
+      let hasRetried = false;
+      utterance.onerror = (e: any) => {
         this.currentUtterance = null;
+        if (e?.error === 'canceled' || e?.error === 'interrupted') return;
+        if (!hasRetried && (e?.error === 'language-unavailable' || e?.error === 'voice-unavailable')) {
+          hasRetried = true;
+          try {
+            const fallbackUtterance = new SpeechSynthesisUtterance(cleanText);
+            fallbackUtterance.rate = 0.95;
+            fallbackUtterance.pitch = 1.0;
+            fallbackUtterance.onstart = () => onStart?.();
+            fallbackUtterance.onend = () => { this.currentUtterance = null; onEnd?.(); };
+            fallbackUtterance.onerror = () => { this.currentUtterance = null; onError?.(msgs.ttsUnsupported); };
+            this.currentUtterance = fallbackUtterance;
+            this.synth?.speak(fallbackUtterance);
+            return;
+          } catch (retryErr) { /* ignore */ }
+        }
         if (onError) onError(e);
       };
 

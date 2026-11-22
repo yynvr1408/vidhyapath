@@ -49,6 +49,7 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
 
     if (!SpeechService.isTtsSupported()) {
       setFallbackMsg(errorMsg);
+      setTimeout(() => setFallbackMsg(null), 4000);
       return;
     }
 
@@ -62,6 +63,7 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
       () => {
         setIsPlaying(false);
         setFallbackMsg(errorMsg);
+        setTimeout(() => setFallbackMsg(null), 4000);
       }
     );
   };

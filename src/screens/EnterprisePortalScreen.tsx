@@ -1,9 +1,10 @@
-// Enterprise Portal Screen: Coordinates the Multi-Tier Role Dashboards, LMS Environments & Administrative Queues
+// Enterprise Multi-Tier Educational Management Portal (Levels 1 to 4)
 import React, { useState, useEffect } from 'react';
 import {
   EnterpriseShell,
   EnterpriseScreenId,
 } from '../components/layout/EnterpriseShell';
+import { Subject } from '../types/enterprise';
 import { useEnterpriseAuth } from '../context/EnterpriseAuthContext';
 import { useApp } from '../context/AppContext';
 import { useAcademic } from '../context/AcademicContext';
@@ -13,34 +14,29 @@ import { AcademicAdminDashboard } from './dashboards/AcademicAdminDashboard';
 import { TeacherDashboard } from './dashboards/TeacherDashboard';
 import { StudentDashboard } from './dashboards/StudentDashboard';
 import { GuardianDashboard } from './dashboards/GuardianDashboard';
-import { GuardianDigestScreen } from './dashboards/GuardianDigestScreen';
 import { SubjectEnvironmentScreen } from './lms/SubjectEnvironmentScreen';
-import { AssignmentsHubScreen } from './lms/AssignmentsHubScreen';
 import { SyllabusManagerScreen } from './academic/SyllabusManagerScreen';
 import { OfflineLearningCenter } from './offline/OfflineLearningCenter';
 import { AiTutorPortal } from './ai/AiTutorPortal';
 import { InstitutionsQueueScreen } from './admin/InstitutionsQueueScreen';
 import { UsersDirectoryScreen } from './admin/UsersDirectoryScreen';
 import { AuditLogsScreen } from './admin/AuditLogsScreen';
+import { AssignmentsHubScreen } from './lms/AssignmentsHubScreen';
 import { AnnouncementsScreen } from './admin/AnnouncementsScreen';
-import { Subject } from '../types/enterprise';
+import { GuardianDigestScreen } from './dashboards/GuardianDigestScreen';
 import {
-  ArrowLeft,
   BookOpen,
+  ArrowLeft,
   Sparkles,
-  Lock,
-  Shield,
   Layers,
   ChevronRight,
-  GraduationCap,
-  RefreshCw,
-  LogOut,
+  Lock,
 } from 'lucide-react';
-import { UnifiedAuthModal } from '../components/auth/UnifiedAuthModal';
 import { navigationManager } from '../services/navigationManager';
 
 interface EnterprisePortalScreenProps {
   onReturnToStudentApp?: () => void;
+  onNavigateToLogin?: () => void;
 }
 
 const PORTAL_SCREENS: EnterpriseScreenId[] = [
@@ -50,39 +46,93 @@ const PORTAL_SCREENS: EnterpriseScreenId[] = [
   'ASSIGNMENTS', 'ANNOUNCEMENTS',
 ];
 
+const pathToScreenMap: Record<string, EnterpriseScreenId> = {
+  'dashboard': 'DASHBOARD',
+  'syllabus': 'SYLLABUS_MANAGER',
+  'syllabus-manager': 'SYLLABUS_MANAGER',
+  'curriculum': 'SYLLABUS_MANAGER',
+  'users': 'USERS_DIRECTORY',
+  'users-directory': 'USERS_DIRECTORY',
+  'directory': 'USERS_DIRECTORY',
+  'institutions': 'INSTITUTIONS_QUEUE',
+  'institutions-queue': 'INSTITUTIONS_QUEUE',
+  'approvals': 'INSTITUTIONS_QUEUE',
+  'audit-logs': 'AUDIT_LOGS',
+  'audit': 'AUDIT_LOGS',
+  'assignments': 'ASSIGNMENTS',
+  'announcements': 'ANNOUNCEMENTS',
+  'guardian-digest': 'GUARDIAN_DIGEST',
+  'digest': 'GUARDIAN_DIGEST',
+  'subject': 'SUBJECT_VIEW',
+  'subject-view': 'SUBJECT_VIEW',
+  'classroom': 'SUBJECT_VIEW',
+  'ai-tutor': 'AI_TUTOR',
+  'offline-center': 'OFFLINE_CENTER',
+  'offline': 'OFFLINE_CENTER',
+};
+
+const getScreenFromUrl = (): EnterpriseScreenId => {
+  if (typeof window === 'undefined') return 'DASHBOARD';
+  const path = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+  const parts = path.split('/').filter(Boolean);
+  if (parts[0] === 'portal' && parts[1]) {
+    const matched = pathToScreenMap[parts[1]];
+    if (matched) return matched;
+  }
+  const queryTab = new URLSearchParams(window.location.search).get('tab')?.toLowerCase();
+  if (queryTab && pathToScreenMap[queryTab]) {
+    return pathToScreenMap[queryTab];
+  }
+  return 'DASHBOARD';
+};
+
 export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
   onReturnToStudentApp,
+  onNavigateToLogin,
 }) => {
-  const { user, activeRole, loading, logout } = useEnterpriseAuth();
+  const { user, activeRole, loading } = useEnterpriseAuth();
   const { setScreen: setAppScreen } = useApp();
   const { subjects } = useAcademic();
 
-  const [currentScreen, setCurrentScreen] = useState<EnterpriseScreenId>('DASHBOARD');
+  const [currentScreen, setCurrentScreen] = useState<EnterpriseScreenId>(getScreenFromUrl);
   const [activeSubject, setActiveSubject] = useState<Subject | null>(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  // Sync tab with URL back/forward history
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentScreen(getScreenFromUrl());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Role Guard: Redirect students or guardians to their dedicated views
+  useEffect(() => {
+    if (user && activeRole === 'student') {
+      window.history.replaceState({}, '', '/learn');
+      setAppScreen('MY_SYLLABUS');
+    } else if (user && activeRole === 'guardian') {
+      window.history.replaceState({}, '', '/guardian');
+      setAppScreen('PARENT_VIEW');
+    }
+  }, [user, activeRole, setAppScreen]);
 
   const handleReturn = () => {
     if (onReturnToStudentApp) {
       onReturnToStudentApp();
     } else {
+      window.history.pushState({}, '', '/learn');
       setAppScreen('MY_SYLLABUS');
     }
   };
 
-
-
   // Register hierarchical back-button handler inside Enterprise Portal
   useEffect(() => {
     const unregister = navigationManager.registerBackHandler(() => {
-      // If modal is open, let modal handle it
-      if (authModalOpen) {
-        setAuthModalOpen(false);
-        return true;
-      }
-
       // If in deep portal screen, navigate back to DASHBOARD
       if (currentScreen !== 'DASHBOARD') {
         setCurrentScreen('DASHBOARD');
+        window.history.pushState({ screen: 'DASHBOARD' }, '', '/portal');
         return true;
       }
 
@@ -92,7 +142,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
     }, 45);
 
     return () => unregister();
-  }, [currentScreen, authModalOpen, onReturnToStudentApp]);
+  }, [currentScreen, onReturnToStudentApp]);
 
   // GATING 1: Loading state during session restoration
   if (loading) {
@@ -121,44 +171,48 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
             </p>
           </div>
 
-          <div className="pt-2 flex flex-col gap-2.5">
+          <div className="pt-2 flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => setAuthModalOpen(true)}
-              className="w-full py-3 px-4 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => {
+                if (onNavigateToLogin) {
+                  onNavigateToLogin();
+                } else {
+                  window.history.pushState({}, '', '/login');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }
+              }}
+              className="w-full py-3 px-4 rounded-xl bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-bold shadow-xs active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              <Shield className="w-4 h-4" />
-              <span>Sign In with Email or Roll Number</span>
+              <span>Go to Sign In Page</span>
+              <ChevronRight className="w-4 h-4" />
             </button>
 
             <button
               type="button"
               onClick={handleReturn}
-              className="w-full py-3 px-4 rounded-xl bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#475569] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2.5 px-4 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#64748B] text-xs font-bold transition-all cursor-pointer"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Return to Student Learning App</span>
+              Return to Website
             </button>
           </div>
         </div>
-
-        <UnifiedAuthModal
-          isOpen={authModalOpen}
-          onClose={() => setAuthModalOpen(false)}
-          initialRole="admin"
-        />
       </div>
     );
   }
 
-  // Navigation dispatcher from sidebar/drawer
+  // Navigation dispatcher from sidebar/drawer with clean browser history synchronization
   const handlePortalNavigation = (screen: EnterpriseScreenId) => {
-    // If selecting student-learning loop destinations
     if (screen === 'PRACTICE_ENGINE' || screen === 'MY_PROGRESS' || screen === 'FOUNDATION_MASCOTS') {
       setAppScreen(screen === 'PRACTICE_ENGINE' ? 'PRACTICE' : screen === 'MY_PROGRESS' ? 'PROGRESS' : 'PARENT_VIEW');
       return;
     }
     setCurrentScreen(screen);
+    const slug = screen.toLowerCase().replace(/_/g, '-');
+    const newPath = screen === 'DASHBOARD' ? '/portal' : `/portal/${slug}`;
+    if (window.location.pathname !== newPath) {
+      window.history.pushState({ screen }, '', newPath);
+    }
   };
 
   // Render role-specific main dashboard
@@ -169,7 +223,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
       case 'institution_admin':
         return (
           <InstitutionAdminDashboard
-            onNavigateToSyllabus={() => setCurrentScreen('SYLLABUS_MANAGER')}
+            onNavigateToSyllabus={() => handlePortalNavigation('SYLLABUS_MANAGER')}
           />
         );
       case 'academic_admin':
@@ -181,9 +235,9 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
           <TeacherDashboard
             onOpenSubject={(subj) => {
               setActiveSubject(subj);
-              setCurrentScreen('SUBJECT_VIEW');
+              handlePortalNavigation('SUBJECT_VIEW');
             }}
-            onOpenAiTutor={() => setCurrentScreen('AI_TUTOR')}
+            onOpenAiTutor={() => handlePortalNavigation('AI_TUTOR')}
           />
         );
       case 'student':
@@ -191,10 +245,10 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
           <StudentDashboard
             onOpenSubject={(subj) => {
               setActiveSubject(subj);
-              setCurrentScreen('SUBJECT_VIEW');
+              handlePortalNavigation('SUBJECT_VIEW');
             }}
-            onOpenAiTutor={() => setCurrentScreen('AI_TUTOR')}
-            onOpenOfflineCenter={() => setCurrentScreen('OFFLINE_CENTER')}
+            onOpenAiTutor={() => handlePortalNavigation('AI_TUTOR')}
+            onOpenOfflineCenter={() => handlePortalNavigation('OFFLINE_CENTER')}
           />
         );
       case 'guardian':
@@ -204,7 +258,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
     }
   };
 
-  // Render Subject Classroom View (Handles Problem 2: Never fall through silently when !activeSubject)
+  // Render Subject Classroom View
   const renderSubjectClassroom = () => {
     if (activeSubject) {
       return (
@@ -212,9 +266,9 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
           subject={activeSubject}
           onBack={() => {
             setActiveSubject(null);
-            setCurrentScreen('DASHBOARD');
+            handlePortalNavigation('DASHBOARD');
           }}
-          onOpenAiTutor={() => setCurrentScreen('AI_TUTOR')}
+          onOpenAiTutor={() => handlePortalNavigation('AI_TUTOR')}
         />
       );
     }
@@ -226,7 +280,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setCurrentScreen('DASHBOARD')}
+              onClick={() => handlePortalNavigation('DASHBOARD')}
               className="p-2 rounded-xl bg-white border border-[#CBD5E1] text-[#475569] hover:bg-[#F8FAFC]"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -253,7 +307,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => setCurrentScreen('SYLLABUS_MANAGER')}
+                onClick={() => handlePortalNavigation('SYLLABUS_MANAGER')}
                 className="px-4 py-2.5 rounded-xl bg-[#0F766E] text-white text-xs font-bold shadow-2xs hover:bg-[#115E59]"
               >
                 Go to Syllabus Manager
@@ -300,7 +354,7 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
     );
   };
 
-  // Render the selected view (All tabs have real, dedicated working screens)
+  // Render the selected view
   const renderContent = () => {
     switch (currentScreen) {
       case 'DASHBOARD':
@@ -310,25 +364,24 @@ export const EnterprisePortalScreen: React.FC<EnterprisePortalScreenProps> = ({
       case 'SYLLABUS_MANAGER':
         return <SyllabusManagerScreen />;
       case 'OFFLINE_CENTER':
-        return <OfflineLearningCenter onBack={() => setCurrentScreen('DASHBOARD')} />;
+        return <OfflineLearningCenter onBack={() => handlePortalNavigation('DASHBOARD')} />;
       case 'AI_TUTOR':
-        return <AiTutorPortal onBack={() => setCurrentScreen('DASHBOARD')} />;
+        return <AiTutorPortal onBack={() => handlePortalNavigation('DASHBOARD')} />;
       case 'INSTITUTIONS_QUEUE':
-        return <InstitutionsQueueScreen onBack={() => setCurrentScreen('DASHBOARD')} />;
+        return <InstitutionsQueueScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
       case 'USERS_DIRECTORY':
-        return <UsersDirectoryScreen onBack={() => setCurrentScreen('DASHBOARD')} />;
+        return <UsersDirectoryScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
       case 'AUDIT_LOGS':
-        return <AuditLogsScreen onBack={() => setCurrentScreen('DASHBOARD')} />;
+        return <AuditLogsScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
       case 'ASSIGNMENTS':
-        return <AssignmentsHubScreen onBack={() => setCurrentScreen('DASHBOARD')} />;
+        return <AssignmentsHubScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
       case 'ANNOUNCEMENTS':
-        return <AnnouncementsScreen onBack={() => setCurrentScreen('DASHBOARD')} />;
+        return <AnnouncementsScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
       case 'GUARDIAN_DIGEST':
-        return <GuardianDigestScreen onBack={() => setCurrentScreen('DASHBOARD')} />;
+        return <GuardianDigestScreen onBack={() => handlePortalNavigation('DASHBOARD')} />;
       case 'FOUNDATION_MASCOTS':
       case 'PRACTICE_ENGINE':
       case 'MY_PROGRESS':
-        // These destinations are handled by handlePortalNavigation
         return renderDashboard();
       default:
         return renderDashboard();

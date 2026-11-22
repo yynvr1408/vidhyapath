@@ -65,6 +65,10 @@ router.post('/auth/login', (req: Request, res: Response) => {
     }
   }
 
+  if (!matchedUser && (normalizedIdentifier === 'admin' || normalizedIdentifier === 'superadmin' || normalizedIdentifier === 'super_admin')) {
+    matchedUser = dataStore.users.get('user_super_admin') || null;
+  }
+
   if (!matchedUser) {
     AuthService.recordLoginFailure(normalizedIdentifier);
     return res.status(401).json({ error: 'Invalid credentials. User profile not found.' });

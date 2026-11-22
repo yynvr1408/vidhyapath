@@ -1,3 +1,5 @@
+import { isNativePlatform } from '../utils/platform';
+
 /**
  * Global API URL resolver & Network Client for Vidyapath.
  * - When running in Android / iOS Capacitor APK: Automatically routes all `/api/...` calls
@@ -10,14 +12,9 @@
 
 export const REMOTE_BACKEND_URL = 'https://vidyapath.onrender.com';
 
-export const isCapacitor = typeof window !== 'undefined' && Boolean(
-  (window as any).Capacitor?.isNativePlatform?.() ||
-  window.location.protocol === 'capacitor:' ||
-  window.location.origin.includes('capacitor://') ||
-  (window.location.hostname === 'localhost' && window.location.port !== '3000' && window.location.port !== '5173')
-);
+export const isCapacitor = isNativePlatform();
 
-// Determine base URL: environment variable overrides all, followed by Capacitor detection
+// Determine base URL: environment variable overrides all, followed by explicit native platform detection
 const rawEnvUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || '';
 export const API_BASE_URL = (
   rawEnvUrl || (isCapacitor ? REMOTE_BACKEND_URL : '')
