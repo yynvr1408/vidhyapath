@@ -4,6 +4,7 @@ services:
     runtime: node
     plan: free
     region: oregon
+    branch: main
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /healthz
@@ -13,6 +14,8 @@ services:
       - key: PORT
         value: 3001
       - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
         sync: false
       - key: GROQ_API_KEY
         sync: false
@@ -32,6 +35,24 @@ services:
         sync: false
       - key: R2_PUBLIC_DOMAIN
         sync: false
+      - key: EMAILJS_SERVICE_ID
+        sync: false
+      - key: EMAILJS_PUBLIC_KEY
+        sync: false
+      - key: EMAILJS_PRIVATE_KEY
+        sync: false
+      - key: EMAILJS_OTP_SERVICE_ID
+        sync: false
+      - key: EMAILJS_OTP_PUBLIC_KEY
+        sync: false
+      - key: EMAILJS_OTP_PRIVATE_KEY
+        sync: false
+      - key: EMAILJS_OTP_TEMPLATE_ID
+        value: template_vn8akfi
+      - key: EMAILJS_RESET_TEMPLATE_ID
+        value: template_ut8bwdc
+      - key: EMAILJS_INVITE_TEMPLATE_ID
+        value: template_2e14nac
       - key: GITHUB_REPO_OWNER
         value: yynvr1408
       - key: GITHUB_REPO_NAME
